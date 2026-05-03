@@ -1,0 +1,217 @@
+@import "tailwindcss";
+
+:root,
+[data-theme="github"] {
+  --moflow-bg: #ffffff;
+  --moflow-bg-secondary: #f6f8fa;
+  --moflow-text: #1f2328;
+  --moflow-text-secondary: #656d76;
+  --moflow-border: #d1d9e0;
+  --moflow-accent: #0969da;
+  --moflow-accent-hover: #0550ae;
+  --moflow-sidebar-bg: #f6f8fa;
+  --moflow-toolbar-bg: #ffffff;
+  --moflow-code-bg: #f6f8fa;
+  --moflow-scrollbar-thumb: #c1c1c1;
+  --moflow-scrollbar-track: transparent;
+  --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --moflow-editor-max-width: 980px;
+  --moflow-editor-padding-x: 48px;
+  --moflow-editor-padding-y: 45px;
+  --moflow-font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-font-mono: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+  --moflow-h1-size: 2em;
+  --moflow-h2-size: 1.5em;
+  --moflow-h3-size: 1.25em;
+  --moflow-body-size: 16px;
+  --moflow-line-height: 1.7;
+  --moflow-crepe-bg: #ffffff;
+  --moflow-crepe-on-bg: #1f2328;
+  --moflow-crepe-primary: #0969da;
+  --moflow-crepe-selected: rgba(84, 174, 255, 0.4);
+  --moflow-crepe-outline: #d1d9e0;
+  --moflow-crepe-inline-area: #eff2f5;
+  --moflow-crepe-inline-code: #1f2328;
+  --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+}
+
+[data-theme="github-dark"] {
+  --moflow-bg: #0d1117;
+  --moflow-bg-secondary: #161b22;
+  --moflow-text: #e6edf3;
+  --moflow-text-secondary: #8b949e;
+  --moflow-border: #30363d;
+  --moflow-accent: #58a6ff;
+  --moflow-accent-hover: #79c0ff;
+  --moflow-sidebar-bg: #161b22;
+  --moflow-toolbar-bg: #0d1117;
+  --moflow-code-bg: #161b22;
+  --moflow-scrollbar-thumb: #484f58;
+  --moflow-scrollbar-track: transparent;
+  --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --moflow-editor-max-width: 980px;
+  --moflow-editor-padding-x: 48px;
+  --moflow-editor-padding-y: 45px;
+  --moflow-crepe-bg: #0d1117;
+  --moflow-crepe-on-bg: #e6edf3;
+  --moflow-crepe-primary: #58a6ff;
+  --moflow-crepe-selected: rgba(84, 174, 255, 0.4);
+  --moflow-crepe-outline: #30363d;
+  --moflow-crepe-inline-area: #1c2128;
+  --moflow-crepe-inline-code: #e6edf3;
+  --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+}
+
+[data-theme="nord"] {
+  --moflow-bg: #eceff4;
+  --moflow-bg-secondary: #e5e9f0;
+  --moflow-text: #2e3440;
+  --moflow-text-secondary: #4c566a;
+  --moflow-border: #d8dee9;
+  --moflow-accent: #5e81ac;
+  --moflow-accent-hover: #81a1c1;
+  --moflow-sidebar-bg: #e5e9f0;
+  --moflow-toolbar-bg: #eceff4;
+  --moflow-code-bg: #e5e9f0;
+  --moflow-scrollbar-thumb: #a0aec0;
+  --moflow-scrollbar-track: transparent;
+  --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --moflow-editor-max-width: 860px;
+  --moflow-editor-padding-x: 48px;
+  --moflow-editor-padding-y: 40px;
+  --moflow-crepe-bg: #eceff4;
+  --moflow-crepe-on-bg: #2e3440;
+  --moflow-crepe-primary: #5e81ac;
+  --moflow-crepe-selected: rgba(94, 129, 172, 0.3);
+  --moflow-crepe-outline: #d8dee9;
+  --moflow-crepe-inline-area: #d8dee9;
+  --moflow-crepe-inline-code: #2e3440;
+  --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+}
+
+[data-theme="nord-dark"] {
+  --moflow-bg: #2e3440;
+  --moflow-bg-secondary: #3b4252;
+  --moflow-text: #eceff4;
+  --moflow-text-secondary: #d8dee9;
+  --moflow-border: #434c5e;
+  --moflow-accent: #88c0d0;
+  --moflow-accent-hover: #81a1c1;
+  --moflow-sidebar-bg: #3b4252;
+  --moflow-toolbar-bg: #2e3440;
+  --moflow-code-bg: #3b4252;
+  --moflow-scrollbar-thumb: #4c566a;
+  --moflow-scrollbar-track: transparent;
+  --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --moflow-editor-max-width: 860px;
+  --moflow-editor-padding-x: 48px;
+  --moflow-editor-padding-y: 40px;
+  --moflow-crepe-bg: #2e3440;
+  --moflow-crepe-on-bg: #eceff4;
+  --moflow-crepe-primary: #88c0d0;
+  --moflow-crepe-selected: rgba(136, 192, 208, 0.3);
+  --moflow-crepe-outline: #434c5e;
+  --moflow-crepe-inline-area: #434c5e;
+  --moflow-crepe-inline-code: #eceff4;
+  --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+}
+
+[data-theme="catppuccin-latte"] {
+  --moflow-bg: #eff1f5;
+  --moflow-bg-secondary: #e6e9ef;
+  --moflow-text: #4c4f69;
+  --moflow-text-secondary: #7c7f93;
+  --moflow-border: #ccd0da;
+  --moflow-accent: #1e66f5;
+  --moflow-accent-hover: #2a6ef5;
+  --moflow-sidebar-bg: #e6e9ef;
+  --moflow-toolbar-bg: #eff1f5;
+  --moflow-code-bg: #e6e9ef;
+  --moflow-scrollbar-thumb: #bcc0cc;
+  --moflow-scrollbar-track: transparent;
+  --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --moflow-editor-max-width: 900px;
+  --moflow-editor-padding-x: 48px;
+  --moflow-editor-padding-y: 40px;
+  --moflow-crepe-bg: #eff1f5;
+  --moflow-crepe-on-bg: #4c4f69;
+  --moflow-crepe-primary: #1e66f5;
+  --moflow-crepe-selected: rgba(30, 102, 245, 0.2);
+  --moflow-crepe-outline: #ccd0da;
+  --moflow-crepe-inline-area: #e6e9ef;
+  --moflow-crepe-inline-code: #4c4f69;
+  --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+}
+
+[data-theme="catppuccin-mocha"] {
+  --moflow-bg: #1e1e2e;
+  --moflow-bg-secondary: #181825;
+  --moflow-text: #cdd6f4;
+  --moflow-text-secondary: #a6adc8;
+  --moflow-border: #313244;
+  --moflow-accent: #89b4fa;
+  --moflow-accent-hover: #74c7ec;
+  --moflow-sidebar-bg: #181825;
+  --moflow-toolbar-bg: #1e1e2e;
+  --moflow-code-bg: #313244;
+  --moflow-scrollbar-thumb: #585b70;
+  --moflow-scrollbar-track: transparent;
+  --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --moflow-editor-max-width: 900px;
+  --moflow-editor-padding-x: 48px;
+  --moflow-editor-padding-y: 40px;
+  --moflow-crepe-bg: #1e1e2e;
+  --moflow-crepe-on-bg: #cdd6f4;
+  --moflow-crepe-primary: #89b4fa;
+  --moflow-crepe-selected: rgba(137, 180, 250, 0.2);
+  --moflow-crepe-outline: #313244;
+  --moflow-crepe-inline-area: #313244;
+  --moflow-crepe-inline-code: #cdd6f4;
+  --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--moflow-font-body);
+  background-color: var(--moflow-bg);
+  color: var(--moflow-text);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--moflow-scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--moflow-scrollbar-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--moflow-text-secondary);
+}
