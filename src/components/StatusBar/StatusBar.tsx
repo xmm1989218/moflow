@@ -16,7 +16,6 @@ const EyeIcon = () => (
 
 export default function StatusBar() {
   const showStatusBar = useAppStore((s) => s.showStatusBar);
-  const file = useAppStore((s) => s.file);
   const mode = useAppStore((s) => s.mode);
   const setMode = useAppStore((s) => s.setMode);
 
@@ -26,9 +25,9 @@ export default function StatusBar() {
     <div
       className="h-6 shrink-0 border-t flex items-center text-xs justify-between"
       style={{
-        backgroundColor: "var(--moflow-bg-secondary)",
-        borderColor: "var(--moflow-border)",
-        color: "var(--moflow-text-secondary)",
+        backgroundColor: "var(--ui-bg-secondary)",
+        borderColor: "var(--ui-border)",
+        color: "var(--ui-text-secondary)",
         paddingLeft: 16,
         paddingRight: 16,
       }}
@@ -38,9 +37,9 @@ export default function StatusBar() {
           onClick={() => setMode(mode === "wysiwyg" ? "source" : "wysiwyg")}
           style={{
             background: "none",
-            border: "1px solid var(--moflow-border)",
+            border: "1px solid var(--ui-border)",
             borderRadius: 4,
-            color: "var(--moflow-text-secondary)",
+            color: "var(--ui-text-secondary)",
             padding: "0 5px",
             cursor: "pointer",
             display: "flex",
@@ -57,7 +56,6 @@ export default function StatusBar() {
       <div className="flex items-center gap-3">
         <span>UTF-8</span>
         <span>Markdown</span>
-        {file.isModified && <span style={{ color: "var(--moflow-accent)" }}>Modified</span>}
       </div>
     </div>
   );

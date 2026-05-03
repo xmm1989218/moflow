@@ -1,0 +1,98 @@
+.moflow-titlebar {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  background-color: var(--ui-titlebar-bg);
+  color: var(--ui-titlebar-text);
+  border-bottom: 1px solid var(--ui-border);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.moflow-titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 4px;
+  position: relative;
+  z-index: 100;
+}
+
+.moflow-titlebar-center {
+  flex: 1;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.moflow-titlebar-asterisk {
+  color: var(--ui-accent);
+  font-weight: 400;
+  margin-left: 1px;
+}
+
+.moflow-titlebar-right {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.moflow-titlebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--ui-titlebar-text);
+  cursor: pointer;
+  height: 36px;
+  min-width: 36px;
+  padding: 0 8px;
+  transition: background-color 0.15s;
+}
+
+.moflow-titlebar-btn:hover {
+  background-color: var(--ui-hover);
+}
+
+.moflow-titlebar-ai-btn {
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  min-width: auto;
+  padding: 0 10px;
+  border-radius: 4px;
+  margin-left: 2px;
+}
+
+.moflow-titlebar-ai-btn.active {
+  color: var(--ui-accent);
+  background-color: var(--ui-menu-hover);
+}
+
+.moflow-titlebar-ai-label {
+  line-height: 1;
+}
+
+.moflow-titlebar-control {
+  min-width: 46px;
+  padding: 0;
+}
+
+.moflow-titlebar-close:hover {
+  background-color: #e81123 !important;
+  color: #ffffff !important;
+}
+
+[data-app-theme="dark"] .moflow-titlebar-close:hover {
+  background-color: #e81123 !important;
+  color: #ffffff !important;
+}

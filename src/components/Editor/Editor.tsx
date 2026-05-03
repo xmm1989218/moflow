@@ -12,7 +12,7 @@ import { useEffect, useRef } from "react";
 function MilkdownWrapper() {
   const setContent = useAppStore((s) => s.setContent);
   const content = useAppStore((s) => s.file.content);
-  const theme = useAppStore((s) => s.theme);
+  const editorTheme = useAppStore((s) => s.editorTheme);
   const mode = useAppStore((s) => s.mode);
   const contentRef = useRef(content);
   const editorReadyRef = useRef(false);
@@ -72,7 +72,7 @@ function MilkdownWrapper() {
   }, [content, loading, getEditor]);
 
   return (
-    <div className="moflow-editor-wrapper" data-theme={theme}>
+    <div className="moflow-editor-wrapper" data-editor-theme={editorTheme}>
       {mode === "wysiwyg" ? (
         <Milkdown />
       ) : (

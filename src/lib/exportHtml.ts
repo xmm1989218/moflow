@@ -1,11 +1,11 @@
-import type { ThemeName } from "../stores/appStore";
+import type { EditorTheme } from "../stores/appStore";
 import { getThemeCSS } from "./themeCSS";
 
-export function exportAsHtml(content: string, themeName: ThemeName): string {
+export function exportAsHtml(content: string, themeName: EditorTheme): string {
   const css = getThemeCSS(themeName);
 
   return `<!DOCTYPE html>
-<html lang="en" data-theme="${themeName}">
+<html lang="en" data-editor-theme="${themeName}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">

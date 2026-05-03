@@ -1,64 +1,39 @@
 import { useEffect } from "react";
 import Editor from "./components/Editor/Editor";
 import StatusBar from "./components/StatusBar/StatusBar";
-import { useAppStore, type ThemeName } from "./stores/appStore";
-import { openFile, saveFile, saveFileAs, exportHtml, exportPdf, confirmUnsaved } from "./lib/fileOps";
+import TitleBar from "./components/TitleBar/TitleBar";
+import AISidebar from "./components/AISidebar/AISidebar";
+import { useAppStore, resolveAppTheme } from "./stores/appStore";
+import { openFile, saveFile, saveFileAs, confirmUnsaved } from "./lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 function App() {
-  const theme = useAppStore((s) => s.theme);
-  const setTheme = useAppStore((s) => s.setTheme);
+  const appTheme = useAppStore((s) => s.appTheme);
+  const editorTheme = useAppStore((s) => s.editorTheme);
+  const showAISidebar = useAppStore((s) => s.showAISidebar);
   const newFile = useAppStore((s) => s.newFile);
-  const toggleStatusBar = useAppStore((s) => s.toggleStatusBar);
+
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
+    const resolved = resolveAppTheme(appTheme);
+    document.documentElement.setAttribute("data-app-theme", resolved);
+  }, [appTheme]);
 
   useEffect(() => {
-    const unlisten = getCurrentWindow().listen<string>("moflow-menu", (event) => {
-      const id = event.payload;
-      if (id.startsWith("theme_")) {
-        setTheme(id.slice(6).replace(/_/g, "-") as ThemeName);
-        return;
-      }
-      switch (id) {
-        case "new":
-          confirmUnsaved("新建文件").then((ok) => { if (ok) newFile(); });
-          break;
-        case "open":
-          confirmUnsaved("打开新文件").then((ok) => { if (ok) openFile(); });
-          break;
-        case "save":
-          saveFile();
-          break;
-        case "save_as":
-          saveFileAs();
-          break;
-        case "toggle_statusbar":
-          toggleStatusBar();
-          break;
-        case "export_html":
-          exportHtml();
-          break;
-        case "export_pdf":
-          exportPdf();
-          break;
-        case "close":
-          getCurrentWindow().close();
-          break;
-        case "fullscreen":
-          getCurrentWindow().isFullscreen().then((fs) => {
-            getCurrentWindow().setFullscreen(!fs);
-          });
-          break;
-      }
-    });
+    document.documentElement.setAttribute("data-editor-theme", editorTheme);
+  }, [editorTheme]);
 
-    return () => {
-      unlisten.then((fn) => fn());
+  useEffect(() => {
+    if (appTheme !== "system") return;
+
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => {
+      const resolved = resolveAppTheme("system");
+      document.documentElement.setAttribute("data-app-theme", resolved);
     };
-  }, [newFile, toggleStatusBar, setTheme]);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [appTheme]);
 
   useEffect(() => {
     const unlisten = getCurrentWindow().onCloseRequested((event) => {
@@ -97,7 +72,6 @@ function App() {
             content,
             isModified: false,
           });
-          document.title = `${file.name} - MoFlow`;
         };
         reader.readAsText(file);
       });
@@ -131,6 +105,15 @@ function App() {
       } else if (mod && e.key === "n") {
         e.preventDefault();
         confirmUnsaved("新建文件").then((ok) => { if (ok) newFile(); });
+      } else if (e.key === "F11") {
+        e.preventDefault();
+        const appWindow = getCurrentWindow();
+        appWindow.isFullscreen().then((fs) => appWindow.setFullscreen(!fs));
+      } else if (e.key === "F12") {
+        e.preventDefault();
+        const appWindow = getCurrentWindow();
+        // @ts-expect-error Tauri devtools API
+        appWindow.openDevtools();
       }
     }
 
@@ -139,9 +122,15 @@ function App() {
   }, [newFile]);
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden" data-theme={theme}>
+    <div
+      className="h-full w-full flex flex-col overflow-hidden"
+      data-app-theme={resolveAppTheme(appTheme)}
+      data-editor-theme={editorTheme}
+    >
+      <TitleBar />
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <Editor />
+        {showAISidebar && <AISidebar />}
       </div>
       <StatusBar />
     </div>

@@ -1,7 +1,59 @@
 @import "tailwindcss";
 
+/* ── App UI theme variables ── */
+
+[data-app-theme="light"] {
+  --ui-bg: #ffffff;
+  --ui-bg-secondary: #f6f8fa;
+  --ui-text: #1f2328;
+  --ui-text-secondary: #656d76;
+  --ui-border: #d1d9e0;
+  --ui-accent: #0969da;
+  --ui-accent-hover: #0550ae;
+  --ui-titlebar-bg: #f0f0f0;
+  --ui-titlebar-text: #1f2328;
+  --ui-titlebar-inactive: #9ca3af;
+  --ui-hover: #e8e8e8;
+  --ui-menu-bg: #ffffff;
+  --ui-menu-hover: #f0f0f0;
+  --ui-scrollbar-thumb: #c1c1c1;
+  --ui-scrollbar-track: transparent;
+  --ui-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --ui-input-bg: #f6f8fa;
+  --ui-bubble-user: #0969da;
+  --ui-bubble-user-text: #ffffff;
+  --ui-bubble-ai: #f6f8fa;
+  --ui-bubble-ai-text: #1f2328;
+}
+
+[data-app-theme="dark"] {
+  --ui-bg: #1e1e2e;
+  --ui-bg-secondary: #181825;
+  --ui-text: #cdd6f4;
+  --ui-text-secondary: #a6adc8;
+  --ui-border: #313244;
+  --ui-accent: #89b4fa;
+  --ui-accent-hover: #74c7ec;
+  --ui-titlebar-bg: #181825;
+  --ui-titlebar-text: #cdd6f4;
+  --ui-titlebar-inactive: #585b70;
+  --ui-hover: #2a2a3c;
+  --ui-menu-bg: #1e1e2e;
+  --ui-menu-hover: #2a2a3c;
+  --ui-scrollbar-thumb: #45475a;
+  --ui-scrollbar-track: transparent;
+  --ui-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --ui-input-bg: #313244;
+  --ui-bubble-user: #89b4fa;
+  --ui-bubble-user-text: #1e1e2e;
+  --ui-bubble-ai: #313244;
+  --ui-bubble-ai-text: #cdd6f4;
+}
+
+/* ── Editor theme variables ── */
+
 :root,
-[data-theme="github"] {
+[data-editor-theme="github"] {
   --moflow-bg: #ffffff;
   --moflow-bg-secondary: #f6f8fa;
   --moflow-text: #1f2328;
@@ -38,7 +90,7 @@
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
 }
 
-[data-theme="github-dark"] {
+[data-editor-theme="github-dark"] {
   --moflow-bg: #0d1117;
   --moflow-bg-secondary: #161b22;
   --moflow-text: #e6edf3;
@@ -67,7 +119,7 @@
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
 }
 
-[data-theme="nord"] {
+[data-editor-theme="nord"] {
   --moflow-bg: #eceff4;
   --moflow-bg-secondary: #e5e9f0;
   --moflow-text: #2e3440;
@@ -96,7 +148,7 @@
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
 }
 
-[data-theme="nord-dark"] {
+[data-editor-theme="nord-dark"] {
   --moflow-bg: #2e3440;
   --moflow-bg-secondary: #3b4252;
   --moflow-text: #eceff4;
@@ -125,7 +177,7 @@
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
 }
 
-[data-theme="catppuccin-latte"] {
+[data-editor-theme="catppuccin-latte"] {
   --moflow-bg: #eff1f5;
   --moflow-bg-secondary: #e6e9ef;
   --moflow-text: #4c4f69;
@@ -154,7 +206,7 @@
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
 }
 
-[data-theme="catppuccin-mocha"] {
+[data-editor-theme="catppuccin-mocha"] {
   --moflow-bg: #1e1e2e;
   --moflow-bg-secondary: #181825;
   --moflow-text: #cdd6f4;
@@ -183,6 +235,8 @@
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
 }
 
+/* ── Global reset ── */
+
 * {
   margin: 0;
   padding: 0;
@@ -193,9 +247,9 @@ html, body, #root {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  font-family: var(--moflow-font-body);
-  background-color: var(--moflow-bg);
-  color: var(--moflow-text);
+  font-family: var(--ui-font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif);
+  background-color: var(--ui-bg);
+  color: var(--ui-text);
 }
 
 ::-webkit-scrollbar {
@@ -204,14 +258,14 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--moflow-scrollbar-track);
+  background: var(--ui-scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: var(--moflow-scrollbar-thumb);
+  background-color: var(--ui-scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--moflow-text-secondary);
+  background-color: var(--ui-text-secondary);
 }

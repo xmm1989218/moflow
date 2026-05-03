@@ -2,6 +2,7 @@ import { open, save, ask } from "@tauri-apps/plugin-dialog";
 import { readFile, writeFile } from "@tauri-apps/plugin-fs";
 import { useAppStore } from "../stores/appStore";
 import { exportAsHtml } from "./exportHtml";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export async function openFile() {
   const selected = await open({
@@ -39,7 +40,7 @@ export async function saveFile() {
 }
 
 export async function saveFileAs() {
-  const { file, setFile, theme } = useAppStore.getState();
+  const { file, setFile, editorTheme } = useAppStore.getState();
 
   const selected = await save({
     defaultPath: file.fileName,
@@ -54,7 +55,7 @@ export async function saveFileAs() {
   const ext = selected.split(".").pop()?.toLowerCase();
 
   if (ext === "html") {
-    const html = exportAsHtml(file.content, theme);
+    const html = exportAsHtml(file.content, editorTheme);
     const data = new TextEncoder().encode(html);
     await writeFile(selected, data);
     setFile({ isModified: false, lastSavedContent: file.content });
@@ -68,7 +69,7 @@ export async function saveFileAs() {
 }
 
 export async function exportHtml() {
-  const { file, theme } = useAppStore.getState();
+  const { file, editorTheme } = useAppStore.getState();
 
   const selected = await save({
     defaultPath: file.fileName.replace(/\.md$/, ".html"),
@@ -77,16 +78,14 @@ export async function exportHtml() {
 
   if (!selected) return;
 
-  const html = exportAsHtml(file.content, theme);
+  const html = exportAsHtml(file.content, editorTheme);
   await writeFile(selected, new TextEncoder().encode(html));
 }
 
 export async function exportPdf() {
-  const { getCurrentWindow } = await import("@tauri-apps/api/window");
   const mainWindow = getCurrentWindow();
   // @ts-expect-error Tauri print API
-  await mainWindow.print();
-}
+  await mainWindow.print();}
 
 export async function loadFileByPath(filePath: string) {
   const data = await readFile(filePath);

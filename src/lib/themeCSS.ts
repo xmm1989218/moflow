@@ -1,6 +1,6 @@
-import type { ThemeName } from "../stores/appStore";
+import type { EditorTheme } from "../stores/appStore";
 
-const themeVars: Record<ThemeName, Record<string, string>> = {
+const themeVars: Record<EditorTheme, Record<string, string>> = {
   "github": {
     "--moflow-bg": "#ffffff",
     "--moflow-bg-secondary": "#f6f8fa",
@@ -69,7 +69,7 @@ const themeVars: Record<ThemeName, Record<string, string>> = {
   },
 };
 
-export function getThemeCSS(themeName: ThemeName): string {
+export function getThemeCSS(themeName: EditorTheme): string {
   const vars = themeVars[themeName];
   return `:root {\n${Object.entries(vars).map(([k, v]) => `  ${k}: ${v};`).join("\n")}\n}`;
 }
