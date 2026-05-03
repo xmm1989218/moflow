@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useAppStore } from "../../stores/appStore";
-import { confirmCloseTab, saveFile, saveFileAs } from "../../lib/fileOps";
+import { confirmCloseTab, saveFile, saveFileAs, closeLastTab } from "../../lib/fileOps";
 import "./TabBar.css";
 
 export default function TabBar() {
@@ -22,8 +22,17 @@ export default function TabBar() {
     const tab = files.find((f) => f.id === id);
     if (!tab) return;
 
-    if (tab.isModified) {
-      const result = await confirmCloseTab(tab.fileName, !!tab.filePath);
+    if (files.length === 1) {
+      closeLastTab(tab);
+      return;
+    }
+
+    const needConfirm = tab.isModified || (tab.filePath === null && tab.content.length > 0);
+    if (needConfirm) {
+      const message = tab.filePath === null
+        ? "草稿内容未保存，是否保存？"
+        : `「${tab.fileName}」有未保存的修改，是否保存？`;
+      const result = await confirmCloseTab(message);
       if (result === "cancel") return;
       if (result === "save") {
         const prevActive = useAppStore.getState().activeFileId;
@@ -65,6 +74,7 @@ export default function TabBar() {
             title={tab.filePath || tab.fileName}
           >
             <span className="moflow-tab-name">
+              {!tab.contentLoaded && tab.filePath && <span className="moflow-tab-loading">…</span>}
               {tab.fileName}
               {tab.isModified && <span className="moflow-tab-asterisk">*</span>}
             </span>

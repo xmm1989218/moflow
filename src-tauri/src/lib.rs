@@ -1,4 +1,4 @@
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use std::sync::mpsc;
 
 #[cfg(target_os = "windows")]
@@ -214,6 +214,17 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf])
         .setup(|app| {
+            #[cfg(desktop)]
+            {
+                app.handle().plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+                    let window = app.get_webview_window("main").expect("no main window");
+                    let _ = window.set_focus();
+                    if args.len() > 1 {
+                        let _ = window.emit("single-instance-file-open", &args[1]);
+                    }
+                }))?;
+            }
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()

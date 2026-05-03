@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { appDataDir } from "@tauri-apps/api/path";
+import { readFile, writeFile, mkdir, remove, exists } from "@tauri-apps/plugin-fs";
 
 export type AppTheme = "system" | "light" | "dark";
 export type EditorTheme = "github" | "github-dark" | "nord" | "nord-dark" | "catppuccin-latte" | "catppuccin-mocha";
@@ -29,9 +31,10 @@ export interface TabState {
   lastSavedContent: string;
   isModified: boolean;
   mode: EditorMode;
+  contentLoaded: boolean;
 }
 
-function createTab(overrides?: Partial<Omit<TabState, "id">>): TabState {
+function createTab(overrides?: Partial<TabState & { id: string }>): TabState {
   return {
     id: crypto.randomUUID(),
     filePath: null,
@@ -40,16 +43,155 @@ function createTab(overrides?: Partial<Omit<TabState, "id">>): TabState {
     lastSavedContent: "",
     isModified: false,
     mode: "wysiwyg",
+    contentLoaded: true,
     ...overrides,
   };
 }
 
 export type CloseDialogResult = "save" | "discard" | "cancel";
+export type DialogMode = "confirm-close" | "alert";
 
 interface CloseDialogState {
   visible: boolean;
   message: string;
+  mode: DialogMode;
 }
+
+interface SessionTab {
+  filePath: string | null;
+  fileName: string;
+  mode: EditorMode;
+  untitledId?: string;
+}
+
+interface SessionData {
+  tabs: SessionTab[];
+  activeFilePath: string | null;
+  activeUntitledId?: string;
+}
+
+async function writeUntitledContent(tabId: string, content: string) {
+  try {
+    const dir = await appDataDir();
+    const untitledDir = dir + "\\untitled\\";
+    if (!(await exists(untitledDir))) {
+      await mkdir(untitledDir, { recursive: true });
+    }
+    await writeFile(untitledDir + tabId + ".md", new TextEncoder().encode(content));
+  } catch (e) {
+    console.error("writeUntitledContent error:", e);
+  }
+}
+
+async function readUntitledContent(tabId: string): Promise<string | null> {
+  try {
+    const dir = await appDataDir();
+    const data = await readFile(dir + "\\untitled\\" + tabId + ".md");
+    return new TextDecoder().decode(data);
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteUntitledContent(tabId: string) {
+  try {
+    const dir = await appDataDir();
+    await remove(dir + "\\untitled\\" + tabId + ".md");
+  } catch { /* file may not exist */ }
+}
+
+export async function deleteSession() {
+  try {
+    const dir = await appDataDir();
+    const sessionPath = dir + "\\session.json";
+    if (await exists(sessionPath)) {
+      await remove(sessionPath);
+    }
+  } catch { /* ignore */ }
+}
+
+async function persistSession(files: TabState[], activeFileId: string) {
+  try {
+    const activeTab = files.find((f) => f.id === activeFileId);
+    const session: SessionData = {
+      tabs: files.map((tab) => ({
+        filePath: tab.filePath,
+        fileName: tab.fileName,
+        mode: tab.mode,
+        ...(tab.filePath === null ? { untitledId: tab.id } : {}),
+      })),
+      activeFilePath: activeTab?.filePath ?? null,
+      ...(activeTab?.filePath === null ? { activeUntitledId: activeTab.id } : {}),
+    };
+
+    const dir = await appDataDir();
+    const json = JSON.stringify(session);
+    await writeFile(dir + "\\session.json", new TextEncoder().encode(json));
+  } catch (e) {
+    console.error("[persistSession] error:", e);
+  }
+}
+
+async function restoreSession(): Promise<{ files: TabState[]; activeFileId: string } | null> {
+  try {
+    const dir = await appDataDir();
+    const sessionPath = dir + "\\session.json";
+    if (!(await exists(sessionPath))) {
+      return null;
+    }
+
+    const data = await readFile(sessionPath);
+    const session: SessionData = JSON.parse(new TextDecoder().decode(data));
+    if (!session.tabs || session.tabs.length === 0) return null;
+
+    const tabs: TabState[] = [];
+    for (const st of session.tabs) {
+      if (st.filePath) {
+        tabs.push(
+          createTab({
+            filePath: st.filePath,
+            fileName: st.fileName,
+            mode: st.mode,
+            content: "",
+            lastSavedContent: "",
+            isModified: false,
+            contentLoaded: false,
+          })
+        );
+      } else {
+        const content = st.untitledId ? (await readUntitledContent(st.untitledId)) ?? "" : "";
+        tabs.push(
+          createTab({
+            id: st.untitledId,
+            filePath: null,
+            fileName: st.fileName,
+            mode: st.mode,
+            content,
+            lastSavedContent: content,
+            isModified: false,
+            contentLoaded: true,
+          })
+        );
+      }
+    }
+
+    let activeFileId = tabs[0].id;
+    if (session.activeFilePath) {
+      const found = tabs.find((t) => t.filePath === session.activeFilePath);
+      if (found) activeFileId = found.id;
+    } else if (session.activeUntitledId) {
+      const found = tabs.find((t) => t.id === session.activeUntitledId);
+      if (found) activeFileId = found.id;
+    }
+
+    return { files: tabs, activeFileId };
+  } catch (e) {
+    console.error("restoreSession error:", e);
+    return null;
+  }
+}
+
+const untitledTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 interface AppState {
   files: TabState[];
@@ -61,6 +203,7 @@ interface AppState {
   autoSave: boolean;
   closeDialog: CloseDialogState;
   getEditorHTML: (() => string) | null;
+  sessionInitialized: boolean;
 
   openTab: (overrides?: Partial<Omit<TabState, "id">>) => string;
   closeTab: (id: string) => void;
@@ -76,6 +219,7 @@ interface AppState {
   toggleAutoSave: () => void;
   newFile: () => string;
   showCloseDialog: (message: string) => void;
+  showAlertDialog: (message: string) => void;
   hideCloseDialog: () => void;
   setGetEditorHTML: (fn: (() => string) | null) => void;
 }
@@ -90,8 +234,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   showStatusBar: true,
   showAISidebar: false,
   autoSave: localStorage.getItem("moflow-autoSave") !== "false",
-  closeDialog: { visible: false, message: "" },
+  closeDialog: { visible: false, message: "", mode: "confirm-close" },
   getEditorHTML: null,
+  sessionInitialized: false,
 
   openTab: (overrides) => {
     const tab = createTab(overrides);
@@ -100,6 +245,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeFileId: tab.id,
     }));
     document.title = `${tab.fileName} - MoFlow`;
+    if (tab.filePath === null) {
+      writeUntitledContent(tab.id, tab.content);
+    }
+    const state = get();
+    persistSession(state.files, state.activeFileId);
     return tab.id;
   },
 
@@ -108,12 +258,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     const idx = state.files.findIndex((f) => f.id === id);
     if (idx === -1) return;
 
+    const tab = state.files.find((f) => f.id === id);
+    if (tab && tab.filePath === null) {
+      deleteUntitledContent(id);
+    }
+
     const newFiles = state.files.filter((f) => f.id !== id);
 
     if (newFiles.length === 0) {
-      const tab = createTab();
-      set({ files: [tab], activeFileId: tab.id });
-      document.title = `${tab.fileName} - MoFlow`;
+      const newTab = createTab();
+      set({ files: [newTab], activeFileId: newTab.id });
+      document.title = `${newTab.fileName} - MoFlow`;
+      persistSession([newTab], newTab.id);
       return;
     }
 
@@ -131,6 +287,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         document.title = `${active.fileName}${active.isModified ? "*" : ""} - MoFlow`;
       }
     }
+    persistSession(newFiles, newActiveId);
   },
 
   switchTab: (id) => {
@@ -140,6 +297,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!tab) return;
     set({ activeFileId: id });
     document.title = `${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`;
+    persistSession(get().files, id);
+
+    if (!tab.contentLoaded && tab.filePath) {
+      import("../lib/fileOps").then(({ loadTabContent }) => {
+        loadTabContent(id);
+      });
+    }
   },
 
   updateTabContent: (id, content) => {
@@ -150,9 +314,28 @@ export const useAppStore = create<AppState>((set, get) => ({
           : f
       ),
     }));
+
+    const state = get();
+    const tab = state.files.find((f) => f.id === id);
+    if (tab && tab.filePath === null) {
+      if (untitledTimers.has(id)) clearTimeout(untitledTimers.get(id));
+      untitledTimers.set(
+        id,
+        setTimeout(() => {
+          const s = get();
+          const t = s.files.find((f) => f.id === id);
+          if (t && t.filePath === null) {
+            writeUntitledContent(id, t.content);
+          }
+          untitledTimers.delete(id);
+        }, 3000)
+      );
+    }
   },
 
   updateTabMeta: (id, meta) => {
+    const prevTab = get().files.find((f) => f.id === id);
+
     set((state) => ({
       files: state.files.map((f) => {
         if (f.id !== id) return f;
@@ -164,6 +347,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         return merged;
       }),
     }));
+
+    if (prevTab && prevTab.filePath === null && meta.filePath) {
+      deleteUntitledContent(id);
+    }
+
     const state = get();
     if (id === state.activeFileId) {
       const tab = state.files.find((f) => f.id === id);
@@ -171,6 +359,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         document.title = `${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`;
       }
     }
+    persistSession(state.files, state.activeFileId);
   },
 
   getActiveFile: () => {
@@ -203,14 +392,54 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   showCloseDialog: (message) => {
-    set({ closeDialog: { visible: true, message } });
+    set({ closeDialog: { visible: true, message, mode: "confirm-close" } });
+  },
+
+  showAlertDialog: (message) => {
+    set({ closeDialog: { visible: true, message, mode: "alert" } });
   },
 
   hideCloseDialog: () => {
-    set({ closeDialog: { visible: false, message: "" } });
+    set({ closeDialog: { visible: false, message: "", mode: "confirm-close" } });
   },
 
   setGetEditorHTML: (fn) => {
     set({ getEditorHTML: fn });
   },
 }));
+
+export async function initSession() {
+  const restored = await restoreSession();
+  if (restored) {
+    useAppStore.setState({
+      files: restored.files,
+      activeFileId: restored.activeFileId,
+      sessionInitialized: true,
+    });
+
+    const activeTab = restored.files.find((f) => f.id === restored.activeFileId);
+    if (activeTab && !activeTab.contentLoaded && activeTab.filePath) {
+      const { loadTabContent } = await import("../lib/fileOps");
+      loadTabContent(activeTab.id);
+    }
+  } else {
+    useAppStore.setState({ sessionInitialized: true });
+  }
+
+  const state = useAppStore.getState();
+  await persistSession(state.files, state.activeFileId);
+}
+
+export async function flushAllUntitled() {
+  const state = useAppStore.getState();
+  for (const tab of state.files) {
+    if (tab.filePath === null && tab.content.length > 0) {
+      await writeUntitledContent(tab.id, tab.content);
+    }
+  }
+}
+
+export async function persistSessionFromStore() {
+  const state = useAppStore.getState();
+  await persistSession(state.files, state.activeFileId);
+}

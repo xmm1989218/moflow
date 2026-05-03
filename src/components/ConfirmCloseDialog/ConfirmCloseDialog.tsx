@@ -2,11 +2,19 @@ import { useAppStore, type CloseDialogResult } from "../../stores/appStore";
 import "./ConfirmCloseDialog.css";
 
 let dialogResolver: ((value: CloseDialogResult) => void) | null = null;
+let alertResolver: (() => void) | null = null;
 
 export function showConfirmCloseDialog(message: string): Promise<CloseDialogResult> {
   return new Promise((resolve) => {
     dialogResolver = resolve;
     useAppStore.getState().showCloseDialog(message);
+  });
+}
+
+export function showAlertDialog(message: string): Promise<void> {
+  return new Promise((resolve) => {
+    alertResolver = resolve;
+    useAppStore.getState().showAlertDialog(message);
   });
 }
 
@@ -22,15 +30,29 @@ export default function ConfirmCloseDialog() {
     dialogResolver = null;
   };
 
+  const handleAlertOk = () => {
+    hideCloseDialog();
+    alertResolver?.();
+    alertResolver = null;
+  };
+
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
-      handleResult("cancel");
+      if (closeDialog.mode === "alert") {
+        handleAlertOk();
+      } else {
+        handleResult("cancel");
+      }
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
-      handleResult("cancel");
+      if (closeDialog.mode === "alert") {
+        handleAlertOk();
+      } else {
+        handleResult("cancel");
+      }
     }
   };
 
@@ -41,15 +63,23 @@ export default function ConfirmCloseDialog() {
           {closeDialog.message}
         </div>
         <div className="moflow-dialog-buttons">
-          <button className="moflow-dialog-btn moflow-dialog-btn-secondary" onClick={() => handleResult("discard")}>
-            不保存
-          </button>
-          <button className="moflow-dialog-btn moflow-dialog-btn-tertiary" onClick={() => handleResult("cancel")}>
-            取消
-          </button>
-          <button className="moflow-dialog-btn moflow-dialog-btn-primary" onClick={() => handleResult("save")}>
-            保存
-          </button>
+          {closeDialog.mode === "confirm-close" ? (
+            <>
+              <button className="moflow-dialog-btn moflow-dialog-btn-secondary" onClick={() => handleResult("discard")}>
+                不保存
+              </button>
+              <button className="moflow-dialog-btn moflow-dialog-btn-tertiary" onClick={() => handleResult("cancel")}>
+                取消
+              </button>
+              <button className="moflow-dialog-btn moflow-dialog-btn-primary" onClick={() => handleResult("save")}>
+                保存
+              </button>
+            </>
+          ) : (
+            <button className="moflow-dialog-btn moflow-dialog-btn-primary" onClick={handleAlertOk}>
+              确认
+            </button>
+          )}
         </div>
       </div>
     </div>

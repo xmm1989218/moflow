@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppStore, type EditorTheme, EDITOR_THEMES } from "../../stores/appStore";
-import { openFile, saveFile, saveFileAs, exportHtml, exportPdf, confirmUnsaved } from "../../lib/fileOps";
+import { openFile, saveFile, saveFileAs, exportHtml, exportPdf } from "../../lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import "./HamburgerMenu.css";
@@ -62,10 +62,10 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
   const handleAction = (id: string) => {
     switch (id) {
       case "new":
-        confirmUnsaved(t("新建文件", "New File")).then((ok) => { if (ok) newFile(); });
+        newFile();
         break;
       case "open":
-        confirmUnsaved(t("打开新文件", "Open File")).then((ok) => { if (ok) openFile(); });
+        openFile();
         break;
       case "save":
         saveFile();

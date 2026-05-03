@@ -4,8 +4,8 @@ import StatusBar from "./components/StatusBar/StatusBar";
 import TitleBar from "./components/TitleBar/TitleBar";
 import AISidebar from "./components/AISidebar/AISidebar";
 import ConfirmCloseDialog from "./components/ConfirmCloseDialog/ConfirmCloseDialog";
-import { useAppStore, resolveAppTheme } from "./stores/appStore";
-import { openFile, saveFile, saveFileAs, confirmCloseTab, confirmCloseWindow } from "./lib/fileOps";
+import { useAppStore, resolveAppTheme, initSession } from "./stores/appStore";
+import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab } from "./lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -13,8 +13,11 @@ function App() {
   const appTheme = useAppStore((s) => s.appTheme);
   const editorTheme = useAppStore((s) => s.editorTheme);
   const showAISidebar = useAppStore((s) => s.showAISidebar);
-  const openTab = useAppStore((s) => s.openTab);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    initSession();
+  }, []);
 
   useEffect(() => {
     const resolved = resolveAppTheme(appTheme);
@@ -36,7 +39,7 @@ function App() {
     if (!autoSave) return;
     const state = useAppStore.getState();
     const tab = state.files.find((f) => f.id === state.activeFileId);
-    if (!tab || !tab.filePath || !tab.isModified) return;
+    if (!tab || !tab.filePath || !tab.isModified || !tab.contentLoaded) return;
 
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
@@ -66,13 +69,13 @@ function App() {
 
   useEffect(() => {
     const unlisten = getCurrentWindow().onCloseRequested(async (event) => {
-      const state = useAppStore.getState();
-      const hasModified = state.files.some((f) => f.isModified);
-      if (!hasModified) return;
-
       event.preventDefault();
-      const ok = await confirmCloseWindow();
-      if (ok) getCurrentWindow().destroy();
+      try {
+        await saveAllFiles();
+      } catch (e) {
+        console.error("saveAllFiles error:", e);
+      }
+      getCurrentWindow().destroy();
     });
 
     return () => { unlisten.then((fn) => fn()); };
@@ -90,7 +93,7 @@ function App() {
       const reader = new FileReader();
       reader.onload = () => {
         const content = reader.result as string;
-        openTab({
+        useAppStore.getState().openTab({
           filePath: null,
           fileName: file.name,
           content,
@@ -110,7 +113,7 @@ function App() {
       document.removeEventListener("drop", handleDrop);
       document.removeEventListener("dragover", handleDragOver);
     };
-  }, [openTab]);
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -132,15 +135,28 @@ function App() {
         e.preventDefault();
         const state = useAppStore.getState();
         const active = state.getActiveFile();
-        if (active.isModified) {
-          confirmCloseTab(active.fileName, !!active.filePath).then((result) => {
+
+        if (state.files.length === 1) {
+          closeLastTab(active);
+          return;
+        }
+
+        const needConfirm = active.isModified || (active.filePath === null && active.content.length > 0);
+        if (needConfirm) {
+          const message = active.filePath === null
+            ? "草稿内容未保存，是否保存？"
+            : `「${active.fileName}」有未保存的修改，是否保存？`;
+          confirmCloseTab(message).then((result) => {
             if (result === "cancel") return;
             if (result === "save") {
               state.switchTab(active.id);
               if (active.filePath) {
                 saveFile().then(() => state.closeTab(active.id));
               } else {
-                saveFileAs().then(() => state.closeTab(active.id));
+                saveFileAs().then(() => {
+                  const saved = useAppStore.getState().files.find((f) => f.id === active.id);
+                  if (saved?.filePath) state.closeTab(active.id);
+                });
               }
             } else {
               state.closeTab(active.id);
@@ -170,6 +186,13 @@ function App() {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
+    const unlisten = getCurrentWindow().listen<string>("single-instance-file-open", (event) => {
+      loadFileByPath(event.payload);
+    });
+    return () => { unlisten.then((fn) => fn()); };
   }, []);
 
   return (
