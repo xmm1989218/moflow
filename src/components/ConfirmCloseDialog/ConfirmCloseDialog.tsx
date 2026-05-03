@@ -1,22 +1,6 @@
 import { useAppStore, type CloseDialogResult } from "../../stores/appStore";
+import { resolveDialog, resolveAlert } from "../../lib/closeDialog";
 import "./ConfirmCloseDialog.css";
-
-let dialogResolver: ((value: CloseDialogResult) => void) | null = null;
-let alertResolver: (() => void) | null = null;
-
-export function showConfirmCloseDialog(message: string): Promise<CloseDialogResult> {
-  return new Promise((resolve) => {
-    dialogResolver = resolve;
-    useAppStore.getState().showCloseDialog(message);
-  });
-}
-
-export function showAlertDialog(message: string): Promise<void> {
-  return new Promise((resolve) => {
-    alertResolver = resolve;
-    useAppStore.getState().showAlertDialog(message);
-  });
-}
 
 export default function ConfirmCloseDialog() {
   const closeDialog = useAppStore((s) => s.closeDialog);
@@ -26,14 +10,12 @@ export default function ConfirmCloseDialog() {
 
   const handleResult = (result: CloseDialogResult) => {
     hideCloseDialog();
-    dialogResolver?.(result);
-    dialogResolver = null;
+    resolveDialog(result);
   };
 
   const handleAlertOk = () => {
     hideCloseDialog();
-    alertResolver?.();
-    alertResolver = null;
+    resolveAlert();
   };
 
   const handleOverlayClick = (e: React.MouseEvent) => {

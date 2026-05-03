@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAppStore } from "../../stores/appStore";
-import HamburgerMenu from "../HamburgerMenu/HamburgerMenu";
 import TabBar from "../TabBar/TabBar";
+
+const HamburgerMenu = lazy(() => import("../HamburgerMenu/HamburgerMenu"));
 import "./TitleBar.css";
 
 const appWindow = getCurrentWindow();
@@ -45,7 +46,7 @@ export default function TitleBar() {
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        {menuOpen && <HamburgerMenu onClose={() => setMenuOpen(false)} />}
+        {menuOpen && <Suspense fallback={null}><HamburgerMenu onClose={() => setMenuOpen(false)} /></Suspense>}
         <button
           className={`moflow-titlebar-btn moflow-titlebar-ai-btn${showAISidebar ? " active" : ""}`}
           onClick={toggleAISidebar}

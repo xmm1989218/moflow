@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import Editor from "./components/Editor/Editor";
 import StatusBar from "./components/StatusBar/StatusBar";
 import TitleBar from "./components/TitleBar/TitleBar";
-import AISidebar from "./components/AISidebar/AISidebar";
 import ConfirmCloseDialog from "./components/ConfirmCloseDialog/ConfirmCloseDialog";
+
+const AISidebar = lazy(() => import("./components/AISidebar/AISidebar"));
 import { useAppStore, resolveAppTheme, initSession } from "./stores/appStore";
 import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab } from "./lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -204,7 +205,7 @@ function App() {
       <TitleBar />
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <Editor />
-        {showAISidebar && <AISidebar />}
+        {showAISidebar && <Suspense fallback={null}><AISidebar /></Suspense>}
       </div>
       <StatusBar />
       <ConfirmCloseDialog />

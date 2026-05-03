@@ -3,7 +3,7 @@ import { readFile, writeFile } from "@tauri-apps/plugin-fs";
 import { useAppStore, type CloseDialogResult, deleteUntitledContent, deleteSession } from "../stores/appStore";
 import type { TabState } from "../stores/appStore";
 import { exportAsHtml } from "./exportHtml";
-import { showConfirmCloseDialog, showAlertDialog } from "../components/ConfirmCloseDialog/ConfirmCloseDialog";
+import { showConfirmCloseDialog, showAlertDialog } from "./closeDialog";
 import { invoke } from "@tauri-apps/api/core";
 
 export async function openFile() {
