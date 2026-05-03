@@ -1,6 +1,55 @@
 use tauri::Manager;
 use std::sync::mpsc;
 
+#[cfg(target_os = "windows")]
+fn fix_taskbar_icon(hwnd: windows::Win32::Foundation::HWND) {
+    use windows::Win32::UI::WindowsAndMessaging::*;
+    use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+
+    unsafe {
+        let hinst = GetModuleHandleW(None).ok().map(|h| windows::Win32::Foundation::HINSTANCE(h.0));
+
+        let cx_small = GetSystemMetrics(SM_CXSMICON);
+        let cy_small = GetSystemMetrics(SM_CYSMICON);
+        let cx_big = GetSystemMetrics(SM_CXICON);
+        let cy_big = GetSystemMetrics(SM_CYICON);
+
+        let resource_id: u16 = 32512;
+
+        if let Ok(hicon_small) = LoadImageW(
+            hinst,
+            windows::core::PCWSTR(resource_id as *mut u16),
+            IMAGE_ICON,
+            cx_small,
+            cy_small,
+            LR_DEFAULTCOLOR,
+        ) {
+            let _ = SendMessageW(
+                hwnd,
+                WM_SETICON,
+                Some(windows::Win32::Foundation::WPARAM(ICON_SMALL as usize)),
+                Some(windows::Win32::Foundation::LPARAM(hicon_small.0 as isize)),
+            );
+        }
+
+        if let Ok(hicon_big) = LoadImageW(
+            hinst,
+            windows::core::PCWSTR(resource_id as *mut u16),
+            IMAGE_ICON,
+            cx_big,
+            cy_big,
+            LR_DEFAULTCOLOR,
+        ) {
+            let _ = SendMessageW(
+                hwnd,
+                WM_SETICON,
+                Some(windows::Win32::Foundation::WPARAM(ICON_BIG as usize)),
+                Some(windows::Win32::Foundation::LPARAM(hicon_big.0 as isize)),
+            );
+        }
+    }
+}
+
 #[tauri::command]
 fn toggle_devtools(app: tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
@@ -172,6 +221,16 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            #[cfg(target_os = "windows")]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Ok(hwnd) = window.hwnd() {
+                        fix_taskbar_icon(hwnd);
+                    }
+                }
+            }
+
             Ok(())
         })
         .run(tauri::generate_context!())
