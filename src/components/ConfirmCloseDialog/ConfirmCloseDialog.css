@@ -1,0 +1,83 @@
+.moflow-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.moflow-dialog {
+  background: var(--ui-bg);
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 24px;
+  min-width: 320px;
+  max-width: 420px;
+  animation: moflow-dialog-in 0.15s ease-out;
+}
+
+@keyframes moflow-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.moflow-dialog-message {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ui-text);
+  margin-bottom: 20px;
+}
+
+.moflow-dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.moflow-dialog-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.moflow-dialog-btn-primary {
+  background: var(--ui-accent);
+  color: #fff;
+  border-color: var(--ui-accent);
+}
+
+.moflow-dialog-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.moflow-dialog-btn-secondary {
+  background: transparent;
+  color: var(--ui-text-secondary);
+  border-color: var(--ui-border);
+}
+
+.moflow-dialog-btn-secondary:hover {
+  background: var(--ui-bg-secondary);
+}
+
+.moflow-dialog-btn-tertiary {
+  background: transparent;
+  color: var(--ui-text-secondary);
+}
+
+.moflow-dialog-btn-tertiary:hover {
+  background: var(--ui-bg-secondary);
+}

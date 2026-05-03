@@ -1,5 +1,5 @@
 .moflow-titlebar {
-  height: 36px;
+  height: 40px;
   display: flex;
   align-items: center;
   background-color: var(--ui-titlebar-bg);
@@ -20,22 +20,10 @@
 
 .moflow-titlebar-center {
   flex: 1;
-  text-align: center;
-  font-size: 12px;
-  opacity: 0.8;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
   height: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-
-.moflow-titlebar-asterisk {
-  color: var(--ui-accent);
-  font-weight: 400;
-  margin-left: 1px;
 }
 
 .moflow-titlebar-right {
@@ -52,8 +40,8 @@
   background: none;
   color: var(--ui-titlebar-text);
   cursor: pointer;
-  height: 36px;
-  min-width: 36px;
+  height: 40px;
+  min-width: 40px;
   padding: 0 8px;
   transition: background-color 0.15s;
 }

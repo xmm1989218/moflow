@@ -1,7 +1,7 @@
 import type { EditorTheme } from "../stores/appStore";
 import { getThemeCSS } from "./themeCSS";
 
-export function exportAsHtml(content: string, themeName: EditorTheme): string {
+export function exportAsHtml(bodyHtml: string, themeName: EditorTheme): string {
   const css = getThemeCSS(themeName);
 
   return `<!DOCTYPE html>
@@ -43,29 +43,7 @@ export function exportAsHtml(content: string, themeName: EditorTheme): string {
   </style>
 </head>
 <body>
-${contentToHtml(content)}
+${bodyHtml}
 </body>
 </html>`;
-}
-
-function contentToHtml(md: string): string {
-  return md.split("\n").map((line) => {
-    if (line.startsWith("### ")) return `<h3>${line.slice(4)}</h3>`;
-    if (line.startsWith("## ")) return `<h2>${line.slice(3)}</h2>`;
-    if (line.startsWith("# ")) return `<h1>${line.slice(2)}</h1>`;
-    if (line.startsWith("> ")) return `<blockquote><p>${line.slice(2)}</p></blockquote>`;
-    if (line.startsWith("- ") || line.startsWith("* ")) return `<li>${line.slice(2)}</li>`;
-    if (line === "---" || line === "***") return `<hr>`;
-    if (line.trim() === "") return "";
-    return `<p>${inlineFormat(line)}</p>`;
-  }).join("\n");
-}
-
-function inlineFormat(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`(.+?)`/g, "<code>$1</code>")
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
-    .replace(/!\[(.+?)\]\((.+?)\)/g, '<img src="$2" alt="$1">');
 }

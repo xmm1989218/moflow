@@ -1,0 +1,114 @@
+.moflow-tabbar {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.moflow-tabbar-tabs {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: none;
+  min-width: 0;
+}
+
+.moflow-tabbar-drag {
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+}
+
+.moflow-tabbar-tabs::-webkit-scrollbar {
+  height: 0;
+}
+
+.moflow-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: calc(100% - 5px);
+  margin-top: 5px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--ui-titlebar-inactive);
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: 6px 6px 0 0;
+  transition: background-color 0.1s, color 0.1s;
+  user-select: none;
+  flex: none;
+  min-width: 60px;
+  max-width: 200px;
+}
+
+.moflow-tab:hover {
+  background-color: var(--ui-hover);
+}
+
+.moflow-tab.active {
+  color: var(--ui-titlebar-text);
+  background-color: var(--ui-bg);
+  border-bottom: 2px solid var(--ui-accent);
+}
+
+.moflow-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.moflow-tab-asterisk {
+  color: var(--ui-accent);
+  margin-left: 1px;
+}
+
+.moflow-tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.1s, background-color 0.1s;
+  flex-shrink: 0;
+}
+
+.moflow-tab:hover .moflow-tab-close,
+.moflow-tab.active .moflow-tab-close {
+  opacity: 0.6;
+}
+
+.moflow-tab-close:hover {
+  opacity: 1 !important;
+  background-color: var(--ui-hover);
+}
+
+.moflow-tabbar-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 100%;
+  border: none;
+  background: none;
+  color: var(--ui-titlebar-inactive);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.moflow-tabbar-new:hover {
+  background-color: var(--ui-hover);
+  color: var(--ui-titlebar-text);
+}

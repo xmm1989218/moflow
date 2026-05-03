@@ -209,7 +209,7 @@
   outline: none;
   padding: var(--moflow-editor-padding-y) var(--moflow-editor-padding-x);
   font-family: var(--moflow-font-mono);
-  font-size: 14px;
+  font-size: var(--moflow-body-size);
   line-height: 1.6;
   color: var(--moflow-text);
   background-color: var(--moflow-bg);

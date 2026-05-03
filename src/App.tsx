@@ -1,18 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import Editor from "./components/Editor/Editor";
 import StatusBar from "./components/StatusBar/StatusBar";
 import TitleBar from "./components/TitleBar/TitleBar";
 import AISidebar from "./components/AISidebar/AISidebar";
+import ConfirmCloseDialog from "./components/ConfirmCloseDialog/ConfirmCloseDialog";
 import { useAppStore, resolveAppTheme } from "./stores/appStore";
-import { openFile, saveFile, saveFileAs, confirmUnsaved } from "./lib/fileOps";
+import { openFile, saveFile, saveFileAs, confirmCloseTab, confirmCloseWindow } from "./lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 
 function App() {
   const appTheme = useAppStore((s) => s.appTheme);
   const editorTheme = useAppStore((s) => s.editorTheme);
   const showAISidebar = useAppStore((s) => s.showAISidebar);
-  const newFile = useAppStore((s) => s.newFile);
-
+  const openTab = useAppStore((s) => s.openTab);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const resolved = resolveAppTheme(appTheme);
@@ -23,9 +25,36 @@ function App() {
     document.documentElement.setAttribute("data-editor-theme", editorTheme);
   }, [editorTheme]);
 
+  const activeContent = useAppStore((s) => {
+    const tab = s.files.find((f) => f.id === s.activeFileId);
+    return tab?.content ?? "";
+  });
+  const activeFileId = useAppStore((s) => s.activeFileId);
+  const autoSave = useAppStore((s) => s.autoSave);
+
+  useEffect(() => {
+    if (!autoSave) return;
+    const state = useAppStore.getState();
+    const tab = state.files.find((f) => f.id === state.activeFileId);
+    if (!tab || !tab.filePath || !tab.isModified) return;
+
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      const s = useAppStore.getState();
+      if (!s.autoSave) return;
+      const t = s.files.find((f) => f.id === s.activeFileId);
+      if (t && t.filePath && t.isModified) {
+        saveFile();
+      }
+    }, 1500);
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [activeContent, activeFileId, autoSave]);
+
   useEffect(() => {
     if (appTheme !== "system") return;
-
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     const handler = () => {
       const resolved = resolveAppTheme("system");
@@ -36,19 +65,17 @@ function App() {
   }, [appTheme]);
 
   useEffect(() => {
-    const unlisten = getCurrentWindow().onCloseRequested((event) => {
-      const isModified = useAppStore.getState().file.isModified;
-      if (isModified) {
-        event.preventDefault();
-        confirmUnsaved("不保存并关闭").then((yes) => {
-          if (yes) getCurrentWindow().destroy();
-        });
-      }
+    const unlisten = getCurrentWindow().onCloseRequested(async (event) => {
+      const state = useAppStore.getState();
+      const hasModified = state.files.some((f) => f.isModified);
+      if (!hasModified) return;
+
+      event.preventDefault();
+      const ok = await confirmCloseWindow();
+      if (ok) getCurrentWindow().destroy();
     });
 
-    return () => {
-      unlisten.then((fn) => fn());
-    };
+    return () => { unlisten.then((fn) => fn()); };
   }, []);
 
   useEffect(() => {
@@ -60,21 +87,17 @@ function App() {
       const ext = file.name.split(".").pop()?.toLowerCase();
       if (!["md", "markdown", "txt"].includes(ext || "")) return;
 
-      confirmUnsaved("加载新文件").then((ok) => {
-        if (!ok) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const content = reader.result as string;
-          const { setFile } = useAppStore.getState();
-          setFile({
-            filePath: null,
-            fileName: file.name,
-            content,
-            isModified: false,
-          });
-        };
-        reader.readAsText(file);
-      });
+      const reader = new FileReader();
+      reader.onload = () => {
+        const content = reader.result as string;
+        openTab({
+          filePath: null,
+          fileName: file.name,
+          content,
+          isModified: false,
+        });
+      };
+      reader.readAsText(file);
     }
 
     function handleDragOver(e: DragEvent) {
@@ -87,7 +110,7 @@ function App() {
       document.removeEventListener("drop", handleDrop);
       document.removeEventListener("dragover", handleDragOver);
     };
-  }, []);
+  }, [openTab]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -95,7 +118,7 @@ function App() {
 
       if (mod && e.key === "o") {
         e.preventDefault();
-        confirmUnsaved("打开新文件").then((ok) => { if (ok) openFile(); });
+        openFile();
       } else if (mod && e.key === "s" && !e.shiftKey) {
         e.preventDefault();
         saveFile();
@@ -104,22 +127,50 @@ function App() {
         saveFileAs();
       } else if (mod && e.key === "n") {
         e.preventDefault();
-        confirmUnsaved("新建文件").then((ok) => { if (ok) newFile(); });
+        useAppStore.getState().newFile();
+      } else if (mod && e.key === "w") {
+        e.preventDefault();
+        const state = useAppStore.getState();
+        const active = state.getActiveFile();
+        if (active.isModified) {
+          confirmCloseTab(active.fileName, !!active.filePath).then((result) => {
+            if (result === "cancel") return;
+            if (result === "save") {
+              state.switchTab(active.id);
+              if (active.filePath) {
+                saveFile().then(() => state.closeTab(active.id));
+              } else {
+                saveFileAs().then(() => state.closeTab(active.id));
+              }
+            } else {
+              state.closeTab(active.id);
+            }
+          });
+        } else {
+          state.closeTab(active.id);
+        }
+      } else if (mod && e.key === "Tab") {
+        e.preventDefault();
+        const state = useAppStore.getState();
+        const files = state.files;
+        if (files.length <= 1) return;
+        const idx = files.findIndex((f) => f.id === state.activeFileId);
+        const dir = e.shiftKey ? -1 : 1;
+        const nextIdx = (idx + dir + files.length) % files.length;
+        state.switchTab(files[nextIdx].id);
       } else if (e.key === "F11") {
         e.preventDefault();
         const appWindow = getCurrentWindow();
         appWindow.isFullscreen().then((fs) => appWindow.setFullscreen(!fs));
       } else if (e.key === "F12") {
         e.preventDefault();
-        const appWindow = getCurrentWindow();
-        // @ts-expect-error Tauri devtools API
-        appWindow.openDevtools();
+        invoke("toggle_devtools");
       }
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [newFile]);
+  }, []);
 
   return (
     <div
@@ -133,6 +184,7 @@ function App() {
         {showAISidebar && <AISidebar />}
       </div>
       <StatusBar />
+      <ConfirmCloseDialog />
     </div>
   );
 }

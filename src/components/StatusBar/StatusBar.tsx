@@ -16,8 +16,16 @@ const EyeIcon = () => (
 
 export default function StatusBar() {
   const showStatusBar = useAppStore((s) => s.showStatusBar);
-  const mode = useAppStore((s) => s.mode);
-  const setMode = useAppStore((s) => s.setMode);
+  const autoSave = useAppStore((s) => s.autoSave);
+  const mode = useAppStore((s) => {
+    const tab = s.files.find((f) => f.id === s.activeFileId);
+    return tab?.mode ?? "wysiwyg";
+  });
+  const activeFileId = useAppStore((s) => s.activeFileId);
+
+  const setMode = (m: "wysiwyg" | "source") => {
+    useAppStore.getState().updateTabMeta(activeFileId, { mode: m });
+  };
 
   if (!showStatusBar) return null;
 
@@ -56,6 +64,7 @@ export default function StatusBar() {
       <div className="flex items-center gap-3">
         <span>UTF-8</span>
         <span>Markdown</span>
+        {autoSave && <span>Auto Save</span>}
       </div>
     </div>
   );

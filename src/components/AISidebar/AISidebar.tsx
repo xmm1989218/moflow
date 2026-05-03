@@ -71,7 +71,10 @@ export default function AISidebar() {
   const addMessage = useChatStore((s) => s.addMessage);
   const appendToLastMessage = useChatStore((s) => s.appendToLastMessage);
   const setStreaming = useChatStore((s) => s.setStreaming);
-  const docContent = useAppStore((s) => s.file.content);
+  const docContent = useAppStore((s) => {
+    const tab = s.files.find((f) => f.id === s.activeFileId);
+    return tab?.content ?? "";
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
 

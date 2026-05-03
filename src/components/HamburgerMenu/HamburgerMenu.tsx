@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAppStore, type EditorTheme, EDITOR_THEMES } from "../../stores/appStore";
 import { openFile, saveFile, saveFileAs, exportHtml, exportPdf, confirmUnsaved } from "../../lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
 import "./HamburgerMenu.css";
 
 const isZh = navigator.language.startsWith("zh");
@@ -44,6 +45,8 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
   const appTheme = useAppStore((s) => s.appTheme);
   const editorTheme = useAppStore((s) => s.editorTheme);
   const toggleStatusBar = useAppStore((s) => s.toggleStatusBar);
+  const toggleAutoSave = useAppStore((s) => s.toggleAutoSave);
+  const autoSave = useAppStore((s) => s.autoSave);
   const newFile = useAppStore((s) => s.newFile);
 
   useEffect(() => {
@@ -88,8 +91,14 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
       case "toggle_statusbar":
         toggleStatusBar();
         break;
+      case "toggle_autoSave":
+        toggleAutoSave();
+        break;
       case "fullscreen":
         appWindow.isFullscreen().then((fs) => appWindow.setFullscreen(!fs));
+        break;
+      case "devtools":
+        invoke("toggle_devtools");
         break;
       case "about":
         alert("MoFlow v0.1.0\n© 2026 MoFlow");
@@ -104,8 +113,12 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
     item("save", t("保存", "Save"), { shortcut: "Ctrl+S" }),
     item("save_as", t("另存为...", "Save As..."), { shortcut: "Ctrl+Shift+S" }),
     sep(),
-    item("export_html", t("导出 HTML", "Export HTML")),
-    item("export_pdf", t("导出 PDF", "Export PDF")),
+    item("export", t("导出", "Export"), {
+      submenu: [
+        item("export_html", "HTML"),
+        item("export_pdf", "PDF"),
+      ],
+    }),
     sep(),
     item("appearance", t("外观", "Appearance"), {
       submenu: [
@@ -122,7 +135,9 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
     }),
     sep(),
     item("toggle_statusbar", t("切换状态栏", "Toggle Status Bar")),
+    item("toggle_autoSave", t("自动保存", "Auto Save"), { checked: autoSave }),
     item("fullscreen", t("全屏", "Fullscreen"), { shortcut: "F11" }),
+    item("devtools", t("开发者工具", "Developer Tools"), { shortcut: "F12" }),
     sep(),
     item("about", t("关于 MoFlow", "About MoFlow")),
   ];

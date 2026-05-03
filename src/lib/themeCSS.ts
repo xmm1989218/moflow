@@ -69,6 +69,8 @@ const themeVars: Record<EditorTheme, Record<string, string>> = {
   },
 };
 
+export { themeVars };
+
 export function getThemeCSS(themeName: EditorTheme): string {
   const vars = themeVars[themeName];
   return `:root {\n${Object.entries(vars).map(([k, v]) => `  ${k}: ${v};`).join("\n")}\n}`;

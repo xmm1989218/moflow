@@ -2,13 +2,12 @@ import { useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useAppStore } from "../../stores/appStore";
 import HamburgerMenu from "../HamburgerMenu/HamburgerMenu";
+import TabBar from "../TabBar/TabBar";
 import "./TitleBar.css";
 
 const appWindow = getCurrentWindow();
 
 export default function TitleBar() {
-  const fileName = useAppStore((s) => s.file.fileName);
-  const isModified = useAppStore((s) => s.file.isModified);
   const showAISidebar = useAppStore((s) => s.showAISidebar);
   const toggleAISidebar = useAppStore((s) => s.toggleAISidebar);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -47,7 +46,6 @@ export default function TitleBar() {
           </svg>
         </button>
         {menuOpen && <HamburgerMenu onClose={() => setMenuOpen(false)} />}
-
         <button
           className={`moflow-titlebar-btn moflow-titlebar-ai-btn${showAISidebar ? " active" : ""}`}
           onClick={toggleAISidebar}
@@ -59,12 +57,9 @@ export default function TitleBar() {
 
       <div
         className="moflow-titlebar-center"
-        data-tauri-drag-region
         onDoubleClick={handleDoubleClick}
       >
-        <span data-tauri-drag-region>
-          {fileName}{isModified && <span className="moflow-titlebar-asterisk">*</span>} - MoFlow
-        </span>
+        <TabBar />
       </div>
 
       <div className="moflow-titlebar-right">

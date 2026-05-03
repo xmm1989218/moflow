@@ -1,19 +1,33 @@
 import { Crepe } from "@milkdown/crepe";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
-import { replaceAll } from "@milkdown/utils";
+import { replaceAll, getHTML } from "@milkdown/utils";
 import { EditorStatus } from "@milkdown/core";
 import { useAppStore } from "../../stores/appStore";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/nord.css";
 import "@milkdown/crepe/theme/nord-dark.css";
 import "./Editor.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 function MilkdownWrapper() {
-  const setContent = useAppStore((s) => s.setContent);
-  const content = useAppStore((s) => s.file.content);
+  const activeFileId = useAppStore((s) => s.activeFileId);
+  const content = useAppStore((s) => {
+    const tab = s.files.find((f) => f.id === s.activeFileId);
+    return tab?.content ?? "";
+  });
   const editorTheme = useAppStore((s) => s.editorTheme);
-  const mode = useAppStore((s) => s.mode);
+  const mode = useAppStore((s) => {
+    const tab = s.files.find((f) => f.id === s.activeFileId);
+    return tab?.mode ?? "wysiwyg";
+  });
+  const updateTabContent = useAppStore((s) => s.updateTabContent);
+  const setGetEditorHTML = useAppStore((s) => s.setGetEditorHTML);
+
+  const setContent = useCallback(
+    (c: string) => updateTabContent(activeFileId, c),
+    [activeFileId, updateTabContent]
+  );
+
   const contentRef = useRef(content);
   const editorReadyRef = useRef(false);
   const syncedContentRef = useRef(content);
@@ -65,11 +79,18 @@ function MilkdownWrapper() {
     const editor = getEditor();
     if (!editor || editor.status !== EditorStatus.Created) return;
 
+    const getHTMLFn = () => editor.action(getHTML());
+    setGetEditorHTML(getHTMLFn);
+
     if (content === syncedContentRef.current) return;
 
     editor.action(replaceAll(content, true));
     syncedContentRef.current = content;
   }, [content, loading, getEditor]);
+
+  useEffect(() => {
+    return () => setGetEditorHTML(null);
+  }, []);
 
   return (
     <div className="moflow-editor-wrapper" data-editor-theme={editorTheme}>
@@ -96,8 +117,9 @@ function SourceModeEditor({ content, setContent }: { content: string; setContent
 }
 
 export default function Editor() {
+  const activeFileId = useAppStore((s) => s.activeFileId);
   return (
-    <MilkdownProvider>
+    <MilkdownProvider key={activeFileId}>
       <MilkdownWrapper />
     </MilkdownProvider>
   );

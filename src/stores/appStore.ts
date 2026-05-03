@@ -19,74 +19,171 @@ export function resolveAppTheme(appTheme: AppTheme): "light" | "dark" {
   return appTheme;
 }
 
-interface FileState {
+export type EditorMode = "wysiwyg" | "source";
+
+export interface TabState {
+  id: string;
   filePath: string | null;
   fileName: string;
   content: string;
   lastSavedContent: string;
   isModified: boolean;
+  mode: EditorMode;
 }
 
-export type EditorMode = "wysiwyg" | "source";
+function createTab(overrides?: Partial<Omit<TabState, "id">>): TabState {
+  return {
+    id: crypto.randomUUID(),
+    filePath: null,
+    fileName: "Untitled.md",
+    content: "",
+    lastSavedContent: "",
+    isModified: false,
+    mode: "wysiwyg",
+    ...overrides,
+  };
+}
+
+export type CloseDialogResult = "save" | "discard" | "cancel";
+
+interface CloseDialogState {
+  visible: boolean;
+  message: string;
+}
 
 interface AppState {
-  file: FileState;
+  files: TabState[];
+  activeFileId: string;
   appTheme: AppTheme;
   editorTheme: EditorTheme;
-  mode: EditorMode;
   showStatusBar: boolean;
   showAISidebar: boolean;
+  autoSave: boolean;
+  closeDialog: CloseDialogState;
+  getEditorHTML: (() => string) | null;
 
-  setFile: (file: Partial<FileState>) => void;
-  setContent: (content: string) => void;
+  openTab: (overrides?: Partial<Omit<TabState, "id">>) => string;
+  closeTab: (id: string) => void;
+  switchTab: (id: string) => void;
+  updateTabContent: (id: string, content: string) => void;
+  updateTabMeta: (id: string, meta: Partial<TabState>) => void;
+  getActiveFile: () => TabState;
+  findTabByPath: (filePath: string) => TabState | undefined;
   setAppTheme: (theme: AppTheme) => void;
   setEditorTheme: (theme: EditorTheme) => void;
-  setMode: (mode: EditorMode) => void;
   toggleStatusBar: () => void;
   toggleAISidebar: () => void;
-  newFile: () => void;
+  toggleAutoSave: () => void;
+  newFile: () => string;
+  showCloseDialog: (message: string) => void;
+  hideCloseDialog: () => void;
+  setGetEditorHTML: (fn: (() => string) | null) => void;
 }
 
-const defaultFile: FileState = {
-  filePath: null,
-  fileName: "Untitled.md",
-  content: "",
-  lastSavedContent: "",
-  isModified: false,
-};
+const initialTab = createTab();
 
-export const useAppStore = create<AppState>((set) => ({
-  file: { ...defaultFile },
+export const useAppStore = create<AppState>((set, get) => ({
+  files: [initialTab],
+  activeFileId: initialTab.id,
   appTheme: "system",
   editorTheme: "github",
-  mode: "wysiwyg",
   showStatusBar: true,
   showAISidebar: false,
+  autoSave: localStorage.getItem("moflow-autoSave") !== "false",
+  closeDialog: { visible: false, message: "" },
+  getEditorHTML: null,
 
-  setFile: (file) =>
-    set((state) => {
-      const merged = { ...state.file, ...file };
-      if (file.content !== undefined) {
-        merged.lastSavedContent = file.content;
-        merged.isModified = false;
-      }
-      return { file: merged };
-    }),
-
-  setContent: (content) =>
+  openTab: (overrides) => {
+    const tab = createTab(overrides);
     set((state) => ({
-      file: {
-        ...state.file,
-        content,
-        isModified: content !== state.file.lastSavedContent,
-      },
-    })),
+      files: [...state.files, tab],
+      activeFileId: tab.id,
+    }));
+    document.title = `${tab.fileName} - MoFlow`;
+    return tab.id;
+  },
+
+  closeTab: (id) => {
+    const state = get();
+    const idx = state.files.findIndex((f) => f.id === id);
+    if (idx === -1) return;
+
+    const newFiles = state.files.filter((f) => f.id !== id);
+
+    if (newFiles.length === 0) {
+      const tab = createTab();
+      set({ files: [tab], activeFileId: tab.id });
+      document.title = `${tab.fileName} - MoFlow`;
+      return;
+    }
+
+    let newActiveId = state.activeFileId;
+    if (id === state.activeFileId) {
+      const newIdx = Math.min(idx, newFiles.length - 1);
+      newActiveId = newFiles[newIdx].id;
+    }
+
+    set({ files: newFiles, activeFileId: newActiveId });
+
+    if (newActiveId !== state.activeFileId || id === state.activeFileId) {
+      const active = newFiles.find((f) => f.id === newActiveId);
+      if (active) {
+        document.title = `${active.fileName}${active.isModified ? "*" : ""} - MoFlow`;
+      }
+    }
+  },
+
+  switchTab: (id) => {
+    const state = get();
+    if (id === state.activeFileId) return;
+    const tab = state.files.find((f) => f.id === id);
+    if (!tab) return;
+    set({ activeFileId: id });
+    document.title = `${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`;
+  },
+
+  updateTabContent: (id, content) => {
+    set((state) => ({
+      files: state.files.map((f) =>
+        f.id === id
+          ? { ...f, content, isModified: content !== f.lastSavedContent }
+          : f
+      ),
+    }));
+  },
+
+  updateTabMeta: (id, meta) => {
+    set((state) => ({
+      files: state.files.map((f) => {
+        if (f.id !== id) return f;
+        const merged = { ...f, ...meta };
+        if (meta.content !== undefined) {
+          merged.lastSavedContent = meta.content;
+          merged.isModified = false;
+        }
+        return merged;
+      }),
+    }));
+    const state = get();
+    if (id === state.activeFileId) {
+      const tab = state.files.find((f) => f.id === id);
+      if (tab) {
+        document.title = `${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`;
+      }
+    }
+  },
+
+  getActiveFile: () => {
+    const state = get();
+    return state.files.find((f) => f.id === state.activeFileId)!;
+  },
+
+  findTabByPath: (filePath) => {
+    return get().files.find((f) => f.filePath === filePath);
+  },
 
   setAppTheme: (appTheme) => set({ appTheme }),
-
   setEditorTheme: (editorTheme) => set({ editorTheme }),
-
-  setMode: (mode) => set({ mode }),
 
   toggleStatusBar: () =>
     set((state) => ({ showStatusBar: !state.showStatusBar })),
@@ -94,5 +191,26 @@ export const useAppStore = create<AppState>((set) => ({
   toggleAISidebar: () =>
     set((state) => ({ showAISidebar: !state.showAISidebar })),
 
-  newFile: () => set({ file: { ...defaultFile } }),
+  toggleAutoSave: () =>
+    set((state) => {
+      const next = !state.autoSave;
+      localStorage.setItem("moflow-autoSave", String(next));
+      return { autoSave: next };
+    }),
+
+  newFile: () => {
+    return get().openTab();
+  },
+
+  showCloseDialog: (message) => {
+    set({ closeDialog: { visible: true, message } });
+  },
+
+  hideCloseDialog: () => {
+    set({ closeDialog: { visible: false, message: "" } });
+  },
+
+  setGetEditorHTML: (fn) => {
+    set({ getEditorHTML: fn });
+  },
 }));
