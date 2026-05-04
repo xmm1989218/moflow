@@ -532,3 +532,182 @@
   background-color: var(--moflow-bg) !important;
   outline: 1px solid var(--moflow-accent) !important;
 }
+
+/* ── Crepe latex theme override ── */
+
+.moflow-editor-wrapper .milkdown span[data-type='math_inline'] {
+  color: var(--moflow-text) !important;
+}
+
+.moflow-editor-wrapper .milkdown-latex-inline-edit {
+  position: fixed !important;
+  background: var(--moflow-bg) !important;
+  border: 1px solid var(--moflow-border) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  border-radius: 8px !important;
+}
+
+.moflow-editor-wrapper .milkdown-latex-inline-edit .ProseMirror {
+  color: var(--moflow-text) !important;
+  caret-color: var(--moflow-text) !important;
+  font-family: var(--moflow-font-mono) !important;
+}
+
+.moflow-editor-wrapper .milkdown-latex-inline-edit .container button {
+  color: var(--moflow-text-secondary) !important;
+  background: transparent !important;
+}
+
+.moflow-editor-wrapper .milkdown-latex-inline-edit .container button:hover {
+  background: var(--moflow-bg-secondary) !important;
+}
+
+.moflow-editor-wrapper .milkdown-latex-inline-edit .container button svg {
+  fill: var(--moflow-text-secondary) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block {
+  background: var(--moflow-code-bg) !important;
+  border-radius: 8px !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block.selected {
+  outline: 1px solid var(--moflow-accent) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-editor {
+  background: var(--moflow-code-bg) !important;
+  color: var(--moflow-text) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-gutters {
+  background: var(--moflow-code-bg) !important;
+  border-right: none !important;
+  color: var(--moflow-text-secondary) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-content {
+  caret-color: var(--moflow-text) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-cursor {
+  border-left-color: var(--moflow-text) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-selectionBackground,
+.moflow-editor-wrapper .milkdown-code-block .cm-focused .cm-selectionBackground {
+  background: var(--moflow-crepe-selected) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .tools .language-button {
+  background: var(--moflow-bg-secondary) !important;
+  color: var(--moflow-text-secondary) !important;
+  font-family: var(--moflow-font-body) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .tools .language-button:hover {
+  background: var(--moflow-bg-secondary) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .tools .language-button svg {
+  color: var(--moflow-text-secondary) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .tools .tools-button-group button {
+  background: var(--moflow-bg-secondary) !important;
+  color: var(--moflow-text-secondary) !important;
+  font-family: var(--moflow-font-body) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .tools .tools-button-group button:hover {
+  background: var(--moflow-border) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .tools .tools-button-group button svg {
+  fill: var(--moflow-text-secondary) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .preview-panel .preview-divider {
+  background: var(--moflow-border) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .preview-panel .preview-label {
+  color: var(--moflow-text-secondary) !important;
+  font-family: var(--moflow-font-body) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .list-wrapper {
+  background: var(--moflow-bg) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .language-list-item {
+  color: var(--moflow-text) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .language-list-item:hover {
+  background: var(--moflow-bg-secondary) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .search-box {
+  outline: 1px solid var(--moflow-border) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .search-box:has(input:focus) {
+  outline: 2px solid var(--moflow-accent) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .search-box .search-input {
+  color: var(--moflow-text) !important;
+  caret-color: var(--moflow-text) !important;
+  font-family: var(--moflow-font-body) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .search-box .clear-icon svg {
+  color: var(--moflow-text-secondary) !important;
+  fill: var(--moflow-text-secondary) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .search-box .clear-icon:hover {
+  background: var(--moflow-bg-secondary) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .search-box input {
+  font-family: var(--moflow-font-body) !important;
+  color: var(--moflow-text) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-panel {
+  background: var(--moflow-bg) !important;
+  color: var(--moflow-text) !important;
+  font-family: var(--moflow-font-body) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-panel input {
+  background: var(--moflow-bg-secondary) !important;
+  caret-color: var(--moflow-text) !important;
+  color: var(--moflow-text) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-panel > button {
+  background: var(--moflow-bg-secondary) !important;
+  color: var(--moflow-text-secondary) !important;
+  border: 1px solid var(--moflow-border) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-panel > button:hover {
+  background: var(--moflow-border) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-panel > label {
+  color: var(--moflow-text-secondary) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-panel > label input[type='checkbox'] {
+  background: var(--moflow-bg-secondary) !important;
+  border: 1px solid var(--moflow-border) !important;
+}
+
+.moflow-editor-wrapper .milkdown-code-block .cm-activeline-background {
+  background: var(--moflow-bg-secondary) !important;
+}
