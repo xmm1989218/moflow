@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import { appDataDir } from "@tauri-apps/api/path";
+import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, writeFile, mkdir, remove, exists } from "@tauri-apps/plugin-fs";
+import { useChatStore } from "./chatStore";
 
 export type AppTheme = "system" | "light" | "dark";
 export type EditorTheme = "github" | "github-dark" | "nord" | "nord-dark" | "catppuccin-latte" | "catppuccin-mocha";
@@ -58,26 +59,29 @@ interface CloseDialogState {
 }
 
 interface SessionTab {
+  tabId?: string;
+  untitledId?: string;
   filePath: string | null;
   fileName: string;
   mode: EditorMode;
-  untitledId?: string;
 }
 
 interface SessionData {
   tabs: SessionTab[];
-  activeFilePath: string | null;
+  activeTabId?: string;
+  activeFilePath?: string | null;
   activeUntitledId?: string;
 }
 
 async function writeUntitledContent(tabId: string, content: string) {
   try {
     const dir = await appDataDir();
-    const untitledDir = dir + "\\untitled\\";
+    const untitledDir = await join(dir, "untitled");
     if (!(await exists(untitledDir))) {
       await mkdir(untitledDir, { recursive: true });
     }
-    await writeFile(untitledDir + tabId + ".md", new TextEncoder().encode(content));
+    const filePath = await join(dir, "untitled", `${tabId}.md`);
+    await writeFile(filePath, new TextEncoder().encode(content));
   } catch (e) {
     console.error("writeUntitledContent error:", e);
   }
@@ -86,7 +90,8 @@ async function writeUntitledContent(tabId: string, content: string) {
 async function readUntitledContent(tabId: string): Promise<string | null> {
   try {
     const dir = await appDataDir();
-    const data = await readFile(dir + "\\untitled\\" + tabId + ".md");
+    const filePath = await join(dir, "untitled", `${tabId}.md`);
+    const data = await readFile(filePath);
     return new TextDecoder().decode(data);
   } catch {
     return null;
@@ -96,14 +101,15 @@ async function readUntitledContent(tabId: string): Promise<string | null> {
 export async function deleteUntitledContent(tabId: string) {
   try {
     const dir = await appDataDir();
-    await remove(dir + "\\untitled\\" + tabId + ".md");
+    const filePath = await join(dir, "untitled", `${tabId}.md`);
+    await remove(filePath);
   } catch { /* file may not exist */ }
 }
 
 export async function deleteSession() {
   try {
     const dir = await appDataDir();
-    const sessionPath = dir + "\\session.json";
+    const sessionPath = await join(dir, "session.json");
     if (await exists(sessionPath)) {
       await remove(sessionPath);
     }
@@ -112,21 +118,19 @@ export async function deleteSession() {
 
 async function persistSession(files: TabState[], activeFileId: string) {
   try {
-    const activeTab = files.find((f) => f.id === activeFileId);
     const session: SessionData = {
       tabs: files.map((tab) => ({
+        tabId: tab.id,
         filePath: tab.filePath,
         fileName: tab.fileName,
         mode: tab.mode,
-        ...(tab.filePath === null ? { untitledId: tab.id } : {}),
       })),
-      activeFilePath: activeTab?.filePath ?? null,
-      ...(activeTab?.filePath === null ? { activeUntitledId: activeTab.id } : {}),
+      activeTabId: activeFileId,
     };
 
     const dir = await appDataDir();
     const json = JSON.stringify(session);
-    await writeFile(dir + "\\session.json", new TextEncoder().encode(json));
+    await writeFile(await join(dir, "session.json"), new TextEncoder().encode(json));
   } catch (e) {
     console.error("[persistSession] error:", e);
   }
@@ -135,7 +139,7 @@ async function persistSession(files: TabState[], activeFileId: string) {
 async function restoreSession(): Promise<{ files: TabState[]; activeFileId: string } | null> {
   try {
     const dir = await appDataDir();
-    const sessionPath = dir + "\\session.json";
+    const sessionPath = await join(dir, "session.json");
     if (!(await exists(sessionPath))) {
       return null;
     }
@@ -146,9 +150,12 @@ async function restoreSession(): Promise<{ files: TabState[]; activeFileId: stri
 
     const tabs: TabState[] = [];
     for (const st of session.tabs) {
+      const tabId = st.tabId || st.untitledId;
+
       if (st.filePath) {
         tabs.push(
           createTab({
+            id: tabId,
             filePath: st.filePath,
             fileName: st.fileName,
             mode: st.mode,
@@ -159,10 +166,10 @@ async function restoreSession(): Promise<{ files: TabState[]; activeFileId: stri
           })
         );
       } else {
-        const content = st.untitledId ? (await readUntitledContent(st.untitledId)) ?? "" : "";
+        const content = tabId ? (await readUntitledContent(tabId)) ?? "" : "";
         tabs.push(
           createTab({
-            id: st.untitledId,
+            id: tabId,
             filePath: null,
             fileName: st.fileName,
             mode: st.mode,
@@ -176,7 +183,10 @@ async function restoreSession(): Promise<{ files: TabState[]; activeFileId: stri
     }
 
     let activeFileId = tabs[0].id;
-    if (session.activeFilePath) {
+    if (session.activeTabId) {
+      const found = tabs.find((t) => t.id === session.activeTabId);
+      if (found) activeFileId = found.id;
+    } else if (session.activeFilePath) {
       const found = tabs.find((t) => t.filePath === session.activeFilePath);
       if (found) activeFileId = found.id;
     } else if (session.activeUntitledId) {
@@ -265,6 +275,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (tab && tab.filePath === null) {
       deleteUntitledContent(id);
     }
+
+    import("../lib/chatPersistence").then(({ removeChat }) => removeChat(id));
+    useChatStore.getState().deleteChat(id);
 
     const newFiles = state.files.filter((f) => f.id !== id);
 

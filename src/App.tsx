@@ -7,6 +7,7 @@ import ConfirmCloseDialog from "./components/ConfirmCloseDialog/ConfirmCloseDial
 const AISidebar = lazy(() => import("./components/AISidebar/AISidebar"));
 import { useAppStore, resolveAppTheme, initSession } from "./stores/appStore";
 import { useAIConfigStore } from "./stores/aiConfigStore";
+import { useChatStore } from "./stores/chatStore";
 import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab } from "./lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
@@ -18,8 +19,10 @@ function App() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    initSession().then(() => {
+    initSession().then(async () => {
       useAIConfigStore.getState().loadConfig();
+      const tabs = useAppStore.getState().files;
+      await Promise.all(tabs.map((tab) => useChatStore.getState().loadChatHistory(tab.id)));
       requestAnimationFrame(() => {
         getCurrentWindow().show();
       });

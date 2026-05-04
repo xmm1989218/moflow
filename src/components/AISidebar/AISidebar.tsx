@@ -93,6 +93,7 @@ export default function AISidebar() {
   const addUsage = useChatStore((s) => s.addUsage);
   const clearMessages = useChatStore((s) => s.clearMessages);
   const compactMessages = useChatStore((s) => s.compactMessages);
+  const flushAssistantMessage = useChatStore((s) => s.flushAssistantMessage);
   const setStreaming = useChatStore((s) => s.setStreaming);
   const stopGeneration = useChatStore((s) => s.stopGeneration);
   const docContent = useAppStore((s) => {
@@ -167,6 +168,7 @@ export default function AISidebar() {
     } finally {
       setStreaming(false);
       abortRef.current = null;
+      flushAssistantMessage(activeFileId);
     }
   };
 
@@ -220,6 +222,7 @@ export default function AISidebar() {
       } finally {
         setStreaming(false);
         abortRef.current = null;
+        flushAssistantMessage(activeFileId);
       }
     }
   };

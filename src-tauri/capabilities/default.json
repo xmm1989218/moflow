@@ -30,7 +30,12 @@
     "fs:allow-remove",
     "fs:allow-appdata-read-recursive",
     "fs:allow-appdata-write-recursive",
-    "fs:allow-home-read-recursive",
+    "fs:read-all",
+    "fs:write-all",
+    {
+      "identifier": "fs:scope",
+      "allow": [{ "path": "**" }]
+    },
     "fs:allow-home-write-recursive"
   ]
 }

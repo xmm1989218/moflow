@@ -1,4 +1,4 @@
-import { appDataDir } from "@tauri-apps/api/path";
+import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, writeFile, exists } from "@tauri-apps/plugin-fs";
 
 export interface AIConfig {
@@ -22,7 +22,7 @@ export const defaultAIConfig: AIConfig = {
 export async function readAIConfig(): Promise<AIConfig | null> {
   try {
     const dir = await appDataDir();
-    const configPath = dir + "ai-config.json";
+    const configPath = await join(dir, "ai-config.json");
     if (!(await exists(configPath))) {
       return null;
     }
@@ -37,7 +37,7 @@ export async function readAIConfig(): Promise<AIConfig | null> {
 export async function writeAIConfig(config: AIConfig): Promise<void> {
   try {
     const dir = await appDataDir();
-    const configPath = dir + "ai-config.json";
+    const configPath = await join(dir, "ai-config.json");
     const json = JSON.stringify(config, null, 2);
     await writeFile(configPath, new TextEncoder().encode(json));
   } catch (e) {

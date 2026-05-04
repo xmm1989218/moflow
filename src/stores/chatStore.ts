@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ChatUsage } from "../lib/modelInfo";
+import { appendMessage, rewriteMessages, removeChat, loadChat } from "../lib/chatPersistence";
 
 export interface Message {
   id: string;
@@ -28,6 +29,9 @@ interface ChatState {
   stopGeneration: () => void;
   clearMessages: (tabId: string) => void;
   compactMessages: (tabId: string, summary: string) => void;
+  flushAssistantMessage: (tabId: string) => void;
+  loadChatHistory: (tabId: string) => Promise<void>;
+  deleteChat: (tabId: string) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -46,18 +50,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   addMessage: (tabId, msg) =>
     set((state) => {
+      const fullMsg = {
+        ...msg,
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+      };
       const existing = state.messagesMap[tabId] ?? [];
+      if (msg.role === "user") {
+        appendMessage(tabId, fullMsg);
+      }
       return {
         messagesMap: {
           ...state.messagesMap,
-          [tabId]: [
-            ...existing,
-            {
-              ...msg,
-              id: crypto.randomUUID(),
-              timestamp: Date.now(),
-            },
-          ],
+          [tabId]: [...existing, fullMsg],
         },
       };
     }),
@@ -112,7 +117,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set({ isStreaming: false, abortController: null });
   },
 
-  clearMessages: (tabId) =>
+  clearMessages: (tabId) => {
+    removeChat(tabId);
     set((state) => ({
       messagesMap: {
         ...state.messagesMap,
@@ -122,20 +128,57 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ...state.usageMap,
         [tabId]: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
       },
-    })),
+    }));
+  },
 
-  compactMessages: (tabId, summary) =>
+  compactMessages: (tabId, summary) => {
+    const summaryMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: summary,
+      timestamp: Date.now(),
+    };
+    rewriteMessages(tabId, [summaryMsg]);
     set((state) => ({
       messagesMap: {
         ...state.messagesMap,
-        [tabId]: [
-          {
-            id: crypto.randomUUID(),
-            role: "assistant" as const,
-            content: summary,
-            timestamp: Date.now(),
-          },
-        ],
+        [tabId]: [summaryMsg],
       },
-    })),
+    }));
+  },
+
+  flushAssistantMessage: (tabId) => {
+    const msgs = get().messagesMap[tabId];
+    if (!msgs || msgs.length === 0) return;
+    const last = msgs[msgs.length - 1];
+    if (last.role === "assistant") {
+      appendMessage(tabId, last);
+    }
+  },
+
+  loadChatHistory: async (tabId) => {
+    const msgs = await loadChat(tabId);
+    if (msgs.length > 0) {
+      set((state) => ({
+        messagesMap: {
+          ...state.messagesMap,
+          [tabId]: msgs,
+        },
+      }));
+    }
+  },
+
+  deleteChat: (tabId) => {
+    removeChat(tabId);
+    set((state) => {
+      const newMessages = { ...state.messagesMap };
+      delete newMessages[tabId];
+      const newUsage = { ...state.usageMap };
+      delete newUsage[tabId];
+      return {
+        messagesMap: newMessages,
+        usageMap: newUsage,
+      };
+    });
+  },
 }));
