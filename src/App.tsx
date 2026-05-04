@@ -103,37 +103,18 @@ function App() {
   }, []);
 
   useEffect(() => {
-    function handleDrop(e: DragEvent) {
-      e.preventDefault();
-      if (!e.dataTransfer?.files.length) return;
-
-      const file = e.dataTransfer.files[0];
-      const ext = file.name.split(".").pop()?.toLowerCase();
-      if (!["md", "markdown", "txt"].includes(ext || "")) return;
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const content = reader.result as string;
-        useAppStore.getState().openTab({
-          filePath: null,
-          fileName: file.name,
-          content,
-          isModified: false,
-        });
-      };
-      reader.readAsText(file);
-    }
-
-    function handleDragOver(e: DragEvent) {
-      e.preventDefault();
-    }
-
-    document.addEventListener("drop", handleDrop);
-    document.addEventListener("dragover", handleDragOver);
-    return () => {
-      document.removeEventListener("drop", handleDrop);
-      document.removeEventListener("dragover", handleDragOver);
-    };
+    const unlisten = getCurrentWindow().onDragDropEvent((event) => {
+      if (event.payload.type === "drop") {
+        for (const path of event.payload.paths) {
+          const ext = path.split(".").pop()?.toLowerCase();
+          if (["md", "markdown", "txt"].includes(ext || "")) {
+            loadFileByPath(path);
+            break;
+          }
+        }
+      }
+    });
+    return () => { unlisten.then((fn) => fn()); };
   }, []);
 
   useEffect(() => {

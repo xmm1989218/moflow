@@ -49,7 +49,7 @@
 }
 
 .moflow-tab:hover {
-  background-color: var(--ui-hover);
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
 }
 
 .moflow-tab.active {
@@ -91,7 +91,7 @@
 
 .moflow-tab-close:hover {
   opacity: 1 !important;
-  background-color: var(--ui-hover);
+  background-color: color-mix(in srgb, currentColor 12%, transparent);
 }
 
 .moflow-tabbar-new {

@@ -86,6 +86,7 @@ function MilkdownWrapper() {
   const contentRef = useRef(content);
   const editorReadyRef = useRef(false);
   const syncedContentRef = useRef(content);
+  const justLoadedRef = useRef(true);
 
   useEffect(() => {
     contentRef.current = content;
@@ -194,7 +195,13 @@ function MilkdownWrapper() {
       listener.markdownUpdated((_ctx, markdown) => {
         if (editorReadyRef.current) {
           syncedContentRef.current = markdown;
-          setContent(markdown);
+          const currentId = useAppStore.getState().activeFileId;
+          if (justLoadedRef.current) {
+            justLoadedRef.current = false;
+            useAppStore.getState().updateTabMeta(currentId, { content: markdown });
+          } else {
+            useAppStore.getState().updateTabContent(currentId, markdown);
+          }
         }
       });
     });
@@ -214,6 +221,7 @@ function MilkdownWrapper() {
 
     if (content === syncedContentRef.current) return;
 
+    justLoadedRef.current = true;
     editor.action(replaceAll(content, true));
     syncedContentRef.current = content;
   }, [content, loading, getEditor, setGetEditorHTML]);
@@ -384,9 +392,8 @@ function SourceModeEditor({ content, setContent }: { content: string; setContent
 }
 
 export default function Editor() {
-  const activeFileId = useAppStore((s) => s.activeFileId);
   return (
-    <MilkdownProvider key={activeFileId}>
+    <MilkdownProvider>
       <MilkdownWrapper />
     </MilkdownProvider>
   );
