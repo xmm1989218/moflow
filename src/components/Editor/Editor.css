@@ -9,6 +9,27 @@
   position: relative;
 }
 
+.moflow-editor-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.moflow-editor-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.moflow-editor-wrapper::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 4px;
+}
+
+.moflow-editor-wrapper.scrollbar-visible::-webkit-scrollbar-thumb {
+  background-color: var(--moflow-scrollbar-thumb);
+}
+
+.moflow-editor-wrapper::-webkit-scrollbar-thumb:active {
+  background-color: var(--moflow-scrollbar-thumb);
+}
+
 .moflow-editor-wrapper [data-milkdown-root] {
   height: 100%;
   min-height: 100%;
@@ -222,22 +243,39 @@
 .moflow-editor-wrapper .milkdown-block-handle {
   position: fixed !important;
   z-index: 20;
+  gap: 0 !important;
 }
 
-.moflow-editor-wrapper .milkdown-block-handle .operation-item {
-  border-radius: 6px !important;
+.moflow-editor-wrapper .milkdown-block-handle .operation-item:first-child {
+  display: none !important;
 }
 
-.moflow-editor-wrapper .milkdown-block-handle .operation-item svg {
+.moflow-editor-wrapper .milkdown-block-handle .operation-item:last-child {
+  width: 36px !important;
+  height: 24px !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--moflow-border) !important;
+  background: var(--moflow-bg) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.moflow-editor-wrapper .milkdown-block-handle .operation-item:last-child svg {
+  width: 28px !important;
+  height: 18px !important;
   fill: var(--moflow-text-secondary) !important;
+  color: var(--moflow-text-secondary) !important;
 }
 
-.moflow-editor-wrapper .milkdown-block-handle .operation-item:hover {
+.moflow-editor-wrapper .milkdown-block-handle .operation-item:last-child:hover {
   background: var(--moflow-bg-secondary) !important;
 }
 
-.moflow-editor-wrapper .milkdown-block-handle .operation-item:hover svg {
+.moflow-editor-wrapper .milkdown-block-handle .operation-item:last-child:hover svg {
   fill: var(--moflow-text) !important;
+  color: var(--moflow-text) !important;
 }
 
 .moflow-editor-wrapper .milkdown-slash-menu {

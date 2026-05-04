@@ -14,6 +14,7 @@ import "@milkdown/crepe/theme/nord-dark.css";
 import "./Editor.css";
 import SelectionAIPanel from "./SelectionAIPanel";
 import { useEffect, useRef, useCallback } from "react";
+import { offset, shift } from "@floating-ui/dom";
 
 const isZh = navigator.language.startsWith("zh");
 
@@ -104,7 +105,16 @@ function MilkdownWrapper() {
         [Crepe.Feature.ListItem]: true,
         [Crepe.Feature.Table]: true,
         [Crepe.Feature.CodeMirror]: true,
-        [Crepe.Feature.BlockEdit]: true,
+        [Crepe.Feature.BlockEdit]: {
+          blockHandle: {
+            floatingUIOptions: {
+              middleware: [
+                offset(16),
+                shift({ padding: 4, crossAxis: true }),
+              ],
+            },
+          },
+        },
       },
       featureConfigs: {
         [Crepe.Feature.Placeholder]: {
@@ -273,6 +283,79 @@ function MilkdownWrapper() {
       observer.disconnect();
       if (tooltipEl) tooltipEl.remove();
     };
+  }, []);
+
+  useEffect(() => {
+    const wrapper = document.querySelector(".moflow-editor-wrapper");
+    if (!wrapper) return;
+
+    const onMove = (e: MouseEvent) => {
+      const rect = wrapper.getBoundingClientRect();
+      wrapper.classList.toggle("scrollbar-visible", e.clientX > rect.right - 12);
+    };
+    const onLeave = () => wrapper.classList.remove("scrollbar-visible");
+
+    wrapper.addEventListener("mousemove", onMove);
+    wrapper.addEventListener("mouseleave", onLeave);
+    return () => {
+      wrapper.removeEventListener("mousemove", onMove);
+      wrapper.removeEventListener("mouseleave", onLeave);
+    };
+  }, []);
+
+  useEffect(() => {
+    const mergedIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="18" viewBox="0 0 28 18" fill="none"><path d="M3 9h8M7 5v8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="18" cy="4" r="1.2" fill="currentColor"/><circle cx="18" cy="9" r="1.2" fill="currentColor"/><circle cx="18" cy="14" r="1.2" fill="currentColor"/><circle cx="22" cy="4" r="1.2" fill="currentColor"/><circle cx="22" cy="9" r="1.2" fill="currentColor"/><circle cx="22" cy="14" r="1.2" fill="currentColor"/></svg>`;
+
+    const patchHandle = (handle: Element) => {
+      const items = handle.querySelectorAll(".operation-item");
+      const handleItem = items[1];
+      if (!handleItem || handleItem.dataset.merged) return;
+      handleItem.dataset.merged = "1";
+
+      const iconSpan = handleItem.querySelector(".milkdown-icon");
+      if (iconSpan) iconSpan.innerHTML = mergedIcon;
+
+      let startX = 0;
+      let startY = 0;
+
+      handleItem.addEventListener("pointerdown", (e: PointerEvent) => {
+        startX = e.clientX;
+        startY = e.clientY;
+      });
+
+      handleItem.addEventListener("pointerup", (e: PointerEvent) => {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        if (Math.sqrt(dx * dx + dy * dy) < 5) {
+          e.preventDefault();
+          e.stopPropagation();
+          const addItem = items[0] as HTMLElement;
+          if (addItem) {
+            addItem.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+            addItem.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
+          }
+        }
+      });
+    };
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of Array.from(mutation.addedNodes)) {
+          if (!(node instanceof HTMLElement)) continue;
+          if (node.classList?.contains("milkdown-block-handle")) {
+            patchHandle(node);
+          } else {
+            const handles = node.querySelectorAll?.(".milkdown-block-handle");
+            handles?.forEach(patchHandle);
+          }
+        }
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    document.querySelectorAll(".milkdown-block-handle").forEach(patchHandle);
+
+    return () => observer.disconnect();
   }, []);
 
   return (
