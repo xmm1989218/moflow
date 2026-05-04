@@ -1,7 +1,16 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-app-theme="dark" style="background-color:#1e1e2e">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      (function(){
+        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = dark ? 'dark' : 'light';
+        var bg = dark ? '#1e1e2e' : '#ffffff';
+        document.documentElement.dataset.appTheme = theme;
+        document.documentElement.style.backgroundColor = bg;
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>moflow</title>

@@ -17,7 +17,18 @@ function App() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    initSession();
+    initSession().then(() => {
+      requestAnimationFrame(() => {
+        getCurrentWindow().show();
+      });
+    });
+  }, []);
+
+  useEffect(() => {
+    const fallback = setTimeout(() => {
+      getCurrentWindow().show();
+    }, 3000);
+    return () => clearTimeout(fallback);
   }, []);
 
   useEffect(() => {

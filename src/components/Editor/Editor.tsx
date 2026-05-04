@@ -86,11 +86,11 @@ function MilkdownWrapper() {
 
     editor.action(replaceAll(content, true));
     syncedContentRef.current = content;
-  }, [content, loading, getEditor]);
+  }, [content, loading, getEditor, setGetEditorHTML]);
 
   useEffect(() => {
     return () => setGetEditorHTML(null);
-  }, []);
+  }, [setGetEditorHTML]);
 
   return (
     <div className="moflow-editor-wrapper" data-editor-theme={editorTheme}>
