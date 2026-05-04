@@ -58,20 +58,15 @@ export function getModelInfo(providerId: string, model: string): ModelEntry {
   return { ...defaultModelEntry };
 }
 
-export interface ChatUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
-}
-
 export function calculateCost(
-  usage: ChatUsage,
+  promptTokens: number,
+  completionTokens: number,
   providerId: string,
   model: string
 ): { cost: number; currency: string } {
   const info = getModelInfo(providerId, model);
-  const inputCost = (usage.promptTokens / 1_000_000) * info.inputPricePer1M;
-  const outputCost = (usage.completionTokens / 1_000_000) * info.outputPricePer1M;
+  const inputCost = (promptTokens / 1_000_000) * info.inputPricePer1M;
+  const outputCost = (completionTokens / 1_000_000) * info.outputPricePer1M;
   return { cost: inputCost + outputCost, currency: info.currency };
 }
 

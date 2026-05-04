@@ -1,11 +1,16 @@
 import type { AIConfig } from "./aiConfig";
-import type { ChatUsage } from "./modelInfo";
 import { getProviderInfo } from "./modelInfo";
 import { estimateTokens } from "./contextBuilder";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";
   content: string;
+}
+
+export interface ChatUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
 }
 
 export interface ChatResult {

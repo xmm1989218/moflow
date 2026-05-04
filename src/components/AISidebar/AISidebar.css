@@ -525,7 +525,8 @@
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   z-index: 100;
-  min-width: 150px;
+  min-width: max-content;
+  white-space: nowrap;
   font-size: 12px;
   color: var(--moflow-text);
 }

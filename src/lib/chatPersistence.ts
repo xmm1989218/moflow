@@ -1,5 +1,5 @@
 import { appDataDir, join } from "@tauri-apps/api/path";
-import { readFile, writeFile, mkdir, remove, exists } from "@tauri-apps/plugin-fs";
+import { readFile, writeFile, mkdir, remove, exists, rename } from "@tauri-apps/plugin-fs";
 import type { Message } from "../stores/chatStore";
 
 async function ensureChatDir(): Promise<string> {
@@ -24,7 +24,13 @@ function deserializeMessage(line: string): Message | null {
   try {
     const obj = JSON.parse(line);
     if (obj.id && obj.role && obj.content !== undefined && obj.timestamp) {
-      return obj as Message;
+      return {
+        id: obj.id,
+        role: obj.role,
+        content: obj.content,
+        timestamp: obj.timestamp,
+        promptTokens: obj.promptTokens,
+      };
     }
     return null;
   } catch {
@@ -42,19 +48,14 @@ export async function appendMessage(tabId: string, msg: Message): Promise<void> 
   }
 }
 
-export async function rewriteMessages(tabId: string, msgs: Message[]): Promise<void> {
+export async function clearChat(tabId: string): Promise<void> {
   try {
     const path = await chatFilePath(tabId);
-    if (msgs.length === 0) {
-      if (await exists(path)) {
-        await remove(path);
-      }
-      return;
+    if (await exists(path)) {
+      await remove(path);
     }
-    const lines = msgs.map(serializeMessage).join("\n") + "\n";
-    await writeFile(path, new TextEncoder().encode(lines));
   } catch (e) {
-    console.error("[chatPersistence] rewriteMessages error:", e);
+    console.error("[chatPersistence] clearChat error:", e);
   }
 }
 
@@ -66,6 +67,24 @@ export async function removeChat(tabId: string): Promise<void> {
     }
   } catch (e) {
     console.error("[chatPersistence] removeChat error:", e);
+  }
+}
+
+async function repairIfNeeded(tabId: string, path: string, lines: string[], msgs: Message[]): Promise<void> {
+  if (msgs.length === lines.length) return;
+  if (msgs.length === 0) return;
+  try {
+    const dir = await ensureChatDir();
+    const tmpPath = await join(dir, `${tabId}.jsonl.repair`);
+    const content = msgs.map(serializeMessage).join("\n") + "\n";
+    await writeFile(tmpPath, new TextEncoder().encode(content));
+    try {
+      await rename(tmpPath, path);
+    } catch {
+      try { await remove(tmpPath); } catch { /* ignore */ }
+    }
+  } catch (e) {
+    console.error("[chatPersistence] repair error:", e);
   }
 }
 
@@ -83,6 +102,7 @@ export async function loadChat(tabId: string): Promise<Message[]> {
       const msg = deserializeMessage(line);
       if (msg) msgs.push(msg);
     }
+    await repairIfNeeded(tabId, path, lines, msgs);
     return msgs;
   } catch (e) {
     console.error("[chatPersistence] loadChat error:", e);

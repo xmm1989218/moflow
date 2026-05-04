@@ -17,15 +17,14 @@ const t = (zh: string, en: string) => (isZh ? zh : en);
 const emptyMessages: Message[] = [];
 
 function UsageBadge({ tabId, providerId, model }: { tabId: string; providerId: string; model: string }) {
-  const usage = useChatStore((s) => s.usageMap[tabId]);
+  const contextTokens = useChatStore((s) => s.contextTokensMap[tabId] ?? 0);
+  const totalTokens = useChatStore((s) => s.totalTokensMap[tabId] ?? 0);
+  const cost = useChatStore((s) => s.costMap[tabId] ?? 0);
   const [showTooltip, setShowTooltip] = useState(false);
 
-  const promptTokens = usage?.promptTokens ?? 0;
-  const completionTokens = usage?.completionTokens ?? 0;
-  const totalTokens = usage?.totalTokens ?? 0;
   const modelInfo = getModelInfo(providerId, model);
   const maxContext = modelInfo.maxContext || 0;
-  const pct = maxContext > 0 ? Math.min(totalTokens / maxContext, 1) : 0;
+  const pct = maxContext > 0 ? Math.min(contextTokens / maxContext, 1) : 0;
   const radius = 10;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference * (1 - pct);
@@ -34,9 +33,7 @@ function UsageBadge({ tabId, providerId, model }: { tabId: string; providerId: s
   if (pct > 0.8) ringColor = "#ef4444";
   else if (pct > 0.5) ringColor = "#eab308";
 
-  const { cost, currency } = totalTokens > 0
-    ? calculateCost(usage ?? { promptTokens: 0, completionTokens: 0, totalTokens: 0 }, providerId, model)
-    : { cost: 0, currency: modelInfo.currency || "USD" };
+  const currency = modelInfo.currency || "USD";
 
   return (
     <div
@@ -60,20 +57,16 @@ function UsageBadge({ tabId, providerId, model }: { tabId: string; providerId: s
       {showTooltip && (
         <div className="moflow-ai-usage-tooltip">
           <div className="moflow-ai-usage-tooltip-row">
-            <span>{t("输入", "Input")}</span>
-            <span>{promptTokens.toLocaleString()} tokens</span>
+            <span>{t("上下文", "Context")}</span>
+            <span>{contextTokens.toLocaleString()} tokens</span>
           </div>
           <div className="moflow-ai-usage-tooltip-row">
-            <span>{t("输出", "Output")}</span>
-            <span>{completionTokens.toLocaleString()} tokens</span>
-          </div>
-          <div className="moflow-ai-usage-tooltip-row moflow-ai-usage-tooltip-total">
-            <span>{t("总计", "Total")}</span>
-            <span>{totalTokens.toLocaleString()} tokens</span>
-          </div>
-          <div className="moflow-ai-usage-tooltip-row">
-            <span>{t("用量", "Usage")}</span>
+            <span>{t("使用率", "Usage")}</span>
             <span>{(pct * 100).toFixed(1)}%</span>
+          </div>
+          <div className="moflow-ai-usage-tooltip-row">
+            <span>{t("累计", "Total")}</span>
+            <span>{totalTokens.toLocaleString()} tokens</span>
           </div>
           <div className="moflow-ai-usage-tooltip-row moflow-ai-usage-tooltip-cost">
             <span>{t("费用", "Cost")}</span>
@@ -91,7 +84,6 @@ export default function AISidebar() {
   const isStreaming = useChatStore((s) => s.isStreaming);
   const addMessage = useChatStore((s) => s.addMessage);
   const appendToLastMessage = useChatStore((s) => s.appendToLastMessage);
-  const addUsage = useChatStore((s) => s.addUsage);
   const clearMessages = useChatStore((s) => s.clearMessages);
   const flushAssistantMessage = useChatStore((s) => s.flushAssistantMessage);
   const setStreaming = useChatStore((s) => s.setStreaming);
@@ -125,11 +117,73 @@ export default function AISidebar() {
     }
   }, [input]);
 
+  const doCompact = async () => {
+    const contextMsgs = useChatStore.getState().getContext(activeFileId);
+    if (contextMsgs.length === 0) return;
+
+    const summaryParts: string[] = [];
+    for (const m of contextMsgs) {
+      const label = m.role === "user" ? "User" : "AI";
+      summaryParts.push(`${label}: ${m.content.slice(0, 200)}`);
+    }
+    const summaryContent = summaryParts.join("\n");
+
+    useChatStore.getState().clearContext(activeFileId);
+
+    const compactMsg = addMessage(activeFileId, { role: "user", content: "/compact" });
+    await appendMessage(activeFileId, compactMsg);
+
+    setStreaming(true);
+    addMessage(activeFileId, { role: "assistant", content: "" });
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const client = getLLMClient(aiConfig);
+      const systemPrompt = buildSystemPrompt(docContent);
+      const result = await client.chat(
+        [
+          { role: "system", content: systemPrompt },
+          {
+            role: "user",
+            content: `请将以下对话历史总结为简洁的摘要，保留关键信息：\n\n${summaryContent}`,
+          },
+        ],
+        (chunk) => {
+          appendToLastMessage(activeFileId, chunk);
+        },
+        controller.signal
+      );
+
+      const promptTokens = result.usage.promptTokens;
+      const completionTokens = result.usage.completionTokens;
+      const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
+      useChatStore.getState().recordUsage(activeFileId, promptTokens, completionTokens, costVal);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      appendToLastMessage(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+    } finally {
+      setStreaming(false);
+      abortRef.current = null;
+      await flushAssistantMessage(activeFileId);
+    }
+  };
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || isStreaming) return;
 
     if (text.startsWith("/")) return;
+
+    const contextTokens = useChatStore.getState().contextTokensMap[activeFileId] ?? 0;
+    const maxContext = getModelInfo(aiConfig.providerId, aiConfig.model).maxContext || 0;
+
+    if (maxContext > 0 && contextTokens > maxContext * 0.8) {
+      await doCompact();
+      return;
+    }
 
     setInput("");
     const userMsg = addMessage(activeFileId, { role: "user", content: text });
@@ -145,13 +199,15 @@ export default function AISidebar() {
       const client = getLLMClient(aiConfig);
       const systemPrompt = buildSystemPrompt(docContent);
 
+      const contextMsgs = useChatStore.getState().getContext(activeFileId);
+      const historyMsgs = contextMsgs.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }));
+
       const chatMessages = [
         { role: "system" as const, content: systemPrompt },
-        ...messages.slice(-20).map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
-        { role: "user" as const, content: text },
+        ...historyMsgs,
       ];
 
       const result = await client.chat(
@@ -161,7 +217,11 @@ export default function AISidebar() {
         },
         controller.signal
       );
-      addUsage(activeFileId, result.usage);
+
+      const promptTokens = result.usage.promptTokens;
+      const completionTokens = result.usage.completionTokens;
+      const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
+      useChatStore.getState().recordUsage(activeFileId, promptTokens, completionTokens, costVal);
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") return;
       const errorMsg = e instanceof Error ? e.message : String(e);
@@ -182,50 +242,7 @@ export default function AISidebar() {
     }
 
     if (id === "compact") {
-      const msgs = useChatStore.getState().getMessages(activeFileId);
-      if (msgs.length === 0) return;
-
-      const summaryParts: string[] = [];
-      for (const m of msgs) {
-        const label = m.role === "user" ? "User" : "AI";
-        summaryParts.push(`${label}: ${m.content.slice(0, 200)}`);
-      }
-      const summaryContent = summaryParts.join("\n");
-
-      const compactMsg = addMessage(activeFileId, { role: "user", content: "/compact" });
-      await appendMessage(activeFileId, compactMsg);
-      setStreaming(true);
-      addMessage(activeFileId, { role: "assistant", content: "" });
-
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      try {
-        const client = getLLMClient(aiConfig);
-        const systemPrompt = buildSystemPrompt(docContent);
-        const result = await client.chat(
-          [
-            { role: "system", content: systemPrompt },
-            {
-              role: "user",
-              content: `请将以下对话历史总结为简洁的摘要，保留关键信息：\n\n${summaryContent}`,
-            },
-          ],
-          (chunk) => {
-            appendToLastMessage(activeFileId, chunk);
-          },
-          controller.signal
-        );
-        addUsage(activeFileId, result.usage);
-      } catch (e) {
-        if (e instanceof DOMException && e.name === "AbortError") return;
-        const errorMsg = e instanceof Error ? e.message : String(e);
-        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
-      } finally {
-        setStreaming(false);
-        abortRef.current = null;
-        await flushAssistantMessage(activeFileId);
-      }
+      await doCompact();
     }
   };
 
