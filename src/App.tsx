@@ -6,6 +6,7 @@ import ConfirmCloseDialog from "./components/ConfirmCloseDialog/ConfirmCloseDial
 
 const AISidebar = lazy(() => import("./components/AISidebar/AISidebar"));
 import { useAppStore, resolveAppTheme, initSession } from "./stores/appStore";
+import { useAIConfigStore } from "./stores/aiConfigStore";
 import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab } from "./lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
@@ -18,6 +19,7 @@ function App() {
 
   useEffect(() => {
     initSession().then(() => {
+      useAIConfigStore.getState().loadConfig();
       requestAnimationFrame(() => {
         getCurrentWindow().show();
       });

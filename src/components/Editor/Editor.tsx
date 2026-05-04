@@ -1,13 +1,37 @@
 import { Crepe } from "@milkdown/crepe";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { replaceAll, getHTML } from "@milkdown/utils";
-import { EditorStatus } from "@milkdown/core";
+import { EditorStatus, editorViewCtx } from "@milkdown/core";
+import type { Ctx } from "@milkdown/kit/ctx";
 import { useAppStore } from "../../stores/appStore";
+import { useAISelectionStore } from "../../stores/aiSelectionStore";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/nord.css";
 import "@milkdown/crepe/theme/nord-dark.css";
 import "./Editor.css";
+import SelectionAIPanel from "./SelectionAIPanel";
 import { useEffect, useRef, useCallback } from "react";
+
+const explainIcon = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+    <path d="M2 3.5C2 3.22386 2.22386 3 2.5 3H8C10.7614 3 13 5.23858 13 8V20.5C13 20.7761 12.7761 21 12.5 21H12C11.1716 21 10.5 20.3284 10.5 19.5V17.5C10.5 16.1193 9.38071 15 8 15H2.5C2.22386 15 2 14.7761 2 14.5V3.5ZM4.5 5V13H8C8.88071 13 9.70849 13.2488 10.4157 13.6817C10.7753 13.9023 11.2836 13.7381 11.3304 13.3219C11.3761 12.9177 11 12.5871 11 12.1803V8C11 6.34315 9.65685 5 8 5H4.5Z"/>
+    <path d="M22 3.5C22 3.22386 21.7761 3 21.5 3H16C13.2386 3 11 5.23858 11 8V20.5C11 20.7761 11.2239 21 11.5 21H12C12.8284 21 13.5 20.3284 13.5 19.5V17.5C13.5 16.1193 14.6193 15 16 15H21.5C21.7761 15 22 14.7761 22 14.5V3.5ZM19.5 5V13H16C15.1193 13 14.2915 13.2488 13.5843 13.6817C13.2247 13.9023 12.7164 13.7381 12.6696 13.3219C12.6239 12.9177 13 12.5871 13 12.1803V8C13 6.34315 14.3431 5 16 5H19.5Z"/>
+  </svg>
+`;
+
+const translateIcon = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+    <path d="M12.87 15.07l-2.54-2.51.03-.03A17.52 17.52 0 0 0 14.07 6H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/>
+  </svg>
+`;
+
+const askIcon = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0L9.937 15.5z"/>
+    <path d="M19 3h2v4h-2V3z"/>
+    <path d="M19 7h4v2h-4V7z"/>
+  </svg>
+`;
 
 function MilkdownWrapper() {
   const activeFileId = useAppStore((s) => s.activeFileId);
@@ -57,6 +81,57 @@ function MilkdownWrapper() {
           text: "Start writing...",
           mode: "doc",
         },
+        [Crepe.Feature.Toolbar]: {
+          buildToolbar: (builder) => {
+            builder
+              .addGroup("ai", "AI")
+              .addItem("explain", {
+                icon: explainIcon,
+                active: () => false,
+                onRun: (ctx: Ctx) => {
+                  const view = ctx.get(editorViewCtx);
+                  const { from, to } = view.state.selection;
+                  const text = view.state.doc.textBetween(from, to);
+                  if (!text) return;
+                  const coords = view.coordsAtPos(from);
+                  useAISelectionStore.getState().triggerExplain(text, {
+                    x: coords.left,
+                    y: coords.bottom,
+                  });
+                },
+              })
+              .addItem("translate", {
+                icon: translateIcon,
+                active: () => false,
+                onRun: (ctx: Ctx) => {
+                  const view = ctx.get(editorViewCtx);
+                  const { from, to } = view.state.selection;
+                  const text = view.state.doc.textBetween(from, to);
+                  if (!text) return;
+                  const coords = view.coordsAtPos(from);
+                  useAISelectionStore.getState().triggerTranslate(text, {
+                    x: coords.left,
+                    y: coords.bottom,
+                  });
+                },
+              })
+              .addItem("ask", {
+                icon: askIcon,
+                active: () => false,
+                onRun: (ctx: Ctx) => {
+                  const view = ctx.get(editorViewCtx);
+                  const { from, to } = view.state.selection;
+                  const text = view.state.doc.textBetween(from, to);
+                  if (!text) return;
+                  const coords = view.coordsAtPos(from);
+                  useAISelectionStore.getState().triggerAsk(text, {
+                    x: coords.left,
+                    y: coords.bottom,
+                  });
+                },
+              });
+          },
+        },
       },
     });
 
@@ -99,6 +174,7 @@ function MilkdownWrapper() {
       ) : (
         <SourceModeEditor content={content} setContent={setContent} />
       )}
+      <SelectionAIPanel />
     </div>
   );
 }

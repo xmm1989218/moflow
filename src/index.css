@@ -64,6 +64,10 @@
   --moflow-sidebar-bg: #f6f8fa;
   --moflow-toolbar-bg: #ffffff;
   --moflow-code-bg: #f6f8fa;
+  --moflow-bubble-user: #0969da;
+  --moflow-bubble-user-text: #ffffff;
+  --moflow-bubble-ai: #f6f8fa;
+  --moflow-bubble-ai-text: #1f2328;
   --moflow-scrollbar-thumb: #c1c1c1;
   --moflow-scrollbar-track: transparent;
   --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -101,8 +105,13 @@
   --moflow-sidebar-bg: #161b22;
   --moflow-toolbar-bg: #0d1117;
   --moflow-code-bg: #161b22;
+  --moflow-bubble-user: #58a6ff;
+  --moflow-bubble-user-text: #0d1117;
+  --moflow-bubble-ai: #161b22;
+  --moflow-bubble-ai-text: #e6edf3;
   --moflow-scrollbar-thumb: #484f58;
   --moflow-scrollbar-track: transparent;
+
   --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   --moflow-editor-max-width: 980px;
   --moflow-editor-padding-x: 48px;
@@ -130,8 +139,13 @@
   --moflow-sidebar-bg: #e5e9f0;
   --moflow-toolbar-bg: #eceff4;
   --moflow-code-bg: #e5e9f0;
+  --moflow-bubble-user: #5e81ac;
+  --moflow-bubble-user-text: #eceff4;
+  --moflow-bubble-ai: #e5e9f0;
+  --moflow-bubble-ai-text: #2e3440;
   --moflow-scrollbar-thumb: #a0aec0;
   --moflow-scrollbar-track: transparent;
+
   --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --moflow-editor-max-width: 860px;
   --moflow-editor-padding-x: 48px;
@@ -159,6 +173,10 @@
   --moflow-sidebar-bg: #3b4252;
   --moflow-toolbar-bg: #2e3440;
   --moflow-code-bg: #3b4252;
+  --moflow-bubble-user: #88c0d0;
+  --moflow-bubble-user-text: #2e3440;
+  --moflow-bubble-ai: #3b4252;
+  --moflow-bubble-ai-text: #eceff4;
   --moflow-scrollbar-thumb: #4c566a;
   --moflow-scrollbar-track: transparent;
   --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -188,6 +206,10 @@
   --moflow-sidebar-bg: #e6e9ef;
   --moflow-toolbar-bg: #eff1f5;
   --moflow-code-bg: #e6e9ef;
+  --moflow-bubble-user: #1e66f5;
+  --moflow-bubble-user-text: #ffffff;
+  --moflow-bubble-ai: #e6e9ef;
+  --moflow-bubble-ai-text: #4c4f69;
   --moflow-scrollbar-thumb: #bcc0cc;
   --moflow-scrollbar-track: transparent;
   --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
@@ -217,6 +239,10 @@
   --moflow-sidebar-bg: #181825;
   --moflow-toolbar-bg: #1e1e2e;
   --moflow-code-bg: #313244;
+  --moflow-bubble-user: #89b4fa;
+  --moflow-bubble-user-text: #1e1e2e;
+  --moflow-bubble-ai: #313244;
+  --moflow-bubble-ai-text: #cdd6f4;
   --moflow-scrollbar-thumb: #585b70;
   --moflow-scrollbar-track: transparent;
   --moflow-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);

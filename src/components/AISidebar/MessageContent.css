@@ -1,0 +1,144 @@
+.moflow-ai-md {
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.moflow-ai-md p {
+  margin: 0 0 8px;
+}
+
+.moflow-ai-md p:last-child {
+  margin-bottom: 0;
+}
+
+.moflow-ai-md h1,
+.moflow-ai-md h2,
+.moflow-ai-md h3,
+.moflow-ai-md h4,
+.moflow-ai-md h5,
+.moflow-ai-md h6 {
+  margin: 12px 0 6px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.moflow-ai-md h1 { font-size: 1.3em; }
+.moflow-ai-md h2 { font-size: 1.2em; }
+.moflow-ai-md h3 { font-size: 1.1em; }
+.moflow-ai-md h4 { font-size: 1em; }
+
+.moflow-ai-md ul,
+.moflow-ai-md ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.moflow-ai-md li {
+  margin: 2px 0;
+}
+
+.moflow-ai-md blockquote {
+  margin: 8px 0;
+  padding: 4px 12px;
+  border-left: 3px solid var(--moflow-border);
+  color: var(--moflow-text-secondary);
+}
+
+.moflow-ai-md code {
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.moflow-ai-md :not(pre) > code {
+  background-color: var(--moflow-bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.moflow-ai-md pre {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  background-color: var(--moflow-bg) !important;
+  border: 1px solid var(--moflow-border);
+}
+
+.moflow-ai-md pre code {
+  font-size: 0.88em;
+  background: none !important;
+  padding: 0;
+  border-radius: 0;
+}
+
+.moflow-ai-md table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  width: 100%;
+  font-size: 0.95em;
+}
+
+.moflow-ai-md th,
+.moflow-ai-md td {
+  border: 1px solid var(--moflow-border);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.moflow-ai-md th {
+  background-color: var(--moflow-bg);
+  font-weight: 600;
+}
+
+.moflow-ai-md hr {
+  border: none;
+  border-top: 1px solid var(--moflow-border);
+  margin: 12px 0;
+}
+
+.moflow-ai-md a {
+  color: var(--moflow-accent);
+  text-decoration: none;
+}
+
+.moflow-ai-md a:hover {
+  text-decoration: underline;
+}
+
+.moflow-ai-md img {
+  max-width: 100%;
+  border-radius: 6px;
+}
+
+.moflow-ai-md input[type="checkbox"] {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Light theme: show prism default, hide tomorrow */
+[data-editor-theme="github"] .moflow-ai-md pre code[class*="language-"],
+[data-editor-theme="github"] .moflow-ai-md pre code,
+[data-editor-theme="nord"] .moflow-ai-md pre code[class*="language-"],
+[data-editor-theme="nord"] .moflow-ai-md pre code,
+[data-editor-theme="catppuccin-latte"] .moflow-ai-md pre code[class*="language-"],
+[data-editor-theme="catppuccin-latte"] .moflow-ai-md pre code {
+  color: inherit;
+}
+
+/* Dark themes: override prism token colors for readability */
+[data-editor-theme="github-dark"] .moflow-ai-md pre,
+[data-editor-theme="nord-dark"] .moflow-ai-md pre,
+[data-editor-theme="catppuccin-mocha"] .moflow-ai-md pre {
+  background-color: color-mix(in srgb, var(--moflow-bg) 85%, #1e1e2e) !important;
+}
+
+/* Prism tomorrow theme override for dark editor themes */
+[data-editor-theme="github-dark"] .moflow-ai-md pre code[class*="language-"],
+[data-editor-theme="github-dark"] .moflow-ai-md pre code,
+[data-editor-theme="nord-dark"] .moflow-ai-md pre code[class*="language-"],
+[data-editor-theme="nord-dark"] .moflow-ai-md pre code,
+[data-editor-theme="catppuccin-mocha"] .moflow-ai-md pre code[class*="language-"],
+[data-editor-theme="catppuccin-mocha"] .moflow-ai-md pre code {
+  color: #c9d1d9;
+}

@@ -1,0 +1,99 @@
+{
+  "providers": {
+    "openai": {
+      "label": "OpenAI",
+      "labelZh": "OpenAI",
+      "defaultEndpoint": "https://api.openai.com/v1",
+      "compatibility": "openai",
+      "models": [
+        {"id": "gpt-4.1-nano", "maxContext": 1048576, "inputPricePer1M": 0.10, "outputPricePer1M": 0.40, "currency": "USD"},
+        {"id": "gpt-4.1-mini", "maxContext": 1048576, "inputPricePer1M": 0.40, "outputPricePer1M": 1.60, "currency": "USD"},
+        {"id": "gpt-4.1", "maxContext": 1048576, "inputPricePer1M": 2.00, "outputPricePer1M": 8.00, "currency": "USD"},
+        {"id": "gpt-4o-mini", "maxContext": 128000, "inputPricePer1M": 0.15, "outputPricePer1M": 0.60, "currency": "USD"},
+        {"id": "gpt-4o", "maxContext": 128000, "inputPricePer1M": 2.50, "outputPricePer1M": 10.00, "currency": "USD"}
+      ]
+    },
+    "anthropic": {
+      "label": "Anthropic",
+      "labelZh": "Anthropic",
+      "defaultEndpoint": "https://api.anthropic.com",
+      "compatibility": "claude",
+      "models": [
+        {"id": "claude-opus-4", "maxContext": 200000, "inputPricePer1M": 15.00, "outputPricePer1M": 75.00, "currency": "USD"},
+        {"id": "claude-sonnet-4", "maxContext": 200000, "inputPricePer1M": 3.00, "outputPricePer1M": 15.00, "currency": "USD"},
+        {"id": "claude-3.5-haiku", "maxContext": 200000, "inputPricePer1M": 0.80, "outputPricePer1M": 4.00, "currency": "USD"}
+      ]
+    },
+    "deepseek": {
+      "label": "DeepSeek",
+      "labelZh": "DeepSeek",
+      "defaultEndpoint": "https://api.deepseek.com",
+      "compatibility": "openai",
+      "models": [
+        {"id": "deepseek-v4-pro", "maxContext": 1048576, "inputPricePer1M": 3.00, "outputPricePer1M": 6.00, "currency": "CNY"},
+        {"id": "deepseek-v4-flash", "maxContext": 1048576, "inputPricePer1M": 1.00, "outputPricePer1M": 2.00, "currency": "CNY"},
+        {"id": "deepseek-reasoner", "maxContext": 1048576, "inputPricePer1M": 3.00, "outputPricePer1M": 6.00, "currency": "CNY"},
+        {"id": "deepseek-chat", "maxContext": 1048576, "inputPricePer1M": 1.00, "outputPricePer1M": 2.00, "currency": "CNY"}
+      ]
+    },
+    "zhipu": {
+      "label": "Zhipu AI",
+      "labelZh": "智谱 AI",
+      "defaultEndpoint": "https://open.bigmodel.cn/api/paas/v4",
+      "compatibility": "openai",
+      "models": [
+        {"id": "glm-5.1", "maxContext": 200000, "inputPricePer1M": 50.00, "outputPricePer1M": 50.00, "currency": "CNY"},
+        {"id": "glm-5-turbo", "maxContext": 200000, "inputPricePer1M": 16.00, "outputPricePer1M": 16.00, "currency": "CNY"},
+        {"id": "glm-5", "maxContext": 200000, "inputPricePer1M": 50.00, "outputPricePer1M": 50.00, "currency": "CNY"},
+        {"id": "glm-4.7", "maxContext": 200000, "inputPricePer1M": 5.00, "outputPricePer1M": 5.00, "currency": "CNY"},
+        {"id": "glm-4.7-flash", "maxContext": 200000, "inputPricePer1M": 0, "outputPricePer1M": 0, "currency": "CNY"},
+        {"id": "glm-4.6", "maxContext": 200000, "inputPricePer1M": 5.00, "outputPricePer1M": 5.00, "currency": "CNY"},
+        {"id": "glm-4.5-air", "maxContext": 128000, "inputPricePer1M": 1.00, "outputPricePer1M": 1.00, "currency": "CNY"},
+        {"id": "glm-4-long", "maxContext": 1048576, "inputPricePer1M": 1.00, "outputPricePer1M": 1.00, "currency": "CNY"},
+        {"id": "glm-4-flash", "maxContext": 128000, "inputPricePer1M": 0, "outputPricePer1M": 0, "currency": "CNY"}
+      ]
+    },
+    "moonshot": {
+      "label": "Moonshot (Kimi)",
+      "labelZh": "Moonshot (Kimi)",
+      "defaultEndpoint": "https://api.moonshot.cn/v1",
+      "compatibility": "openai",
+      "models": [
+        {"id": "kimi-k2.6", "maxContext": 262144, "inputPricePer1M": 6.50, "outputPricePer1M": 27.00, "currency": "CNY"},
+        {"id": "kimi-k2-thinking-turbo", "maxContext": 262144, "inputPricePer1M": 8.00, "outputPricePer1M": 58.00, "currency": "CNY"},
+        {"id": "kimi-k2-thinking", "maxContext": 262144, "inputPricePer1M": 4.00, "outputPricePer1M": 16.00, "currency": "CNY"},
+        {"id": "kimi-k2-turbo-preview", "maxContext": 262144, "inputPricePer1M": 8.00, "outputPricePer1M": 58.00, "currency": "CNY"},
+        {"id": "kimi-k2-turbo", "maxContext": 262144, "inputPricePer1M": 8.00, "outputPricePer1M": 58.00, "currency": "CNY"},
+        {"id": "kimi-k2-0905-preview", "maxContext": 262144, "inputPricePer1M": 4.00, "outputPricePer1M": 16.00, "currency": "CNY"},
+        {"id": "kimi-k2-0711-preview", "maxContext": 131072, "inputPricePer1M": 4.00, "outputPricePer1M": 16.00, "currency": "CNY"},
+        {"id": "kimi-k2", "maxContext": 262144, "inputPricePer1M": 4.00, "outputPricePer1M": 16.00, "currency": "CNY"},
+        {"id": "moonshot-v1-128k", "maxContext": 131072, "inputPricePer1M": 10.00, "outputPricePer1M": 30.00, "currency": "CNY"},
+        {"id": "moonshot-v1-32k", "maxContext": 32768, "inputPricePer1M": 5.00, "outputPricePer1M": 20.00, "currency": "CNY"},
+        {"id": "moonshot-v1-8k", "maxContext": 8192, "inputPricePer1M": 2.00, "outputPricePer1M": 10.00, "currency": "CNY"}
+      ]
+    },
+    "minimax": {
+      "label": "MiniMax",
+      "labelZh": "MiniMax",
+      "defaultEndpoint": "https://api.minimaxi.com/v1",
+      "compatibility": "openai",
+      "models": [
+        {"id": "MiniMax-M2.7", "maxContext": 204800, "inputPricePer1M": 2.10, "outputPricePer1M": 8.40, "currency": "CNY"},
+        {"id": "MiniMax-M2.7-highspeed", "maxContext": 204800, "inputPricePer1M": 4.20, "outputPricePer1M": 16.80, "currency": "CNY"},
+        {"id": "MiniMax-M2.5", "maxContext": 204800, "inputPricePer1M": 2.10, "outputPricePer1M": 8.40, "currency": "CNY"},
+        {"id": "MiniMax-M2.5-highspeed", "maxContext": 204800, "inputPricePer1M": 4.20, "outputPricePer1M": 16.80, "currency": "CNY"},
+        {"id": "MiniMax-M2.1", "maxContext": 204800, "inputPricePer1M": 2.10, "outputPricePer1M": 8.40, "currency": "CNY"},
+        {"id": "MiniMax-M2.1-highspeed", "maxContext": 204800, "inputPricePer1M": 4.20, "outputPricePer1M": 16.80, "currency": "CNY"},
+        {"id": "MiniMax-M2", "maxContext": 204800, "inputPricePer1M": 2.10, "outputPricePer1M": 8.40, "currency": "CNY"},
+        {"id": "M2-her", "maxContext": 204800, "inputPricePer1M": 2.10, "outputPricePer1M": 8.40, "currency": "CNY"}
+      ]
+    },
+    "custom": {
+      "label": "Custom",
+      "labelZh": "自定义",
+      "defaultEndpoint": "",
+      "compatibility": "openai",
+      "models": []
+    }
+  }
+}

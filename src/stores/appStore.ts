@@ -200,6 +200,7 @@ interface AppState {
   editorTheme: EditorTheme;
   showStatusBar: boolean;
   showAISidebar: boolean;
+  sidebarWidth: number;
   autoSave: boolean;
   closeDialog: CloseDialogState;
   getEditorHTML: (() => string) | null;
@@ -216,6 +217,7 @@ interface AppState {
   setEditorTheme: (theme: EditorTheme) => void;
   toggleStatusBar: () => void;
   toggleAISidebar: () => void;
+  setSidebarWidth: (w: number) => void;
   toggleAutoSave: () => void;
   newFile: () => string;
   showCloseDialog: (message: string) => void;
@@ -233,6 +235,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   editorTheme: "github",
   showStatusBar: true,
   showAISidebar: false,
+  sidebarWidth: 360,
   autoSave: localStorage.getItem("moflow-autoSave") !== "false",
   closeDialog: { visible: false, message: "", mode: "confirm-close" },
   getEditorHTML: null,
@@ -379,6 +382,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleAISidebar: () =>
     set((state) => ({ showAISidebar: !state.showAISidebar })),
+
+  setSidebarWidth: (w) => set({ sidebarWidth: w }),
 
   toggleAutoSave: () =>
     set((state) => {

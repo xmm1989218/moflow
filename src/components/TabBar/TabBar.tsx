@@ -74,7 +74,6 @@ export default function TabBar() {
             title={tab.filePath || tab.fileName}
           >
             <span className="moflow-tab-name">
-              {!tab.contentLoaded && tab.filePath && <span className="moflow-tab-loading">…</span>}
               {tab.fileName}
               {tab.isModified && <span className="moflow-tab-asterisk">*</span>}
             </span>

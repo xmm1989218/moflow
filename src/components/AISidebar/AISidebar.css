@@ -1,10 +1,9 @@
 .moflow-ai-sidebar {
-  width: 320px;
-  min-width: 320px;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--ui-border);
-  background-color: var(--ui-bg);
+  border-left: 1px solid var(--moflow-border);
+  background-color: var(--moflow-bg);
+  position: relative;
   animation: moflow-sidebar-slide 0.2s ease-out;
 }
 
@@ -23,16 +22,53 @@
   height: 36px;
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--ui-border);
-  background-color: var(--ui-bg-secondary);
+  padding: 0 12px;
+  border-bottom: 1px solid var(--moflow-border);
+  background-color: var(--moflow-bg-secondary);
   flex-shrink: 0;
+  gap: 6px;
 }
 
 .moflow-ai-header-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--ui-text);
+  color: var(--moflow-text);
+  flex: 1;
+}
+
+.moflow-ai-header-mode {
+  font-size: 11px;
+  color: var(--moflow-text-secondary);
+  background-color: var(--moflow-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.moflow-ai-config-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--moflow-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.moflow-ai-config-btn:hover {
+  background-color: var(--moflow-bg);
+  color: var(--moflow-text);
 }
 
 .moflow-ai-messages {
@@ -51,7 +87,7 @@
   justify-content: center;
   flex: 1;
   text-align: center;
-  color: var(--ui-text-secondary);
+  color: var(--moflow-text-secondary);
   font-size: 13px;
   gap: 8px;
 }
@@ -83,20 +119,21 @@
 }
 
 .moflow-ai-message-user .moflow-ai-message-content {
-  background-color: var(--ui-bubble-user);
-  color: var(--ui-bubble-user-text);
+  background-color: var(--moflow-bubble-user);
+  color: var(--moflow-bubble-user-text);
   border-bottom-right-radius: 4px;
 }
 
 .moflow-ai-message-assistant .moflow-ai-message-content {
-  background-color: var(--ui-bubble-ai);
-  color: var(--ui-bubble-ai-text);
+  background-color: var(--moflow-bubble-ai);
+  color: var(--moflow-bubble-ai-text);
   border-bottom-left-radius: 4px;
+  overflow-wrap: break-word;
 }
 
 .moflow-ai-cursor {
   animation: moflow-ai-blink 0.8s infinite;
-  color: var(--ui-accent);
+  color: var(--moflow-accent);
 }
 
 @keyframes moflow-ai-blink {
@@ -109,33 +146,39 @@
   align-items: flex-end;
   gap: 8px;
   padding: 12px 16px;
-  border-top: 1px solid var(--ui-border);
-  background-color: var(--ui-bg-secondary);
+  border-top: 1px solid var(--moflow-border);
+  background-color: var(--moflow-bg-secondary);
   flex-shrink: 0;
 }
 
 .moflow-ai-input {
   flex: 1;
   resize: none;
-  border: 1px solid var(--ui-border);
+  border: 1px solid var(--moflow-border);
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 13px;
   font-family: inherit;
   line-height: 1.4;
-  background-color: var(--ui-input-bg);
-  color: var(--ui-text);
+  background-color: var(--moflow-bg-secondary);
+  color: var(--moflow-text);
   outline: none;
   max-height: 120px;
   min-height: 36px;
+  overflow-y: scroll;
+  scrollbar-width: none;
+}
+
+.moflow-ai-input::-webkit-scrollbar {
+  display: none;
 }
 
 .moflow-ai-input:focus {
-  border-color: var(--ui-accent);
+  border-color: var(--moflow-accent);
 }
 
 .moflow-ai-input::placeholder {
-  color: var(--ui-text-secondary);
+  color: var(--moflow-text-secondary);
 }
 
 .moflow-ai-send-btn {
@@ -146,7 +189,7 @@
   height: 36px;
   border-radius: 8px;
   border: none;
-  background-color: var(--ui-accent);
+  background-color: var(--moflow-accent);
   color: #ffffff;
   cursor: pointer;
   flex-shrink: 0;
@@ -154,10 +197,392 @@
 }
 
 .moflow-ai-send-btn:hover:not(:disabled) {
-  background-color: var(--ui-accent-hover);
+  background-color: var(--moflow-accent-hover);
 }
 
 .moflow-ai-send-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.moflow-ai-stop-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--moflow-border);
+  background-color: var(--moflow-bg);
+  color: var(--moflow-text);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.moflow-ai-stop-btn:hover {
+  background-color: var(--moflow-bg-secondary);
+  border-color: var(--moflow-accent);
+  color: var(--moflow-accent);
+}
+
+/* Config Modal */
+
+.moflow-ai-config-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.moflow-ai-config-modal {
+  width: 400px;
+  max-height: 80vh;
+  background-color: var(--moflow-bg);
+  border: 1px solid var(--moflow-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.moflow-ai-config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--moflow-border);
+}
+
+.moflow-ai-config-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--moflow-text);
+}
+
+.moflow-ai-config-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--moflow-text-secondary);
+  cursor: pointer;
+}
+
+.moflow-ai-config-close:hover {
+  background-color: var(--moflow-bg-secondary);
+  color: var(--moflow-text);
+}
+
+.moflow-ai-config-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+}
+
+.moflow-ai-config-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--moflow-text-secondary);
+  margin-bottom: 6px;
+}
+
+.moflow-ai-config-mode {
+  display: flex;
+  flex-direction: column;
+}
+
+.moflow-ai-config-mode-switch {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--moflow-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.moflow-ai-config-mode-btn {
+  flex: 1;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  border: none;
+  background-color: var(--moflow-bg);
+  color: var(--moflow-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.moflow-ai-config-mode-btn:first-child {
+  border-right: 1px solid var(--moflow-border);
+}
+
+.moflow-ai-config-mode-btn.active {
+  background-color: var(--moflow-accent);
+  color: #ffffff;
+}
+
+.moflow-ai-config-mode-btn:not(.active):hover {
+  background-color: var(--moflow-bg-secondary);
+}
+
+.moflow-ai-config-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.moflow-ai-config-select {
+  padding: 7px 10px;
+  border: 1px solid var(--moflow-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background-color: var(--moflow-bg-secondary);
+  color: var(--moflow-text);
+  outline: none;
+  cursor: pointer;
+}
+
+.moflow-ai-config-select:focus {
+  border-color: var(--moflow-accent);
+}
+
+.moflow-ai-config-input {
+  padding: 7px 10px;
+  border: 1px solid var(--moflow-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background-color: var(--moflow-bg-secondary);
+  color: var(--moflow-text);
+  outline: none;
+}
+
+.moflow-ai-config-input:focus {
+  border-color: var(--moflow-accent);
+}
+
+.moflow-ai-config-input::placeholder {
+  color: var(--moflow-text-secondary);
+}
+
+.moflow-ai-config-token-row {
+  display: flex;
+  gap: 6px;
+}
+
+.moflow-ai-config-token-input {
+  flex: 1;
+}
+
+.moflow-ai-config-token-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--moflow-border);
+  background-color: var(--moflow-bg);
+  color: var(--moflow-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.moflow-ai-config-token-toggle:hover {
+  background-color: var(--moflow-bg-secondary);
+  color: var(--moflow-text);
+}
+
+.moflow-ai-config-test-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.moflow-ai-config-test-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--moflow-border);
+  background-color: var(--moflow-bg);
+  color: var(--moflow-text);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.moflow-ai-config-test-btn:hover:not(:disabled) {
+  background-color: var(--moflow-bg-secondary);
+  border-color: var(--moflow-accent);
+}
+
+.moflow-ai-config-test-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.moflow-ai-config-test-success {
+  font-size: 12px;
+  color: #22c55e;
+}
+
+.moflow-ai-config-test-error {
+  font-size: 12px;
+  color: #ef4444;
+}
+
+.moflow-ai-config-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--moflow-border);
+}
+
+.moflow-ai-config-cancel-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--moflow-border);
+  background-color: var(--moflow-bg);
+  color: var(--moflow-text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.moflow-ai-config-cancel-btn:hover {
+  background-color: var(--moflow-bg-secondary);
+}
+
+.moflow-ai-config-save-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--moflow-accent);
+  color: #ffffff;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.moflow-ai-config-save-btn:hover {
+  background-color: var(--moflow-accent-hover);
+}
+
+/* Usage Badge */
+
+.moflow-ai-usage-badge {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: default;
+  flex-shrink: 0;
+}
+
+.moflow-ai-usage-ring {
+  display: block;
+}
+
+.moflow-ai-usage-tooltip {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+  padding: 8px 10px;
+  background-color: var(--moflow-bg);
+  border: 1px solid var(--moflow-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  min-width: 150px;
+  font-size: 12px;
+  color: var(--moflow-text);
+}
+
+.moflow-ai-usage-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0;
+}
+
+.moflow-ai-usage-tooltip-total {
+  border-top: 1px solid var(--moflow-border);
+  margin-top: 4px;
+  padding-top: 4px;
+  font-weight: 600;
+}
+
+.moflow-ai-usage-tooltip-cost {
+  border-top: 1px solid var(--moflow-border);
+  margin-top: 4px;
+  padding-top: 4px;
+  color: var(--moflow-accent);
+  font-weight: 600;
+}
+
+/* Model row in config */
+
+.moflow-ai-config-model-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.moflow-ai-config-model-select {
+  flex: 1;
+}
+
+.moflow-ai-config-model-input {
+  flex: 1;
+}
+
+.moflow-ai-config-model-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--moflow-border);
+  background-color: var(--moflow-bg);
+  color: var(--moflow-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.moflow-ai-config-model-back:hover {
+  background-color: var(--moflow-bg-secondary);
+  color: var(--moflow-text);
+}
+
+/* Resize Handle */
+
+.moflow-ai-resize-handle {
+  position: absolute;
+  left: -2px;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 10;
+  transition: background-color 0.15s;
+}
+
+.moflow-ai-resize-handle:hover {
+  background-color: var(--moflow-accent);
+  opacity: 0.4;
 }
