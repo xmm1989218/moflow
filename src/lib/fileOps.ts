@@ -20,6 +20,7 @@ export async function openFile() {
     return;
   }
 
+  await invoke("allow_paths", { paths: [selected] });
   const data = await readFile(selected);
   const content = new TextDecoder("utf-8").decode(data);
   const fileName = selected.split(/[/\\]/).pop() || "Untitled.md";
@@ -69,10 +70,12 @@ export async function saveFileAs() {
     const bodyHtml = state.getEditorHTML ? state.getEditorHTML() : "";
     const html = exportAsHtml(bodyHtml, editorTheme);
     const data = new TextEncoder().encode(html);
+    await invoke("allow_paths", { paths: [selected] });
     await writeFile(selected, data);
     state.updateTabMeta(file.id, { isModified: false, lastSavedContent: file.content });
   } else {
     const data = new TextEncoder().encode(file.content);
+    await invoke("allow_paths", { paths: [selected] });
     await writeFile(selected, data);
     const fileName = selected.split(/[/\\]/).pop() || "Untitled.md";
     state.updateTabMeta(file.id, { filePath: selected, fileName, isModified: false, lastSavedContent: file.content });
@@ -127,6 +130,7 @@ export async function loadFileByPath(filePath: string) {
   }
 
   try {
+    await invoke("allow_paths", { paths: [filePath] });
     const data = await readFile(filePath);
     const content = new TextDecoder("utf-8").decode(data);
     const fileName = filePath.split(/[/\\]/).pop() || "Untitled.md";
@@ -149,6 +153,7 @@ export async function loadTabContent(id: string) {
   if (!tab || !tab.filePath) return;
 
   try {
+    await invoke("allow_paths", { paths: [tab.filePath] });
     const data = await readFile(tab.filePath);
     const content = new TextDecoder("utf-8").decode(data);
     state.updateTabMeta(id, {

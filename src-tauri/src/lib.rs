@@ -1,5 +1,15 @@
 use tauri::{Emitter, Manager};
+use tauri_plugin_fs::FsExt;
 use std::sync::mpsc;
+
+#[tauri::command]
+async fn allow_paths(app: tauri::AppHandle, paths: Vec<String>) -> Result<(), String> {
+    let scope = app.fs_scope();
+    for path in &paths {
+        scope.allow_file(path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
 
 #[cfg(target_os = "windows")]
 fn fix_taskbar_icon(hwnd: windows::Win32::Foundation::HWND) {
@@ -212,7 +222,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf])
+        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths])
         .setup(|app| {
             #[cfg(desktop)]
             {

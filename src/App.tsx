@@ -22,6 +22,10 @@ function App() {
     initSession().then(async () => {
       useAIConfigStore.getState().loadConfig();
       const tabs = useAppStore.getState().files;
+      const paths = tabs.map((t) => t.filePath).filter(Boolean) as string[];
+      if (paths.length > 0) {
+        await invoke("allow_paths", { paths });
+      }
       await Promise.all(tabs.map((tab) => useChatStore.getState().loadChatHistory(tab.id)));
       requestAnimationFrame(() => {
         getCurrentWindow().show();
