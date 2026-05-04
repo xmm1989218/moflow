@@ -15,9 +15,9 @@ function extractStructure(docContent: string): string {
   return "文档结构：\n" + headings.join("\n");
 }
 
-export function buildSystemPrompt(docContent: string, maxTokens = 8000): string {
-  const reserved = 5200;
-  const availableDocTokens = maxTokens - reserved;
+export function buildSystemPrompt(docContent: string, maxContext: number): string {
+  const reserved = Math.floor(maxContext * 0.35);
+  const availableDocTokens = maxContext - reserved;
 
   if (!docContent || docContent.trim().length === 0) {
     return "你是 MoFlow 编辑器的 AI 助手。用户当前没有打开文档内容，请直接回答用户的问题。";

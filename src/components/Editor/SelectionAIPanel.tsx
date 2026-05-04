@@ -5,6 +5,7 @@ import { useChatStore } from "../../stores/chatStore";
 import { useAppStore } from "../../stores/appStore";
 import { getLLMClient } from "../../lib/llmClient";
 import { buildSystemPrompt } from "../../lib/contextBuilder";
+import { getModelInfo } from "../../lib/modelInfo";
 import "./SelectionAIPanel.css";
 
 const isZh = navigator.language.startsWith("zh");
@@ -54,7 +55,7 @@ export default function SelectionAIPanel() {
 
       try {
         const client = getLLMClient(aiConfig);
-        const systemPrompt = buildSystemPrompt(docContent);
+        const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
 
         await client.chat(
           [
@@ -126,7 +127,7 @@ export default function SelectionAIPanel() {
     }
 
     const chatMessages = useChatStore.getState().getMessages(activeFileId);
-    const systemPrompt = buildSystemPrompt(docContent);
+    const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
     const client = getLLMClient(aiConfig);
 
     setStreaming(true);

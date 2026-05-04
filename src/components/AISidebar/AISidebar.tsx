@@ -141,7 +141,7 @@ export default function AISidebar() {
 
     try {
       const client = getLLMClient(aiConfig);
-      const systemPrompt = buildSystemPrompt(docContent);
+      const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
       const result = await client.chat(
         [
           { role: "system", content: systemPrompt },
@@ -197,7 +197,7 @@ export default function AISidebar() {
 
     try {
       const client = getLLMClient(aiConfig);
-      const systemPrompt = buildSystemPrompt(docContent);
+      const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
 
       const contextMsgs = useChatStore.getState().getContext(activeFileId);
       const historyMsgs = contextMsgs.map((m) => ({

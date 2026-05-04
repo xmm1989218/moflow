@@ -11,7 +11,7 @@ Built with Tauri v2, React, TypeScript, and Milkdown.
 - **Multi-tab** — Open and switch between multiple files in tabs with auto-save
 - **Dual theme** — Light and dark themes with smooth switching
 - **Export** — HTML and PDF export
-- **AI Sidebar** — Integrated AI chat panel
+- **AI Sidebar** — Integrated AI chat with context management, auto-compact, and usage tracking
 - **Status bar** — Word count, cursor position, file info at a glance
 
 ## Tech Stack
@@ -69,8 +69,8 @@ src/                    # Frontend (React + TypeScript)
     AISidebar/          # AI chat sidebar
     HamburgerMenu/      # Hamburger menu
     ConfirmCloseDialog/ # Unsaved changes dialog
-  stores/               # Zustand state stores
-  lib/                  # Utilities (export, file ops, theme)
+  stores/               # Zustand state stores (app, chat, AI config, AI selection)
+  lib/                  # Utilities (chat persistence, LLM client, context builder, export, theme)
   App.tsx               # Root component
   main.tsx              # Entry point
 
