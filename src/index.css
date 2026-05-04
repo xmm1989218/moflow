@@ -92,6 +92,7 @@
   --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+  --moflow-highlight-bg: #fff3b0;
 }
 
 [data-editor-theme="github-dark"] {
@@ -126,6 +127,7 @@
   --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+  --moflow-highlight-bg: #7c6f1940;
 }
 
 [data-editor-theme="nord"] {
@@ -160,6 +162,7 @@
   --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+  --moflow-highlight-bg: #ebcb8b80;
 }
 
 [data-editor-theme="nord-dark"] {
@@ -193,6 +196,7 @@
   --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+  --moflow-highlight-bg: #ebcb8b40;
 }
 
 [data-editor-theme="catppuccin-latte"] {
@@ -226,6 +230,7 @@
   --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+  --moflow-highlight-bg: #f5e0a080;
 }
 
 [data-editor-theme="catppuccin-mocha"] {
@@ -259,6 +264,14 @@
   --moflow-crepe-font-default: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-title: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
   --moflow-crepe-font-code: "JetBrains Mono", "Fira Code", Consolas, ui-monospace, monospace;
+  --moflow-highlight-bg: #f5e0a040;
+}
+
+.milkdown mark {
+  background-color: var(--moflow-highlight-bg);
+  padding: 1px 2px;
+  border-radius: 2px;
+  color: inherit;
 }
 
 /* ── Global reset ── */

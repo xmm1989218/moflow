@@ -53,9 +53,9 @@
 }
 
 .moflow-tab.active {
-  color: var(--ui-titlebar-text);
-  background-color: var(--ui-bg);
-  border-bottom: 2px solid var(--ui-accent);
+  color: var(--moflow-text);
+  background-color: var(--moflow-bg);
+  border-bottom: 2px solid var(--moflow-accent);
 }
 
 .moflow-tab-name {

@@ -145,7 +145,6 @@
 .moflow-editor-wrapper .milkdown .ProseMirror td {
   border: 1px solid var(--moflow-border) !important;
   padding: 4px 10px !important;
-  text-align: left !important;
   line-height: 1.4 !important;
   min-width: 60px !important;
 }
@@ -351,16 +350,12 @@
 }
 
 .moflow-editor-wrapper .milkdown-toolbar .toolbar-item svg {
-  fill: var(--moflow-text-secondary) !important;
+  fill: var(--moflow-text) !important;
 }
 
 .moflow-editor-wrapper .milkdown-toolbar .toolbar-item:hover {
   background: var(--moflow-bg-secondary) !important;
   border-radius: 4px !important;
-}
-
-.moflow-editor-wrapper .milkdown-toolbar .toolbar-item:hover svg {
-  fill: var(--moflow-text) !important;
 }
 
 .moflow-editor-wrapper .milkdown-toolbar .toolbar-item:active {

@@ -5,6 +5,9 @@ import { EditorStatus, editorViewCtx } from "@milkdown/core";
 import type { Ctx } from "@milkdown/kit/ctx";
 import { useAppStore } from "../../stores/appStore";
 import { useAISelectionStore } from "../../stores/aiSelectionStore";
+import { highlightPlugin, highlightSchema, toggleHighlightCommand } from "../../lib/highlightMark";
+import { commandsCtx } from "@milkdown/kit/core";
+import { isMarkSelectedCommand } from "@milkdown/kit/preset/commonmark";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/nord.css";
 import "@milkdown/crepe/theme/nord-dark.css";
@@ -30,6 +33,12 @@ const askIcon = `
     <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0L9.937 15.5z"/>
     <path d="M19 3h2v4h-2V3z"/>
     <path d="M19 7h4v2h-4V7z"/>
+  </svg>
+`;
+
+const highlightIcon = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" style="background-color:#fff3b0;border-radius:4px">
+    <path d="M12 4L7 17h2.4l1-3h5.2l1 3H19L14 4h-2zm-1 8l1.5-4.5h.1L14.1 12H11z" style="fill:#000"/>
   </svg>
 `;
 
@@ -84,6 +93,19 @@ function MilkdownWrapper() {
         [Crepe.Feature.Toolbar]: {
           buildToolbar: (builder) => {
             builder
+              .getGroup("formatting")
+              .addItem("highlight", {
+                icon: highlightIcon,
+                active: (ctx: Ctx) => {
+                  const commands = ctx.get(commandsCtx);
+                  return commands.call(isMarkSelectedCommand.key, highlightSchema.type(ctx));
+                },
+                onRun: (ctx: Ctx) => {
+                  const commands = ctx.get(commandsCtx);
+                  commands.call(toggleHighlightCommand.key);
+                },
+              });
+            builder
               .addGroup("ai", "AI")
               .addItem("explain", {
                 icon: explainIcon,
@@ -134,6 +156,8 @@ function MilkdownWrapper() {
         },
       },
     });
+
+    crepe.editor.use(highlightPlugin);
 
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {
