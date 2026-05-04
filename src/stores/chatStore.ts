@@ -20,7 +20,7 @@ interface ChatState {
 
   getMessages: (tabId: string) => Message[];
   getUsage: (tabId: string) => ChatUsage;
-  addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => void;
+  addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
   appendToLastMessage: (tabId: string, chunk: string) => void;
   addUsage: (tabId: string, usage: ChatUsage) => void;
   resetUsage: (tabId: string) => void;
@@ -29,7 +29,7 @@ interface ChatState {
   stopGeneration: () => void;
   clearMessages: (tabId: string) => void;
   compactMessages: (tabId: string, summary: string) => void;
-  flushAssistantMessage: (tabId: string) => void;
+  flushAssistantMessage: (tabId: string) => Promise<void>;
   loadChatHistory: (tabId: string) => Promise<void>;
   deleteChat: (tabId: string) => void;
 }
@@ -48,24 +48,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
     return get().usageMap[tabId] || emptyUsage;
   },
 
-  addMessage: (tabId, msg) =>
+  addMessage: (tabId, msg) => {
+    const fullMsg: Message = {
+      ...msg,
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+    };
     set((state) => {
-      const fullMsg = {
-        ...msg,
-        id: crypto.randomUUID(),
-        timestamp: Date.now(),
-      };
       const existing = state.messagesMap[tabId] ?? [];
-      if (msg.role === "user") {
-        appendMessage(tabId, fullMsg);
-      }
       return {
         messagesMap: {
           ...state.messagesMap,
           [tabId]: [...existing, fullMsg],
         },
       };
-    }),
+    });
+    return fullMsg;
+  },
 
   appendToLastMessage: (tabId, chunk) =>
     set((state) => {
@@ -139,20 +138,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       timestamp: Date.now(),
     };
     rewriteMessages(tabId, [summaryMsg]);
-    set((state) => ({
-      messagesMap: {
-        ...state.messagesMap,
-        [tabId]: [summaryMsg],
-      },
-    }));
+    set((state) => {
+      const existing = state.messagesMap[tabId] ?? [];
+      return {
+        messagesMap: {
+          ...state.messagesMap,
+          [tabId]: [...existing, summaryMsg],
+        },
+      };
+    });
   },
 
-  flushAssistantMessage: (tabId) => {
+  flushAssistantMessage: async (tabId) => {
     const msgs = get().messagesMap[tabId];
     if (!msgs || msgs.length === 0) return;
     const last = msgs[msgs.length - 1];
     if (last.role === "assistant") {
-      appendMessage(tabId, last);
+      await appendMessage(tabId, last);
     }
   },
 

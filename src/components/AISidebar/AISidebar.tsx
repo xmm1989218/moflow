@@ -5,6 +5,7 @@ import { useAIConfigStore } from "../../stores/aiConfigStore";
 import { getLLMClient } from "../../lib/llmClient";
 import { buildSystemPrompt } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
+import { appendMessage } from "../../lib/chatPersistence";
 import AIConfigModal from "./AIConfigModal";
 import SlashCommandMenu from "./SlashCommandMenu";
 import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
@@ -92,7 +93,6 @@ export default function AISidebar() {
   const appendToLastMessage = useChatStore((s) => s.appendToLastMessage);
   const addUsage = useChatStore((s) => s.addUsage);
   const clearMessages = useChatStore((s) => s.clearMessages);
-  const compactMessages = useChatStore((s) => s.compactMessages);
   const flushAssistantMessage = useChatStore((s) => s.flushAssistantMessage);
   const setStreaming = useChatStore((s) => s.setStreaming);
   const stopGeneration = useChatStore((s) => s.stopGeneration);
@@ -132,7 +132,8 @@ export default function AISidebar() {
     if (text.startsWith("/")) return;
 
     setInput("");
-    addMessage(activeFileId, { role: "user", content: text });
+    const userMsg = addMessage(activeFileId, { role: "user", content: text });
+    await appendMessage(activeFileId, userMsg);
 
     setStreaming(true);
     addMessage(activeFileId, { role: "assistant", content: "" });
@@ -168,7 +169,7 @@ export default function AISidebar() {
     } finally {
       setStreaming(false);
       abortRef.current = null;
-      flushAssistantMessage(activeFileId);
+      await flushAssistantMessage(activeFileId);
     }
   };
 
@@ -191,7 +192,8 @@ export default function AISidebar() {
       }
       const summaryContent = summaryParts.join("\n");
 
-      compactMessages(activeFileId, "");
+      const compactMsg = addMessage(activeFileId, { role: "user", content: "/compact" });
+      await appendMessage(activeFileId, compactMsg);
       setStreaming(true);
       addMessage(activeFileId, { role: "assistant", content: "" });
 
@@ -222,7 +224,7 @@ export default function AISidebar() {
       } finally {
         setStreaming(false);
         abortRef.current = null;
-        flushAssistantMessage(activeFileId);
+        await flushAssistantMessage(activeFileId);
       }
     }
   };
@@ -302,18 +304,24 @@ export default function AISidebar() {
           </div>
         )}
         {messages.map((msg) => (
-          <div key={msg.id} className={`moflow-ai-message moflow-ai-message-${msg.role}`}>
-            <div className="moflow-ai-message-content">
-              {msg.role === "assistant" ? (
-                <MessageContent content={msg.content} />
-              ) : (
-                msg.content
-              )}
-              {msg.role === "assistant" && isStreaming && msg === messages[messages.length - 1] && (
-                <span className="moflow-ai-cursor">▌</span>
-              )}
+          msg.content === "/compact" && msg.role === "user" ? (
+            <div key={msg.id} className="moflow-ai-compact-divider">
+              <span>{t("已压缩", "Compacted")}</span>
             </div>
-          </div>
+          ) : (
+            <div key={msg.id} className={`moflow-ai-message moflow-ai-message-${msg.role}`}>
+              <div className="moflow-ai-message-content">
+                {msg.role === "assistant" ? (
+                  <MessageContent content={msg.content} />
+                ) : (
+                  msg.content
+                )}
+                {msg.role === "assistant" && isStreaming && msg === messages[messages.length - 1] && (
+                  <span className="moflow-ai-cursor">▌</span>
+                )}
+              </div>
+            </div>
+          )
         ))}
         <div ref={messagesEndRef} />
       </div>

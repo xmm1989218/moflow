@@ -109,6 +109,24 @@
   align-self: flex-start;
 }
 
+.moflow-ai-compact-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 90%;
+  margin: 8px 0;
+  color: var(--moflow-text-muted);
+  font-size: 12px;
+}
+
+.moflow-ai-compact-divider::before,
+.moflow-ai-compact-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: var(--moflow-border);
+}
+
 .moflow-ai-message-content {
   padding: 8px 12px;
   border-radius: 12px;
