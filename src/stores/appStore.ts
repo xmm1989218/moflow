@@ -236,7 +236,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   showStatusBar: true,
   showAISidebar: false,
   sidebarWidth: 360,
-  autoSave: localStorage.getItem("moflow-autoSave") !== "false",
+  autoSave: localStorage.getItem("moflow-autoSave") === "true",
   closeDialog: { visible: false, message: "", mode: "confirm-close" },
   getEditorHTML: null,
   sessionInitialized: false,

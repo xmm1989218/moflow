@@ -15,6 +15,27 @@ import "./Editor.css";
 import SelectionAIPanel from "./SelectionAIPanel";
 import { useEffect, useRef, useCallback } from "react";
 
+const isZh = navigator.language.startsWith("zh");
+
+const SLASH_MD_MAP: Record<string, { zh: string; md: string }> = {
+  "Text": { zh: "正文", md: "paragraph" },
+  "Heading 1": { zh: "一级标题", md: "# " },
+  "Heading 2": { zh: "二级标题", md: "## " },
+  "Heading 3": { zh: "三级标题", md: "### " },
+  "Heading 4": { zh: "四级标题", md: "#### " },
+  "Heading 5": { zh: "五级标题", md: "##### " },
+  "Heading 6": { zh: "六级标题", md: "###### " },
+  "Quote": { zh: "引用", md: "> " },
+  "Divider": { zh: "分割线", md: "---" },
+  "Bullet List": { zh: "无序列表", md: "- " },
+  "Ordered List": { zh: "有序列表", md: "1. " },
+  "Task List": { zh: "待办列表", md: "- [ ] " },
+  "Image": { zh: "图片", md: "![alt](url)" },
+  "Code": { zh: "代码块", md: "```↵```" },
+  "Table": { zh: "表格", md: "| | |\\n|---|---|" },
+  "Math": { zh: "数学公式", md: "$$↵$$" },
+};
+
 const explainIcon = `
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
     <path d="M2 3.5C2 3.22386 2.22386 3 2.5 3H8C10.7614 3 13 5.23858 13 8V20.5C13 20.7761 12.7761 21 12.5 21H12C11.1716 21 10.5 20.3284 10.5 19.5V17.5C10.5 16.1193 9.38071 15 8 15H2.5C2.22386 15 2 14.7761 2 14.5V3.5ZM4.5 5V13H8C8.88071 13 9.70849 13.2488 10.4157 13.6817C10.7753 13.9023 11.2836 13.7381 11.3304 13.3219C11.3761 12.9177 11 12.5871 11 12.1803V8C11 6.34315 9.65685 5 8 5H4.5Z"/>
@@ -190,6 +211,69 @@ function MilkdownWrapper() {
   useEffect(() => {
     return () => setGetEditorHTML(null);
   }, [setGetEditorHTML]);
+
+  useEffect(() => {
+    let tooltipEl: HTMLDivElement | null = null;
+
+    const ensureTooltip = () => {
+      if (!tooltipEl) {
+        tooltipEl = document.createElement("div");
+        tooltipEl.className = "moflow-slash-tooltip";
+        tooltipEl.style.display = "none";
+        document.body.appendChild(tooltipEl);
+      }
+      return tooltipEl;
+    };
+
+    const showTooltip = (li: HTMLElement) => {
+      const tip = li.dataset.tip;
+      if (!tip) return;
+      const el = ensureTooltip();
+      el.textContent = tip;
+      el.style.display = "block";
+      const liRect = li.getBoundingClientRect();
+      const tipRect = el.getBoundingClientRect();
+      let left = liRect.left + liRect.width / 2 - tipRect.width / 2;
+      let top = liRect.top - tipRect.height - 8;
+      if (left < 4) left = 4;
+      if (top < 4) top = liRect.bottom + 8;
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+    };
+
+    const hideTooltip = () => {
+      if (tooltipEl) tooltipEl.style.display = "none";
+    };
+
+    const injectSlashAttrs = (root: ParentNode) => {
+      const items = root.querySelectorAll(".milkdown-slash-menu .menu-group li");
+      items.forEach((li) => {
+        if (li instanceof HTMLElement && !li.dataset.tip) {
+          const span = li.querySelector("span:not(.milkdown-icon)");
+          const label = span?.textContent?.trim() ?? "";
+          if (!label) return;
+          const entry = SLASH_MD_MAP[label];
+          const nameLine = isZh && entry ? entry.zh : label;
+          const mdLine = entry ? `Markdown: ${entry.md}` : "";
+          li.dataset.tip = mdLine ? `${nameLine}\n${mdLine}` : nameLine;
+          li.addEventListener("mouseenter", () => showTooltip(li));
+          li.addEventListener("mouseleave", hideTooltip);
+        }
+      });
+    };
+
+    const observer = new MutationObserver(() => {
+      injectSlashAttrs(document);
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    injectSlashAttrs(document);
+
+    return () => {
+      observer.disconnect();
+      if (tooltipEl) tooltipEl.remove();
+    };
+  }, []);
 
   return (
     <div className="moflow-editor-wrapper" data-editor-theme={editorTheme}>

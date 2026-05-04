@@ -243,65 +243,76 @@
 .moflow-editor-wrapper .milkdown-slash-menu {
   position: fixed !important;
   z-index: 30 !important;
+  width: 240px !important;
   background: var(--moflow-bg) !important;
   color: var(--moflow-text) !important;
   border: 1px solid var(--moflow-border) !important;
   border-radius: 10px !important;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12) !important;
   font-family: var(--moflow-font-body) !important;
+  overflow: visible !important;
 }
 
 .moflow-editor-wrapper .milkdown-slash-menu .tab-group {
-  border-bottom: 1px solid var(--moflow-border) !important;
-  padding: 10px 10px 0 !important;
-}
-
-.moflow-editor-wrapper .milkdown-slash-menu .tab-group ul {
-  padding: 6px 8px !important;
-  gap: 6px !important;
-}
-
-.moflow-editor-wrapper .milkdown-slash-menu .tab-group ul li {
-  padding: 5px 10px !important;
-  font-size: 13px !important;
-  color: var(--moflow-text-secondary) !important;
-  border-radius: 6px !important;
-}
-
-.moflow-editor-wrapper .milkdown-slash-menu .tab-group ul li:hover {
-  background: var(--moflow-bg-secondary) !important;
-}
-
-.moflow-editor-wrapper .milkdown-slash-menu .tab-group ul li.selected {
-  background: var(--moflow-accent) !important;
-  color: #fff !important;
+  display: none !important;
 }
 
 .moflow-editor-wrapper .milkdown-slash-menu .menu-groups {
-  padding: 4px 8px 8px !important;
-  max-height: 360px !important;
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 4px !important;
+  padding: 8px !important;
+  max-height: 200px !important;
+  overflow-y: auto !important;
+  overflow-x: visible !important;
+}
+
+.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group {
+  display: contents !important;
+}
+
+.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group ul {
+  display: contents !important;
 }
 
 .moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group h6 {
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  color: var(--moflow-text-secondary) !important;
-  padding: 10px 10px 6px !important;
-  letter-spacing: 0.5px !important;
+  display: none !important;
+}
+
+.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group + .menu-group::before {
+  display: none !important;
 }
 
 .moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group li {
-  min-width: 200px !important;
-  padding: 8px 10px !important;
-  gap: 12px !important;
-  border-radius: 6px !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: unset !important;
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  border-radius: 8px !important;
   color: var(--moflow-text) !important;
+  cursor: pointer !important;
 }
 
-.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group li svg {
-  color: var(--moflow-text-secondary) !important;
-  fill: var(--moflow-text-secondary) !important;
+.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group li > .milkdown-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group li > .milkdown-icon svg {
+  width: 18px !important;
+  height: 18px !important;
+  color: var(--moflow-text) !important;
+  fill: var(--moflow-text) !important;
+}
+
+.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group li > span:not(.milkdown-icon) {
+  display: none !important;
 }
 
 .moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group li.hover,
@@ -314,19 +325,27 @@
   color: #fff !important;
 }
 
-.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group li.active svg {
+.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group li.active > .milkdown-icon svg {
   color: #fff !important;
   fill: #fff !important;
 }
 
-.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group + .menu-group::before {
-  background: var(--moflow-border) !important;
-  margin: 4px 10px !important;
-}
-
-.moflow-editor-wrapper .milkdown-slash-menu .menu-groups .menu-group li > span {
-  font-size: 14px !important;
+.moflow-slash-tooltip {
+  position: fixed !important;
+  z-index: 9999 !important;
+  padding: 5px 10px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
+  white-space: pre !important;
+  background: var(--moflow-bg) !important;
+  color: var(--moflow-text) !important;
+  border: 1px solid var(--moflow-border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  pointer-events: none !important;
+  line-height: 1.5 !important;
+  text-align: left !important;
+  font-family: var(--moflow-font-body) !important;
 }
 
 /* ── Hide block handle when toolbar is visible ── */
