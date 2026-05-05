@@ -2,6 +2,7 @@ import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, writeFile, exists, remove } from "@tauri-apps/plugin-fs";
 
 export type UpdateChannel = "stable" | "beta";
+export type EditorTheme = "github" | "github-dark" | "nord" | "nord-dark" | "catppuccin-latte" | "catppuccin-mocha";
 
 export interface AIConfig {
   mode: "mock" | "real";
@@ -23,7 +24,7 @@ export const defaultAIConfig: AIConfig = {
 
 export interface AppSettings {
   appTheme: "system" | "light" | "dark";
-  editorTheme: string;
+  editorTheme: EditorTheme;
   autoSave: boolean;
   showStatusBar: boolean;
   sidebarWidth: number;

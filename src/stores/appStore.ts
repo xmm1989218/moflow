@@ -7,10 +7,11 @@ import {
   writeSettings,
   type UpdateChannel,
   type AIConfig,
+  type EditorTheme as EditorThemeType,
 } from "../lib/settings";
 
 export type AppTheme = "system" | "light" | "dark";
-export type EditorTheme = "github" | "github-dark" | "nord" | "nord-dark" | "catppuccin-latte" | "catppuccin-mocha";
+export type EditorTheme = EditorThemeType;
 
 export const EDITOR_THEMES: { id: EditorTheme; label: string }[] = [
   { id: "github", label: "GitHub Light" },
