@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "tauri": "bunx tauri"
+    "tauri": "bunx tauri",
+    "sync-version": "node scripts/sync-version.mjs",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@milkdown/core": "^7.20.0",

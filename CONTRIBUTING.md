@@ -80,13 +80,54 @@ src-tauri/              # Backend (Rust + Tauri)
 
 ## Release
 
+### One-command release
+
+```bash
+bun run release x.y.z
+```
+
+This script (`scripts/release.mjs`) automates the entire release flow:
+
+1. **Validate** — Checks version format, git branch (must be `master`), and clean working directory
+2. **Sync version** — Updates `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`
+3. **Commit bump** — Commits the version change (`chore: bump version to x.y.z`)
+4. **Lint** — Runs `bun run lint`; rolls back the commit on failure
+5. **Build** — Runs `bun run tauri build`; rolls back the commit on failure
+6. **Collect artifacts** — Finds `.exe` and `.sig` in `src-tauri/target/release/bundle/nsis/`
+7. **Generate `latest.json`** — Auto-generates with version, signature, download URL, and timestamp
+8. **Publish** — Creates git tag `vx.y.z`, pushes commit + tag, creates GitHub Release with all artifacts
+
+> **Signing**: For auto-update support, set environment variables before running:
+>
+> ```bash
+> export TAURI_SIGNING_PRIVATE_KEY=<your-private-key>
+> export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=<your-password>
+> ```
+>
+> The public key is already configured in `tauri.conf.json`. See [Tauri Updater Signing](https://v2.tauri.app/plugin/updater/#signing) for details.
+>
+> Without signing keys, the build still succeeds but won't produce signed `.sig` artifacts for auto-update.
+
+### Manual version sync (without release)
+
+If you only need to sync version numbers across config files without building:
+
+```bash
+bun run sync-version x.y.z
+```
+
+### Manual release (without script)
+
+If you prefer to do each step manually:
+
 1. **Sync version** — Update `version` in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`
-2. **Set signing env vars** — `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
-3. **Build** — `bun run tauri build`
-4. **Collect artifacts** from `src-tauri/target/release/bundle/nsis/`:
+2. **Commit** — `git commit -m "chore: bump version to x.y.z"`
+3. **Set signing env vars** — `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+4. **Build** — `bun run tauri build`
+5. **Collect artifacts** from `src-tauri/target/release/bundle/nsis/`:
    - `MoFlow_x.y.z_x64-setup.exe` — NSIS installer
    - `MoFlow_x.y.z_x64-setup.exe.sig` — Update signature
-5. **Create `latest.json`**:
+6. **Create `latest.json`**:
    ```json
    {
      "version": "x.y.z",
@@ -100,4 +141,4 @@ src-tauri/              # Backend (Rust + Tauri)
      }
    }
    ```
-6. **Create GitHub Release** (tag: `vx.y.z`), upload installer + `.sig` + `latest.json`
+7. **Create GitHub Release** (tag: `vx.y.z`), upload installer + `.sig` + `latest.json`
