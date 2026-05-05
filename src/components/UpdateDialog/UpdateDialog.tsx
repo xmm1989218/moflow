@@ -36,7 +36,6 @@ export default function UpdateDialog() {
         <div className="moflow-toast-icon">✓</div>
         <div className="moflow-toast-body">
           <div className="moflow-toast-title">{t("已是最新版本", "You're up to date")}</div>
-          <div className="moflow-toast-desc">v{status.version}</div>
         </div>
       </div>
     );
