@@ -29,7 +29,10 @@ function exit(msg) {
   process.exit(1);
 }
 
+let bumpCommitted = false;
+
 function rollbackCommit() {
+  if (!bumpCommitted) return;
   console.log("\nRolling back version bump commit...");
   try {
     runQuiet("git reset HEAD~1");
@@ -74,7 +77,13 @@ async function main() {
   // 3. Commit version bump
   console.log("Step 3/8: Committing version bump...");
   run(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json`);
-  run(`git commit -m "chore: bump version to ${version}"\n`);
+  const hasStaged = runQuiet("git diff --cached --quiet || echo changed").includes("changed");
+  if (hasStaged) {
+    run(`git commit -m "chore: bump version to ${version}"\n`);
+    bumpCommitted = true;
+  } else {
+    console.log("  No version changes to commit (already up to date).\n");
+  }
 
   // 4. Lint
   console.log("Step 4/8: Running lint...");
