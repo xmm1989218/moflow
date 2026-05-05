@@ -1,5 +1,4 @@
 import { check, type Update } from "@tauri-apps/plugin-updater";
-import type { UpdateChannel } from "./settings";
 
 export interface UpdateInfo {
   version: string;
@@ -15,10 +14,8 @@ export type UpdateStatus =
   | { state: "available"; info: UpdateInfo }
   | { state: "error"; message: string };
 
-export async function checkForUpdate(
-  channel: UpdateChannel = "stable"
-): Promise<Update | null> {
-  return await check({ target: channel });
+export async function checkForUpdate(): Promise<Update | null> {
+  return await check();
 }
 
 export async function downloadUpdate(update: Update): Promise<void> {

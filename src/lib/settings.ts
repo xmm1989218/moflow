@@ -1,7 +1,6 @@
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, writeFile, exists, remove } from "@tauri-apps/plugin-fs";
 
-export type UpdateChannel = "stable" | "beta";
 export type EditorTheme = "github" | "github-dark" | "nord" | "nord-dark" | "catppuccin-latte" | "catppuccin-mocha";
 
 export interface AIConfig {
@@ -28,7 +27,6 @@ export interface AppSettings {
   autoSave: boolean;
   showStatusBar: boolean;
   sidebarWidth: number;
-  updateChannel: UpdateChannel;
   aiConfig: AIConfig;
 }
 
@@ -38,7 +36,6 @@ export const defaultSettings: AppSettings = {
   autoSave: false,
   showStatusBar: true,
   sidebarWidth: 360,
-  updateChannel: "stable",
   aiConfig: { ...defaultAIConfig },
 };
 

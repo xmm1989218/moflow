@@ -34,27 +34,3 @@
 .moflow-about-buttons {
   justify-content: center;
 }
-
-.moflow-about-channel {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
-  justify-content: center;
-}
-
-.moflow-about-channel-label {
-  font-size: 12px;
-  color: var(--ui-text-secondary);
-}
-
-.moflow-about-channel-select {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid var(--ui-border);
-  background: var(--ui-bg);
-  color: var(--ui-text);
-  outline: none;
-  cursor: pointer;
-}

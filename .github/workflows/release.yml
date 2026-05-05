@@ -42,22 +42,4 @@ jobs:
           releaseName: ${{ github.ref_name }}
           releaseBody: "See the assets to download and install."
           releaseDraft: true
-          prerelease: ${{ contains(github.ref_name, '-beta') }}
-
-      - name: Upload beta update manifest
-        if: contains(github.ref_name, '-beta')
-        shell: pwsh
-        run: |
-          $tag = "${{ github.ref_name }}"
-          $releaseId = gh release view $tag --json id -q ".id"
-          $assets = gh release view $tag --json assets -q ".assets[].name"
-          if ($assets -contains "latest.json") {
-            $url = "https://github.com/${{ github.repository }}/releases/download/$tag/latest.json"
-            Invoke-WebRequest $url -OutFile latest-beta.json
-            gh release upload $tag latest-beta.json
-            Write-Output "Uploaded latest-beta.json for beta channel"
-          } else {
-            Write-Output "latest.json not found in release assets, skipping beta manifest upload"
-          }
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false

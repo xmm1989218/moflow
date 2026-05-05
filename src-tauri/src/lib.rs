@@ -233,6 +233,7 @@ pub fn run() {
                         let _ = window.emit("single-instance-file-open", &args[1]);
                     }
                 }))?;
+
                 app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
                 app.handle().plugin(tauri_plugin_process::init())?;
             }

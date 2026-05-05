@@ -5,7 +5,6 @@ import { useChatStore } from "./chatStore";
 import {
   readSettings,
   writeSettings,
-  type UpdateChannel,
   type AIConfig,
   type EditorTheme as EditorThemeType,
 } from "../lib/settings";
@@ -221,7 +220,6 @@ function persistSettings(get: () => AppState) {
     autoSave: s.autoSave,
     showStatusBar: s.showStatusBar,
     sidebarWidth: s.sidebarWidth,
-    updateChannel: s.updateChannel,
     aiConfig: s.aiConfig,
   });
 }
@@ -235,7 +233,6 @@ interface AppState {
   showAISidebar: boolean;
   sidebarWidth: number;
   autoSave: boolean;
-  updateChannel: UpdateChannel;
   aiConfig: AIConfig;
   closeDialog: CloseDialogState;
   getEditorHTML: (() => string) | null;
@@ -254,7 +251,6 @@ interface AppState {
   toggleAISidebar: () => void;
   setSidebarWidth: (w: number) => void;
   toggleAutoSave: () => void;
-  setUpdateChannel: (channel: UpdateChannel) => void;
   setAIConfig: (config: AIConfig) => void;
   newFile: () => string;
   showCloseDialog: (message: string) => void;
@@ -274,7 +270,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   showAISidebar: false,
   sidebarWidth: 360,
   autoSave: false,
-  updateChannel: "stable",
   aiConfig: { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" },
   closeDialog: { visible: false, message: "", mode: "confirm-close" },
   getEditorHTML: null,
@@ -444,11 +439,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     persistSettings(get);
   },
 
-  setUpdateChannel: (channel) => {
-    set({ updateChannel: channel });
-    persistSettings(get);
-  },
-
   setAIConfig: (aiConfig) => {
     set({ aiConfig });
     persistSettings(get);
@@ -483,7 +473,6 @@ export async function initSession() {
     autoSave: settings.autoSave,
     showStatusBar: settings.showStatusBar,
     sidebarWidth: settings.sidebarWidth,
-    updateChannel: settings.updateChannel,
     aiConfig: settings.aiConfig,
   });
 
