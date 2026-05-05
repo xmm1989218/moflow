@@ -2,6 +2,11 @@ import { create } from "zustand";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, writeFile, mkdir, remove, exists } from "@tauri-apps/plugin-fs";
 import { useChatStore } from "./chatStore";
+import {
+  readSettings,
+  writeSettings,
+  type UpdateChannel,
+} from "../lib/settings";
 
 export type AppTheme = "system" | "light" | "dark";
 export type EditorTheme = "github" | "github-dark" | "nord" | "nord-dark" | "catppuccin-latte" | "catppuccin-mocha";
@@ -206,6 +211,18 @@ async function restoreSession(): Promise<{ files: TabState[]; activeFileId: stri
 
 const untitledTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+function persistSettings(get: () => AppState) {
+  const s = get();
+  writeSettings({
+    appTheme: s.appTheme,
+    editorTheme: s.editorTheme,
+    autoSave: s.autoSave,
+    showStatusBar: s.showStatusBar,
+    sidebarWidth: s.sidebarWidth,
+    updateChannel: s.updateChannel,
+  });
+}
+
 interface AppState {
   files: TabState[];
   activeFileId: string;
@@ -215,6 +232,7 @@ interface AppState {
   showAISidebar: boolean;
   sidebarWidth: number;
   autoSave: boolean;
+  updateChannel: UpdateChannel;
   closeDialog: CloseDialogState;
   getEditorHTML: (() => string) | null;
   sessionInitialized: boolean;
@@ -232,6 +250,7 @@ interface AppState {
   toggleAISidebar: () => void;
   setSidebarWidth: (w: number) => void;
   toggleAutoSave: () => void;
+  setUpdateChannel: (channel: UpdateChannel) => void;
   newFile: () => string;
   showCloseDialog: (message: string) => void;
   showAlertDialog: (message: string) => void;
@@ -249,7 +268,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   showStatusBar: true,
   showAISidebar: false,
   sidebarWidth: 360,
-  autoSave: localStorage.getItem("moflow-autoSave") === "true",
+  autoSave: false,
+  updateChannel: "stable",
   closeDialog: { visible: false, message: "", mode: "confirm-close" },
   getEditorHTML: null,
   sessionInitialized: false,
@@ -390,23 +410,38 @@ export const useAppStore = create<AppState>((set, get) => ({
     return get().files.find((f) => f.filePath === filePath);
   },
 
-  setAppTheme: (appTheme) => set({ appTheme }),
-  setEditorTheme: (editorTheme) => set({ editorTheme }),
+  setAppTheme: (appTheme) => {
+    set({ appTheme });
+    persistSettings(get);
+  },
 
-  toggleStatusBar: () =>
-    set((state) => ({ showStatusBar: !state.showStatusBar })),
+  setEditorTheme: (editorTheme) => {
+    set({ editorTheme });
+    persistSettings(get);
+  },
+
+  toggleStatusBar: () => {
+    set((state) => ({ showStatusBar: !state.showStatusBar }));
+    persistSettings(get);
+  },
 
   toggleAISidebar: () =>
     set((state) => ({ showAISidebar: !state.showAISidebar })),
 
-  setSidebarWidth: (w) => set({ sidebarWidth: w }),
+  setSidebarWidth: (w) => {
+    set({ sidebarWidth: w });
+    persistSettings(get);
+  },
 
-  toggleAutoSave: () =>
-    set((state) => {
-      const next = !state.autoSave;
-      localStorage.setItem("moflow-autoSave", String(next));
-      return { autoSave: next };
-    }),
+  toggleAutoSave: () => {
+    set((state) => ({ autoSave: !state.autoSave }));
+    persistSettings(get);
+  },
+
+  setUpdateChannel: (channel) => {
+    set({ updateChannel: channel });
+    persistSettings(get);
+  },
 
   newFile: () => {
     return get().openTab();
@@ -430,6 +465,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 }));
 
 export async function initSession() {
+  const settings = await readSettings();
+  useAppStore.setState({
+    appTheme: settings.appTheme,
+    editorTheme: settings.editorTheme,
+    autoSave: settings.autoSave,
+    showStatusBar: settings.showStatusBar,
+    sidebarWidth: settings.sidebarWidth,
+    updateChannel: settings.updateChannel,
+  });
+
   const restored = await restoreSession();
   if (restored) {
     useAppStore.setState({

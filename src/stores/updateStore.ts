@@ -7,6 +7,7 @@ import {
   type UpdateInfo,
 } from "../lib/updater";
 import type { Update } from "@tauri-apps/plugin-updater";
+import { useAppStore } from "./appStore";
 
 interface UpdateState {
   status: UpdateStatus;
@@ -38,7 +39,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
     }
 
     try {
-      const update = await checkForUpdate();
+      const update = await checkForUpdate(useAppStore.getState().updateChannel);
       if (!update) {
         if (manual) {
           set({ status: { state: "up-to-date", version: "" } });
