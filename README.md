@@ -25,7 +25,8 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 ## Features
 
 - **Distraction-free editing** — Frameless window with custom title bar, clean UI
-- **Rich Markdown** — GFM (tables, strikethrough, task lists), math (KaTeX), code highlighting (Prism)
+- **Rich Markdown** — GFM (tables, strikethrough, task lists), math (KaTeX), code highlighting (Prism), highlight (`==text==`)
+  See [Markdown syntax support](./tests/markdown-support.md) for full details
 - **Multi-tab** — Open and switch between multiple files in tabs with auto-save
 - **Dual theme** — Light and dark themes with smooth switching
 - **Export** — HTML and PDF export
