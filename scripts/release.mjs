@@ -1,5 +1,6 @@
-import { readFileSync, writeFileSync, readdirSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
 import { resolve, dirname, join } from "path";
+import { homedir } from "os";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 
@@ -87,11 +88,27 @@ async function main() {
 
   // 5. Build
   console.log("Step 5/8: Building Tauri app...");
-  const hasSigningKey = !!process.env.TAURI_SIGNING_PRIVATE_KEY;
-  if (!hasSigningKey) {
-    console.log("  WARNING: TAURI_SIGNING_PRIVATE_KEY not set. Build will not produce signed update artifacts.");
-    console.log("  For auto-update support, set TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD.\n");
+
+  if (!process.env.TAURI_SIGNING_PRIVATE_KEY) {
+    const conf = JSON.parse(readFileSync(files.tauriConf, "utf-8"));
+    const keyName = conf.productName.toLowerCase();
+    const keyPath = join(homedir(), ".tauri", `${keyName}.key`);
+
+    try {
+      process.env.TAURI_SIGNING_PRIVATE_KEY = readFileSync(keyPath, "utf-8").trim();
+      console.log(`  Signing key loaded from ${keyPath}\n`);
+    } catch {
+      exit(
+        `Signing key not found at ${keyPath}\n\n` +
+        `To generate a signing key, run:\n` +
+        `  tauri signer generate -w ${keyPath}\n\n` +
+        `This will create:\n` +
+        `  ${keyPath}       (private key, keep secret)\n` +
+        `  ${keyPath}.pub   (public key, add to tauri.conf.json > plugins.updater.pubkey)`
+      );
+    }
   }
+
   try {
     run("bun run tauri build");
     console.log("  Build succeeded.\n");

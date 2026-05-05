@@ -97,16 +97,9 @@ This script (`scripts/release.mjs`) automates the entire release flow:
 7. **Generate `latest.json`** — Auto-generates with version, signature, download URL, and timestamp
 8. **Publish** — Creates git tag `vx.y.z`, pushes commit + tag, creates GitHub Release with all artifacts
 
-> **Signing**: For auto-update support, set environment variables before running:
->
-> ```bash
-> export TAURI_SIGNING_PRIVATE_KEY=<your-private-key>
-> export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=<your-password>
-> ```
+> **Signing**: The release script automatically reads the signing private key from `~/.tauri/moflow.key` (based on `productName` in `tauri.conf.json`). If the key file doesn't exist, the script will error with instructions on how to generate one. Alternatively, you can set the `TAURI_SIGNING_PRIVATE_KEY` environment variable explicitly. If your key was generated with a password, also set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
 >
 > The public key is already configured in `tauri.conf.json`. See [Tauri Updater Signing](https://v2.tauri.app/plugin/updater/#signing) for details.
->
-> Without signing keys, the build still succeeds but won't produce signed `.sig` artifacts for auto-update.
 
 ### Manual version sync (without release)
 
