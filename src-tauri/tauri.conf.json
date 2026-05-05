@@ -48,7 +48,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IHJzaWduIGVuY3J5cHRlZCBzZWNyZXQga2V5ClJXUlRZMEl5Ynd6Y1ROb0xJZFk4aUZqN1U4cTFqSDljK3ZxMWg0dDBkYk1SaUNJMVVLRUFBQkFBQUFBQUFBQUFBQUlBQUFBQW1pRzRYb3ROOW9FK1hmd2VBc2dmeDBEYm9RV0szcmhSTWhXcVFibWZLWmZjcmEzTDJtRzA3WlZFZWlBQk1USDBocjJxd3hHSnRRMU9JenpEY0g4eE5Cemw5aGdsa1pmMW9sYkxwWU5CbVZqcWFvZGcvLzBmV2ZaUFRnc0hXNzhqUlRxWlRrNlR4eTQ9Cg==",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJFQjVBMThENjUwMDBCNgpSV1MyQUZEV0dGcnJBdGlUQXRxR1BOOE9vMGhzNFk1UkNrYTBEZGVqSXFLZnI5YVAxQnJGSDYxWgo=",
       "endpoints": [
         "https://github.com/xmm1989218/moflow/releases/latest/download/latest.json"
       ],

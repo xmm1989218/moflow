@@ -68,8 +68,10 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       };
       set({ status: { state: "available", info }, update });
     } catch (e) {
+      console.error("[updater] Update check failed:", e);
       if (manual) {
-        set({ status: { state: "error", message: String(e) } });
+        const msg = e instanceof Error ? e.message : String(e);
+        set({ status: { state: "error", message: msg } });
         autoDismissTimer = setTimeout(() => {
           if (get().status.state === "error") {
             set({ status: { state: "idle" } });
@@ -87,7 +89,8 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
     if (!update) return;
     try {
       await installUpdate(update);
-    } catch {
+    } catch (e) {
+      console.error("[updater] Install failed:", e);
       set({ status: { state: "idle" }, update: null, downloadedVersion: null });
     }
   },

@@ -112,22 +112,37 @@ async function main() {
   // 6. Build
   console.log("Step 6/9: Building Tauri app...");
 
-  if (!process.env.TAURI_SIGNING_PRIVATE_KEY) {
-    const conf = JSON.parse(readFileSync(files.tauriConf, "utf-8"));
-    const keyName = conf.productName.toLowerCase();
-    const keyPath = join(homedir(), ".tauri", `${keyName}.key`);
+  const conf = JSON.parse(readFileSync(files.tauriConf, "utf-8"));
+  const keyName = conf.productName.toLowerCase();
+  const keyPath = join(homedir(), ".tauri", `${keyName}.key`);
 
+  if (!process.env.TAURI_SIGNING_PRIVATE_KEY) {
     try {
       process.env.TAURI_SIGNING_PRIVATE_KEY = readFileSync(keyPath, "utf-8").trim();
-      console.log("  Signing key loaded successfully\n");
+      console.log("  Signing key loaded successfully");
     } catch {
       exit(
         `Signing key not found at ${keyPath}\n\n` +
         `To generate a signing key, run:\n` +
-        `  tauri signer generate -w ${keyPath}\n\n` +
+        `  tauri signer generate -w ${keyPath} -p <password> --ci\n\n` +
         `This will create:\n` +
         `  ${keyPath}       (private key, keep secret)\n` +
         `  ${keyPath}.pub   (public key, add to tauri.conf.json > plugins.updater.pubkey)`
+      );
+    }
+  }
+
+  const keyPassPath = join(homedir(), ".tauri", `${keyName}.key.password`);
+  if (!process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
+    try {
+      process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD = readFileSync(keyPassPath, "utf-8").trim();
+      console.log("  Signing key password loaded successfully\n");
+    } catch {
+      exit(
+        `Signing key password not found at ${keyPassPath}\n\n` +
+        `Create it with:\n` +
+        `  echo YOUR_PASSWORD > ${keyPassPath}\n\n` +
+        `Or set TAURI_SIGNING_PRIVATE_KEY_PASSWORD environment variable.`
       );
     }
   }
@@ -143,26 +158,33 @@ async function main() {
   // 7. Collect artifacts
   console.log("Step 7/9: Collecting build artifacts...");
   const productName = JSON.parse(readFileSync(files.tauriConf, "utf-8")).productName;
-  let exeFile = `${productName}_${version}_x64-setup.exe`;
-  let sigFile = `${productName}_${version}_x64-setup.exe.sig`;
-  if (!existsSync(join(nsisDir, exeFile))) {
-    exit(`Installer not found: ${join(nsisDir, exeFile)}`);
+  const nsisFiles = readdirSync(nsisDir);
+  const exeFile = nsisFiles.find((f) => f.endsWith("_x64-setup.exe"));
+  if (!exeFile) {
+    exit(`No NSIS installer found in ${nsisDir}`);
   }
+  const sigFile = exeFile + ".sig";
   console.log(`  Installer: ${exeFile}`);
-  if (existsSync(join(nsisDir, sigFile))) {
-    console.log(`  Signature: ${sigFile}`);
-  } else {
-    sigFile = null;
-    console.log("  Signature: not found (build without signing key)");
+  if (!existsSync(join(nsisDir, sigFile))) {
+    exit(
+      `Signature file not found: ${join(nsisDir, sigFile)}\n` +
+      `Update artifacts must be signed. Check that TAURI_SIGNING_PRIVATE_KEY is set correctly.`
+    );
+  }
+  console.log(`  Signature: ${sigFile}`);
+
+  const builtVersion = exeFile.match(/_(\d+\.\d+\.\d+)_/)?.[1];
+  if (builtVersion && builtVersion !== version) {
+    exit(
+      `Version mismatch: exe has ${builtVersion}, expected ${version}.\n` +
+      `Make sure sync-version ran correctly and rebuild.`
+    );
   }
   console.log();
 
   // 8. Generate latest.json
   console.log("Step 8/9: Generating latest.json...");
-  let signature = "";
-  if (sigFile) {
-    signature = readFileSync(join(nsisDir, sigFile), "utf-8").trim();
-  }
+  let signature = readFileSync(join(nsisDir, sigFile), "utf-8").trim();
 
   const latestJson = {
     version: version,
@@ -188,9 +210,7 @@ async function main() {
   run("git push");
   run(`git push origin ${tag}`);
 
-  const uploadFiles = [join(nsisDir, exeFile)];
-  if (sigFile) uploadFiles.push(join(nsisDir, sigFile));
-  uploadFiles.push(latestJsonPath);
+  const uploadFiles = [join(nsisDir, exeFile), join(nsisDir, sigFile), latestJsonPath];
 
   const ghCmd = `gh release create ${tag} ${uploadFiles.map((f) => `"${f}"`).join(" ")} --title "${tag}" --generate-notes`;
   try {
