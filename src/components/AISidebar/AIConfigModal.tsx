@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAIConfigStore } from "../../stores/aiConfigStore";
 import { getLLMClient } from "../../lib/llmClient";
 import { getProviders, getProviderInfo, getProviderModels } from "../../lib/modelInfo";
-import type { AIConfig } from "../../lib/aiConfig";
+import type { AIConfig } from "../../lib/settings";
 import "./AISidebar.css";
 
 const isZh = navigator.language.startsWith("zh");

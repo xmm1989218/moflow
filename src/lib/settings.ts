@@ -1,7 +1,25 @@
 import { appDataDir, join } from "@tauri-apps/api/path";
-import { readFile, writeFile, exists } from "@tauri-apps/plugin-fs";
+import { readFile, writeFile, exists, remove } from "@tauri-apps/plugin-fs";
 
 export type UpdateChannel = "stable" | "beta";
+
+export interface AIConfig {
+  mode: "mock" | "real";
+  providerId: string;
+  provider: "openai-compatible" | "claude-compatible";
+  apiEndpoint: string;
+  apiToken: string;
+  model: string;
+}
+
+export const defaultAIConfig: AIConfig = {
+  mode: "mock",
+  providerId: "custom",
+  provider: "openai-compatible",
+  apiEndpoint: "",
+  apiToken: "",
+  model: "",
+};
 
 export interface AppSettings {
   appTheme: "system" | "light" | "dark";
@@ -10,6 +28,7 @@ export interface AppSettings {
   showStatusBar: boolean;
   sidebarWidth: number;
   updateChannel: UpdateChannel;
+  aiConfig: AIConfig;
 }
 
 export const defaultSettings: AppSettings = {
@@ -19,6 +38,7 @@ export const defaultSettings: AppSettings = {
   showStatusBar: true,
   sidebarWidth: 360,
   updateChannel: "stable",
+  aiConfig: { ...defaultAIConfig },
 };
 
 export async function readSettings(): Promise<AppSettings> {
@@ -26,13 +46,44 @@ export async function readSettings(): Promise<AppSettings> {
     const dir = await appDataDir();
     const path = await join(dir, "settings.json");
     if (!(await exists(path))) {
+      const migrated = await migrateFromAIConfig();
+      if (migrated) return migrated;
       return { ...defaultSettings };
     }
     const data = await readFile(path);
     const parsed = JSON.parse(new TextDecoder().decode(data));
-    return { ...defaultSettings, ...parsed };
+    const settings = {
+      ...defaultSettings,
+      ...parsed,
+      aiConfig: { ...defaultAIConfig, ...(parsed.aiConfig || {}) },
+    };
+    return settings;
   } catch {
     return { ...defaultSettings };
+  }
+}
+
+async function migrateFromAIConfig(): Promise<AppSettings | null> {
+  try {
+    const dir = await appDataDir();
+    const oldPath = await join(dir, "ai-config.json");
+    if (!(await exists(oldPath))) return null;
+
+    const data = await readFile(oldPath);
+    const parsed = JSON.parse(new TextDecoder().decode(data));
+    const aiConfig = { ...defaultAIConfig, ...parsed };
+
+    const settings: AppSettings = { ...defaultSettings, aiConfig };
+    await writeSettings(settings);
+
+    try {
+      await remove(oldPath);
+    } catch { /* ignore */ }
+
+    console.log("[settings] Migrated ai-config.json to settings.json");
+    return settings;
+  } catch {
+    return null;
   }
 }
 

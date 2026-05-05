@@ -1,28 +1,29 @@
 import { create } from "zustand";
-import { defaultAIConfig, readAIConfig, writeAIConfig, type AIConfig } from "../lib/aiConfig";
+import { defaultAIConfig, type AIConfig } from "../lib/settings";
+import { useAppStore } from "./appStore";
 
 interface AIConfigState {
   config: AIConfig;
   loaded: boolean;
-  loadConfig: () => Promise<void>;
-  saveConfig: (config: AIConfig) => Promise<void>;
+  loadConfig: () => void;
+  saveConfig: (config: AIConfig) => void;
 }
 
 export const useAIConfigStore = create<AIConfigState>((set) => ({
   config: { ...defaultAIConfig },
   loaded: false,
 
-  loadConfig: async () => {
-    const saved = await readAIConfig();
-    if (saved) {
-      set({ config: saved, loaded: true });
+  loadConfig: () => {
+    const aiConfig = useAppStore.getState().aiConfig;
+    if (aiConfig) {
+      set({ config: aiConfig, loaded: true });
     } else {
       set({ loaded: true });
     }
   },
 
-  saveConfig: async (config) => {
-    await writeAIConfig(config);
+  saveConfig: (config) => {
     set({ config });
+    useAppStore.getState().setAIConfig(config);
   },
 }));

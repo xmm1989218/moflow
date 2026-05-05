@@ -1,4 +1,4 @@
-import type { AIConfig } from "./aiConfig";
+import type { AIConfig } from "./settings";
 import { getProviderInfo } from "./modelInfo";
 import { estimateTokens } from "./contextBuilder";
 

@@ -6,6 +6,7 @@ import {
   readSettings,
   writeSettings,
   type UpdateChannel,
+  type AIConfig,
 } from "../lib/settings";
 
 export type AppTheme = "system" | "light" | "dark";
@@ -220,6 +221,7 @@ function persistSettings(get: () => AppState) {
     showStatusBar: s.showStatusBar,
     sidebarWidth: s.sidebarWidth,
     updateChannel: s.updateChannel,
+    aiConfig: s.aiConfig,
   });
 }
 
@@ -233,6 +235,7 @@ interface AppState {
   sidebarWidth: number;
   autoSave: boolean;
   updateChannel: UpdateChannel;
+  aiConfig: AIConfig;
   closeDialog: CloseDialogState;
   getEditorHTML: (() => string) | null;
   sessionInitialized: boolean;
@@ -251,6 +254,7 @@ interface AppState {
   setSidebarWidth: (w: number) => void;
   toggleAutoSave: () => void;
   setUpdateChannel: (channel: UpdateChannel) => void;
+  setAIConfig: (config: AIConfig) => void;
   newFile: () => string;
   showCloseDialog: (message: string) => void;
   showAlertDialog: (message: string) => void;
@@ -270,6 +274,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sidebarWidth: 360,
   autoSave: false,
   updateChannel: "stable",
+  aiConfig: { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" },
   closeDialog: { visible: false, message: "", mode: "confirm-close" },
   getEditorHTML: null,
   sessionInitialized: false,
@@ -443,6 +448,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     persistSettings(get);
   },
 
+  setAIConfig: (aiConfig) => {
+    set({ aiConfig });
+    persistSettings(get);
+  },
+
   newFile: () => {
     return get().openTab();
   },
@@ -473,6 +483,7 @@ export async function initSession() {
     showStatusBar: settings.showStatusBar,
     sidebarWidth: settings.sidebarWidth,
     updateChannel: settings.updateChannel,
+    aiConfig: settings.aiConfig,
   });
 
   const restored = await restoreSession();
