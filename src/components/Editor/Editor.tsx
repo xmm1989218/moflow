@@ -15,7 +15,18 @@ import "@milkdown/crepe/theme/nord-dark.css";
 import "./Editor.css";
 import SelectionAIPanel from "./SelectionAIPanel";
 import { useEffect, useRef, useCallback } from "react";
-import { offset, shift } from "@floating-ui/dom";
+
+const HANDLE_WIDTH = 36;
+const HANDLE_MIN_GAP = 2;
+const HANDLE_IDEAL_OFFSET = 16;
+
+function getBlockHandleMetrics() {
+  const milkdown = document.querySelector(".milkdown");
+  const milkdownLeft = milkdown ? milkdown.getBoundingClientRect().left : 0;
+  const maxOffset = milkdownLeft - HANDLE_MIN_GAP - HANDLE_WIDTH;
+  const offset = Math.max(0, Math.min(HANDLE_IDEAL_OFFSET, maxOffset));
+  return { milkdownLeft, offset };
+}
 
 const isZh = navigator.language.startsWith("zh");
 
@@ -107,18 +118,32 @@ function MilkdownWrapper() {
         [Crepe.Feature.ListItem]: true,
         [Crepe.Feature.Table]: true,
         [Crepe.Feature.CodeMirror]: true,
+        [Crepe.Feature.BlockEdit]: true,
+      },
+      featureConfigs: {
         [Crepe.Feature.BlockEdit]: {
           blockHandle: {
-            floatingUIOptions: {
-              middleware: [
-                offset(16),
-                shift({ padding: 4, crossAxis: true }),
-              ],
+            getPosition: (deriveContext) => {
+              const domRect = deriveContext.active.el.getBoundingClientRect();
+              const { milkdownLeft, offset } = getBlockHandleMetrics();
+              const x = Math.max(milkdownLeft, HANDLE_MIN_GAP + HANDLE_WIDTH + offset);
+              return {
+                x,
+                y: domRect.y,
+                width: 0,
+                height: domRect.height,
+                top: domRect.top,
+                bottom: domRect.bottom,
+                left: x,
+                right: x,
+              };
+            },
+            getOffset: () => {
+              const { offset } = getBlockHandleMetrics();
+              return offset;
             },
           },
         },
-      },
-      featureConfigs: {
         [Crepe.Feature.Placeholder]: {
           text: "Start writing...",
           mode: "doc",
