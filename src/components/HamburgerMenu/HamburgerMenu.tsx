@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppStore, type EditorTheme, EDITOR_THEMES } from "../../stores/appStore";
+import { useUpdateStore } from "../../stores/updateStore";
 import { openFile, saveFile, saveFileAs, exportHtml, exportPdf } from "../../lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
@@ -101,7 +102,9 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
         invoke("toggle_devtools");
         break;
       case "about":
-        alert("MoFlow v0.1.0\n© 2026 MoFlow");
+        useUpdateStore.getState().setAboutVisible(true);
+        break;
+      default:
         break;
     }
     onClose();

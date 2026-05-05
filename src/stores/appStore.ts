@@ -129,6 +129,9 @@ async function persistSession(files: TabState[], activeFileId: string) {
     };
 
     const dir = await appDataDir();
+    if (!(await exists(dir))) {
+      await mkdir(dir, { recursive: true });
+    }
     const json = JSON.stringify(session);
     await writeFile(await join(dir, "session.json"), new TextEncoder().encode(json));
   } catch (e) {

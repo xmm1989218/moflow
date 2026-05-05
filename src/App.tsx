@@ -3,9 +3,12 @@ import Editor from "./components/Editor/Editor";
 import StatusBar from "./components/StatusBar/StatusBar";
 import TitleBar from "./components/TitleBar/TitleBar";
 import ConfirmCloseDialog from "./components/ConfirmCloseDialog/ConfirmCloseDialog";
+import UpdateDialog from "./components/UpdateDialog/UpdateDialog";
+import AboutDialog from "./components/AboutDialog/AboutDialog";
 
 const AISidebar = lazy(() => import("./components/AISidebar/AISidebar"));
 import { useAppStore, resolveAppTheme, initSession } from "./stores/appStore";
+import { useUpdateStore } from "./stores/updateStore";
 import { useAIConfigStore } from "./stores/aiConfigStore";
 import { useChatStore } from "./stores/chatStore";
 import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab } from "./lib/fileOps";
@@ -27,6 +30,7 @@ function App() {
         await invoke("allow_paths", { paths });
       }
       await Promise.all(tabs.map((tab) => useChatStore.getState().loadChatHistory(tab.id)));
+      useUpdateStore.getState().checkUpdate();
       requestAnimationFrame(() => {
         getCurrentWindow().show();
       });
@@ -210,6 +214,8 @@ function App() {
       </div>
       <StatusBar />
       <ConfirmCloseDialog />
+      <UpdateDialog />
+      <AboutDialog />
     </div>
   );
 }

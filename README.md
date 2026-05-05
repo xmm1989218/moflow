@@ -1,8 +1,26 @@
-# MoFlow
+<p align="center">
+  <img src="docs/logo.svg" alt="MoFlow" width="128">
+</p>
 
-A minimalist desktop Markdown editor with a focus on writing experience.
+<h1 align="center">MoFlow</h1>
 
-Built with Tauri v2, React, TypeScript, and Milkdown.
+<p align="center">A minimalist desktop Markdown editor with a focus on writing experience.</p>
+
+<p align="center">
+  <a href="./README.zh-CN.md">中文</a> | English
+</p>
+
+[![MoFlow Screenshot](docs/cover.png)](https://github.com/xmm1989218/moflow)
+
+## Installation
+
+Download the latest installer from the [Releases page](https://github.com/xmm1989218/moflow/releases/latest).
+
+| Platform | Download |
+|---|---|
+| Windows | `MoFlow_x.y.z_x64-setup.exe` |
+
+> After installation, MoFlow will automatically check for updates on startup and notify you when a new version is available.
 
 ## Features
 
@@ -12,73 +30,12 @@ Built with Tauri v2, React, TypeScript, and Milkdown.
 - **Dual theme** — Light and dark themes with smooth switching
 - **Export** — HTML and PDF export
 - **AI Sidebar** — Integrated AI chat with context management, auto-compact, and usage tracking
+- **Auto Update** — Silent check on startup, background download, non-intrusive notification with one-click install & restart
 - **Status bar** — Word count, cursor position, file info at a glance
 
-## Tech Stack
+## Contributing
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, TypeScript 6, Vite 8, Tailwind CSS 4 |
-| Editor | Milkdown 7 (GFM, math, prism, listener) |
-| State | Zustand |
-| Backend | Tauri 2 (Rust), WebView2 (Windows) |
-
-## Getting Started
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) >= 18
-- [Bun](https://bun.sh/)
-- [Rust](https://www.rust-lang.org/tools/install) (with `cargo`)
-- [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/)
-
-### Install
-
-```bash
-bun install
-```
-
-### Development
-
-```bash
-bun run tauri dev
-```
-
-### Build
-
-```bash
-bun run tauri build
-```
-
-### Lint
-
-```bash
-bun run lint
-```
-
-## Project Structure
-
-```
-src/                    # Frontend (React + TypeScript)
-  components/           # UI components
-    Editor/             # Milkdown editor wrapper
-    TitleBar/           # Custom frameless title bar
-    TabBar/             # Tab management
-    Toolbar/            # Formatting toolbar
-    StatusBar/          # Bottom status bar
-    AISidebar/          # AI chat sidebar
-    HamburgerMenu/      # Hamburger menu
-    ConfirmCloseDialog/ # Unsaved changes dialog
-  stores/               # Zustand state stores (app, chat, AI config, AI selection)
-  lib/                  # Utilities (chat persistence, LLM client, context builder, export, theme)
-  App.tsx               # Root component
-  main.tsx              # Entry point
-
-src-tauri/              # Backend (Rust + Tauri)
-  src/lib.rs            # Commands and window setup
-  tauri.conf.json       # Tauri configuration
-  icons/                # App icons
-```
+If you'd like to contribute to MoFlow, please read the [Contributing Guide](./CONTRIBUTING.md) for setup instructions, project structure, and release process.
 
 ## License
 
