@@ -772,3 +772,63 @@
 .moflow-editor-wrapper .milkdown-code-block .cm-activeLineGutter {
   background: var(--moflow-bg-secondary) !important;
 }
+
+/* ── HTML block (Typora-style dual mode) ── */
+
+.moflow-editor-wrapper .milkdown .ProseMirror p:has(> .milkdown-html-block) {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 0 !important;
+}
+
+.moflow-editor-wrapper .milkdown-html-block {
+  margin: 8px 0;
+  border-radius: 4px;
+  position: relative;
+  line-height: normal;
+}
+
+.moflow-editor-wrapper .milkdown-html-block .html-rendered {
+  font-size: var(--moflow-body-size);
+  line-height: var(--moflow-line-height);
+  color: var(--moflow-text);
+}
+
+.moflow-editor-wrapper .milkdown-html-block .html-rendered img {
+  max-width: 100%;
+}
+
+.moflow-editor-wrapper .milkdown-html-block.ProseMirror-selectednode,
+.moflow-editor-wrapper .ProseMirror-selectednode > .milkdown-html-block {
+  outline: 2px solid var(--moflow-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.moflow-editor-wrapper .milkdown-html-block .html-source {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  font-family: var(--moflow-font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--moflow-text);
+  background: var(--moflow-bg-secondary);
+  border: 1px solid var(--moflow-border);
+  border-radius: 4px;
+  resize: vertical;
+  outline: none;
+}
+
+.moflow-editor-wrapper .milkdown-html-block .html-source:focus {
+  border-color: var(--moflow-accent);
+}
+
+.moflow-editor-wrapper .milkdown-html-inline {
+  font-family: var(--moflow-font-mono);
+  font-size: 0.85em;
+  color: var(--moflow-text-secondary);
+  background: var(--moflow-code-bg);
+  padding: 0.15em 0.3em;
+  border-radius: 3px;
+}

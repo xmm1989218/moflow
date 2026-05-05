@@ -6,6 +6,7 @@ import type { Ctx } from "@milkdown/kit/ctx";
 import { useAppStore } from "../../stores/appStore";
 import { useAISelectionStore } from "../../stores/aiSelectionStore";
 import { highlightPlugin, highlightSchema, toggleHighlightCommand } from "../../lib/highlightMark";
+import { createHtmlNodeView } from "../../lib/htmlBlock";
 import { commandsCtx } from "@milkdown/kit/core";
 import { isMarkSelectedCommand } from "@milkdown/kit/preset/commonmark";
 import "@milkdown/crepe/theme/common/style.css";
@@ -192,6 +193,17 @@ function MilkdownWrapper() {
     crepe.editor.use(highlightPlugin);
 
     crepe.on((listener) => {
+      listener.mounted((ctx) => {
+        const view = ctx.get(editorViewCtx);
+        const existing = view.props.nodeViews ?? {};
+        view.setProps({
+          nodeViews: {
+            ...existing,
+            html: createHtmlNodeView(),
+          },
+        });
+      });
+
       listener.markdownUpdated((_ctx, markdown) => {
         if (editorReadyRef.current) {
           syncedContentRef.current = markdown;
