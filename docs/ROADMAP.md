@@ -1,40 +1,27 @@
 # MoFlow Roadmap
 
-## Phase 1 — Current (v0.x)
+## v0.3.x — Bug 修复 & 质量提升（patch 迭代）
 
-Core editor and AI chat functionality.
+### Bug 修复
 
-### Editor
+- [ ] SelectionAI "Ask" cost 计算修复（当前传 `cost: 0`，应调用 `calculateCost()`）
+- [ ] OpenAI fallback usage 估算修复（`fullResponse` 为空串导致 `completionTokens=0`）
+- [ ] Auto-compact 丢消息修复（触发 compact 时用户输入的消息应暂存，完成后重新发送）
+- [ ] Untitled draft 竞态条件修复（closeTab 后 timer 仍可能触发写文件）
+- [ ] 添加 React ErrorBoundary（防止编辑器崩溃导致整个 UI 白屏）
 
-- [x] Frameless window with custom title bar
-- [x] Multi-tab with auto-save and stable tabId (`session.json`)
-- [x] Rich Markdown: GFM, KaTeX math, Prism code highlighting
-- [x] Light/dark theme with dynamic CSS generation
-- [x] HTML and PDF export
-- [x] Status bar (word count, cursor position, file info)
-- [x] Toolbar and block handle
-- [x] Dynamic FS scope (`allow_paths` Rust command)
+### 质量提升
 
-### AI Chat
-
-- [x] AI sidebar with multi-provider support (OpenAI, Claude, Mock)
-- [x] Chat history persisted as JSONL per tab (`{appDataDir}/chat/{tabId}.jsonl`)
-- [x] Context management: `contextMap` separate from `messagesMap`
-- [x] `/compact` command: summarize conversation history, reset context
-- [x] Auto-compact: triggers when `contextTokens > maxContext * 0.8`
-- [x] Dynamic `buildSystemPrompt` using model's actual `maxContext` (65% doc, 35% conversation)
-- [x] Usage badge: context tokens, usage %, cumulative total tokens, cumulative cost
-- [x] Damaged JSONL repair: best-effort read, rename-based file replacement
-- [x] Selection AI panel (translate, polish, explain, custom prompt)
-- [x] Slash command menu (`/compact`, `/new`)
-
-### i18n
-
-- [x] Simple `t(zh, en)` per-file based on `navigator.language`
+- [ ] i18n 统一（ConfirmCloseDialog、App.tsx、TabBar 中硬编码中文改用 `t()`）
+- [ ] 自动化测试框架搭建（Vitest + React Testing Library）
+- [ ] 核心模块测试覆盖（stores、lib）
+- [ ] appStore 拆分（tabStore、themeStore、sessionStore）
+- [ ] 样式统一（CSS 文件迁移到 Tailwind，主题变量整理）
+- [ ] Toolbar 空组件清理
 
 ---
 
-## Phase 2 — Tool-Calling & Document Exploration
+## v0.4.0 — Phase 2: Tool-Calling
 
 Enable the AI to actively explore the document instead of relying on truncated context.
 
@@ -71,35 +58,90 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## Phase 3 — Enhanced Features (Planned)
+## v0.5.0 — 增强功能 I
 
-Longer-term improvements and polish.
+### 查找替换
 
-### Chat Enhancements
+- [ ] `Ctrl+F` / `Ctrl+H` 弹出搜索框
+- [ ] 支持正则匹配、大小写敏感
+- [ ] 全部替换
 
-- [ ] Chat history search
-- [ ] Multi-file context (reference other open documents)
-- [ ] Conversation export (Markdown, JSON)
-- [ ] Custom system prompt templates
+### SelectionAI 追问功能
 
-### Editor Enhancements
+- [ ] 翻译/解释结果面板底部增加输入框，支持连续追问
+- [ ] 追问上下文同步到 AI 聊天侧栏
 
-- [ ] Image upload and management
-- [ ] Outline / table of contents sidebar
-- [ ] Find and replace
-- [ ] Vim keybindings mode
-- [ ] Mermaid diagram rendering
+### Selector Toolbar 文字美化
 
-### Platform
+- [ ] 浮动工具栏增加「美化/润色」按钮，一键润色选中文字
+- [ ] 支持补充指令输入（如「更正式」「更简洁」），结果替换选中文字
 
-- [ ] macOS support (WebKit2GTK → WebKit, icon adaptation)
-- [ ] Linux support
-- [ ] Auto-update mechanism
-- [ ] Plugin system architecture
+### AI 回复插入文档
 
-### i18n Proper
+- [ ] 聊天消息增加「插入」按钮
+- [ ] 将回复内容插入编辑器当前光标处
 
-- [ ] Migrate from `t(zh, en)` to proper i18n library (e.g. react-i18next)
-- [ ] Extract all strings to locale files
-- [ ] Runtime language switching
-- [ ] Support more languages (Japanese, Korean, etc.)
+---
+
+## v0.6.0 — 增强功能 II
+
+### Mermaid 图表渲染
+
+- [ ] Milkdown 插件支持 Mermaid 语法
+- [ ] 实时预览流程图、时序图等
+
+### 大纲侧栏
+
+- [ ] 基于标题层级的 TOC 树
+- [ ] 点击跳转到对应位置
+
+---
+
+## v0.7.0 — 跨平台支持
+
+### macOS 适配
+
+- [ ] PDF 导出改用 WKWebView
+- [ ] 窗口装饰适配
+- [ ] 菜单栏集成
+
+### Linux 适配
+
+- [ ] AppImage / deb 打包
+- [ ] WebKitGTK 适配测试
+
+---
+
+## v1.0.0 — 正式版
+
+### i18n 正式方案
+
+- [ ] 迁移到 react-i18next
+- [ ] 运行时语言切换
+- [ ] 支持更多语言（日语、韩语等）
+
+### 性能优化
+
+- [ ] 大文件编辑性能
+- [ ] 内存占用优化
+- [ ] 启动速度优化
+
+### 无障碍（a11y）
+
+- [ ] 键盘导航完善
+- [ ] 屏幕阅读器支持
+
+### 插件系统
+
+- [ ] 可扩展插件 API 架构设计（视情况可能延后到 v1.x）
+
+---
+
+## v1.x — 后续迭代（按需）
+
+- [ ] 对话导出（Markdown / JSON）
+- [ ] 聊天历史搜索
+- [ ] 自定义 system prompt 模板
+- [ ] 多文件上下文（引用其他打开的文档）
+- [ ] Vim keybindings 模式
+- [ ] 图片上传和管理
