@@ -105,7 +105,7 @@ async function main() {
 
     try {
       process.env.TAURI_SIGNING_PRIVATE_KEY = readFileSync(keyPath, "utf-8").trim();
-      console.log(`  Signing key loaded from ${keyPath}\n`);
+      console.log("  Signing key loaded successfully\n");
     } catch {
       exit(
         `Signing key not found at ${keyPath}\n\n` +

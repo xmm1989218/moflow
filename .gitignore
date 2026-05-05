@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 latest.json
+
+# Secrets and credentials
+.env
+.env.*
+*.key
+*.pem
