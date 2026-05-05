@@ -180,8 +180,7 @@ async function main() {
   if (sigFile) uploadFiles.push(join(nsisDir, sigFile));
   uploadFiles.push(latestJsonPath);
 
-  const releaseNotes = `## What's Changed in v${version}\n\nSee commit history for details.`;
-  const ghCmd = `gh release create ${tag} ${uploadFiles.map((f) => `"${f}"`).join(" ")} --title "${tag}" --notes "${releaseNotes}"`;
+  const ghCmd = `gh release create ${tag} ${uploadFiles.map((f) => `"${f}"`).join(" ")} --title "${tag}" --generate-notes`;
   try {
     run(ghCmd);
     console.log(`\n=== Release ${tag} published successfully! ===`);
