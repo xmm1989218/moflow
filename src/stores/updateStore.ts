@@ -41,7 +41,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       const update = await checkForUpdate();
       if (!update) {
         if (manual) {
-          set({ status: { state: "up-to-date", version: update?.currentVersion ?? "" } });
+          set({ status: { state: "up-to-date", version: "" } });
           autoDismissTimer = setTimeout(() => {
             if (get().status.state === "up-to-date") {
               set({ status: { state: "idle" } });
@@ -97,7 +97,7 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       clearTimeout(autoDismissTimer);
       autoDismissTimer = null;
     }
-    set({ status: { state: "idle" }, manualCheck: false });
+    set({ status: { state: "idle" } });
   },
 
   setAboutVisible: (visible: boolean) => {

@@ -30,7 +30,7 @@ export default function SelectionAIPanel() {
   const aiConfig = useAIConfigStore((s) => s.config);
   const addMessage = useChatStore((s) => s.addMessage);
   const appendToLastMessage = useChatStore((s) => s.appendToLastMessage);
-  const addUsage = useChatStore((s) => s.addUsage);
+  const addUsage = useChatStore((s) => s.recordUsage);
   const setStreaming = useChatStore((s) => s.setStreaming);
   const toggleAISidebar = useAppStore((s) => s.toggleAISidebar);
   const showAISidebar = useAppStore((s) => s.showAISidebar);
@@ -150,7 +150,7 @@ export default function SelectionAIPanel() {
         controller.signal
       )
       .then((result) => {
-        addUsage(activeFileId, result.usage);
+        addUsage(activeFileId, result.usage.promptTokens, result.usage.completionTokens, 0);
       })
       .catch((e) => {
         if (e instanceof DOMException && e.name === "AbortError") return;

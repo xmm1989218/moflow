@@ -268,7 +268,7 @@ function MilkdownWrapper() {
   }, [setGetEditorHTML]);
 
   useEffect(() => {
-    let tooltipEl: HTMLDivElement | null = null;
+    let tooltipEl: HTMLElement | null = null;
 
     const ensureTooltip = () => {
       if (!tooltipEl) {
@@ -316,7 +316,6 @@ function MilkdownWrapper() {
         }
       });
     };
-
     const observer = new MutationObserver(() => {
       injectSlashAttrs(document);
     });
@@ -331,7 +330,7 @@ function MilkdownWrapper() {
   }, []);
 
   useEffect(() => {
-    const wrapper = document.querySelector(".moflow-editor-wrapper");
+    const wrapper = document.querySelector(".moflow-editor-wrapper") as HTMLElement | null;
     if (!wrapper) return;
 
     const onMove = (e: MouseEvent) => {
@@ -353,7 +352,7 @@ function MilkdownWrapper() {
 
     const patchHandle = (handle: Element) => {
       const items = handle.querySelectorAll(".operation-item");
-      const handleItem = items[1];
+      const handleItem = items[1] as HTMLElement | undefined;
       if (!handleItem || handleItem.dataset.merged) return;
       handleItem.dataset.merged = "1";
 
@@ -363,12 +362,12 @@ function MilkdownWrapper() {
       let startX = 0;
       let startY = 0;
 
-      handleItem.addEventListener("pointerdown", (e: PointerEvent) => {
+      handleItem.addEventListener("pointerdown", ((e: PointerEvent) => {
         startX = e.clientX;
         startY = e.clientY;
-      });
+      }) as EventListener);
 
-      handleItem.addEventListener("pointerup", (e: PointerEvent) => {
+      handleItem.addEventListener("pointerup", ((e: PointerEvent) => {
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
         if (Math.sqrt(dx * dx + dy * dy) < 5) {
@@ -380,7 +379,7 @@ function MilkdownWrapper() {
             addItem.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
           }
         }
-      });
+      }) as EventListener);
     };
 
     const observer = new MutationObserver((mutations) => {
