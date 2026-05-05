@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, rmSync } from "fs";
 import { resolve, dirname, join } from "path";
 import { homedir } from "os";
 import { fileURLToPath } from "url";
@@ -59,7 +59,7 @@ async function main() {
   console.log(`\n=== MoFlow Release v${version} ===\n`);
 
   // 1. Git status check
-  console.log("Step 1/8: Checking git status...");
+  console.log("Step 1/9: Checking git status...");
   const branch = runQuiet("git rev-parse --abbrev-ref HEAD");
   if (branch !== "master" && branch !== "main") {
     exit(`Not on master/main branch (current: ${branch})`);
@@ -71,11 +71,11 @@ async function main() {
   console.log(`  Branch: ${branch}, working directory clean.\n`);
 
   // 2. Sync version
-  console.log("Step 2/8: Syncing version numbers...");
+  console.log("Step 2/9: Syncing version numbers...");
   run(`node scripts/sync-version.mjs ${version}\n`);
 
   // 3. Commit version bump
-  console.log("Step 3/8: Committing version bump...");
+  console.log("Step 3/9: Committing version bump...");
   run(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json`);
   const hasStaged = runQuiet("git diff --cached --quiet || echo changed").includes("changed");
   if (hasStaged) {
@@ -86,7 +86,7 @@ async function main() {
   }
 
   // 4. Lint
-  console.log("Step 4/8: Running lint...");
+  console.log("Step 4/9: Running lint...");
   try {
     run("bun run lint");
     console.log("  Lint passed.\n");
@@ -95,8 +95,22 @@ async function main() {
     exit("Lint failed. Fix errors and try again.");
   }
 
-  // 5. Build
-  console.log("Step 5/8: Building Tauri app...");
+  // 5. Clean old NSIS artifacts
+  console.log("Step 5/9: Cleaning old NSIS artifacts...");
+  if (existsSync(nsisDir)) {
+    const oldFiles = readdirSync(nsisDir).filter(
+      (f) => f.endsWith("_x64-setup.exe") || f.endsWith("_x64-setup.exe.sig")
+    );
+    for (const f of oldFiles) {
+      rmSync(join(nsisDir, f));
+      console.log(`  Removed: ${f}`);
+    }
+    if (oldFiles.length === 0) console.log("  No old artifacts found.");
+  }
+  console.log();
+
+  // 6. Build
+  console.log("Step 6/9: Building Tauri app...");
 
   if (!process.env.TAURI_SIGNING_PRIVATE_KEY) {
     const conf = JSON.parse(readFileSync(files.tauriConf, "utf-8"));
@@ -126,27 +140,25 @@ async function main() {
     exit("Build failed. See errors above.");
   }
 
-  // 6. Collect artifacts
-  console.log("Step 6/8: Collecting build artifacts...");
-  let exeFile, sigFile;
-  try {
-    const nsisFiles = readdirSync(nsisDir);
-    exeFile = nsisFiles.find((f) => f.endsWith("_x64-setup.exe"));
-    sigFile = nsisFiles.find((f) => f.endsWith("_x64-setup.exe.sig"));
-    if (!exeFile) exit(`Installer .exe not found in ${nsisDir}`);
-    console.log(`  Installer: ${exeFile}`);
-    if (sigFile) {
-      console.log(`  Signature: ${sigFile}`);
-    } else {
-      console.log("  Signature: not found (build without signing key)");
-    }
-    console.log();
-  } catch {
-    exit(`Cannot read NSIS output directory: ${nsisDir}`);
+  // 7. Collect artifacts
+  console.log("Step 7/9: Collecting build artifacts...");
+  const productName = JSON.parse(readFileSync(files.tauriConf, "utf-8")).productName;
+  let exeFile = `${productName}_${version}_x64-setup.exe`;
+  let sigFile = `${productName}_${version}_x64-setup.exe.sig`;
+  if (!existsSync(join(nsisDir, exeFile))) {
+    exit(`Installer not found: ${join(nsisDir, exeFile)}`);
   }
+  console.log(`  Installer: ${exeFile}`);
+  if (existsSync(join(nsisDir, sigFile))) {
+    console.log(`  Signature: ${sigFile}`);
+  } else {
+    sigFile = null;
+    console.log("  Signature: not found (build without signing key)");
+  }
+  console.log();
 
-  // 7. Generate latest.json
-  console.log("Step 7/8: Generating latest.json...");
+  // 8. Generate latest.json
+  console.log("Step 8/9: Generating latest.json...");
   let signature = "";
   if (sigFile) {
     signature = readFileSync(join(nsisDir, sigFile), "utf-8").trim();
@@ -168,8 +180,8 @@ async function main() {
   console.log(`  Written to ${latestJsonPath}`);
   console.log(`  ${JSON.stringify(latestJson, null, 2)}\n`);
 
-  // 8. Tag, push, and create GitHub Release
-  console.log("Step 8/8: Creating git tag and GitHub Release...");
+  // 9. Tag, push, and create GitHub Release
+  console.log("Step 9/9: Creating git tag and GitHub Release...");
   run(`git tag ${tag}`);
 
   console.log("  Pushing commit and tag...");
