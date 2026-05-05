@@ -119,7 +119,7 @@ async function main() {
   }
 
   try {
-    run(`bun run tauri build -- --config '{"bundle":{"createUpdaterArtifacts":true}}'`);
+    run(`bun run tauri build -- --config bundle.createUpdaterArtifacts=true`);
     console.log("  Build succeeded.\n");
   } catch {
     rollbackCommit();
