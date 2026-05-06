@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.3.7 (2026-05-06)
+
+### New Features
+
+- Find & Replace — press `Ctrl+F` to search, `Ctrl+H` to search and replace; supports regex, case-sensitive matching, replace current / replace all
+- SelectionAI Follow-up — after explain/translate results appear, a follow-up input box is shown at the bottom of the panel; submitting a follow-up syncs the context (selected text + initial result + question) to the AI sidebar for continued conversation
+
+### Bug Fixes
+
+- Fixed SelectionAI "Ask" flow missing JSONL persistence — user messages and assistant responses from the "Ask" action are now properly persisted via `appendMessage` and `flushAssistantMessage`
+- Fixed SelectionAI "Ask" flow not supporting abort — `setAbortController` is now called so the sidebar's "Stop Generation" button works for selection-initiated requests
+
+### Improvements
+
+- Added `prosemirror-search` plugin integration via Milkdown `$prose` wrapper
+- Added `searchStore` for search state management with ProseMirror bridge (setQuery, findNext/Prev, replaceCurrent/All)
+- Added `SearchBar` UI component positioned at editor top-right with debounce search and keyboard navigation
+- Added search highlight styles for matched and currently selected matches
+- Added Find and Replace items to HamburgerMenu with shortcut labels
+- Added `lastResult` to `aiSelectionStore` for follow-up context preservation
+- Added 20 unit tests (aiSelectionStore: 8, searchStore: 12)
+- Added `.gitattributes` to enforce LF line endings across all platforms
+- Updated `AGENTS.md` verification steps to include `tsc -b`
+
 ## v0.3.6 (2026-05-06)
 
 ### Bug Fixes
