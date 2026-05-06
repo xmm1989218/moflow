@@ -31,6 +31,9 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **Dual theme** — Light and dark themes with smooth switching
 - **Export** — HTML and PDF export
 - **AI Sidebar** — Integrated AI chat with context management, auto-compact, and usage tracking
+- **AI Tool-Calling** — AI can actively explore documents via tools (outline, grep, read_lines, read_section) instead of relying on truncated context
+- **Selection AI** — Explain, translate, or ask questions about selected text
+- **Find & Replace** — Regex support, case-sensitive search, replace all
 - **Auto Update** — Silent check on startup, background download, non-intrusive notification with one-click install & restart
 - **Status bar** — Word count, cursor position, file info at a glance
 

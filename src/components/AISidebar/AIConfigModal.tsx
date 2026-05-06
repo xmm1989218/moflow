@@ -85,7 +85,7 @@ export default function AIConfigModal({ open, onClose }: AIConfigModalProps) {
           if (chunk) gotContent = true;
         },
         new AbortController().signal,
-        10000
+        { timeout: 10000 }
       );
       if (!gotContent) {
         console.error("[AIConfigModal] Connection test: no content received from API");

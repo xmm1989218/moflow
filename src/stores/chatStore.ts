@@ -1,12 +1,16 @@
 import { create } from "zustand";
 import { appendMessage, clearChat, removeChat, loadChat } from "../lib/chatPersistence";
+import type { ToolCall } from "../lib/types";
 
 export interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "tool";
   content: string;
   timestamp: number;
   promptTokens?: number;
+  toolCalls?: ToolCall[];
+  toolCallId?: string;
+  toolName?: string;
 }
 
 const emptyMessages: Message[] = [];
@@ -25,6 +29,7 @@ interface ChatState {
   getContext: (tabId: string) => Message[];
   addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
   appendToLastMessage: (tabId: string, chunk: string) => void;
+  addToolCallsToLastMessage: (tabId: string, toolCalls: ToolCall[]) => void;
   recordUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number) => void;
   recordStandaloneUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number) => void;
   setStreaming: (v: boolean) => void;
@@ -94,7 +99,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => {
       const existing = state.messagesMap[tabId] ?? [];
       const newContextMap = { ...state.contextMap };
-      if (msg.role === "user") {
+      if (msg.role === "user" || msg.role === "tool") {
         const ctx = newContextMap[tabId];
         if (ctx) {
           newContextMap[tabId] = [...ctx, fullMsg];
@@ -123,6 +128,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ...state.messagesMap,
           [tabId]: msgs,
         },
+      };
+    }),
+
+  addToolCallsToLastMessage: (tabId, toolCalls) =>
+    set((state) => {
+      const msgs = [...(state.messagesMap[tabId] ?? [])];
+      const last = msgs[msgs.length - 1];
+      if (last && last.role === "assistant") {
+        msgs[msgs.length - 1] = { ...last, toolCalls };
+      }
+      const newContextMap = { ...state.contextMap };
+      const ctx = newContextMap[tabId];
+      if (ctx && ctx.length > 0) {
+        const lastCtx = ctx[ctx.length - 1];
+        if (lastCtx.role === "assistant" && lastCtx.id === last?.id) {
+          newContextMap[tabId] = [...ctx.slice(0, -1), { ...lastCtx, toolCalls }];
+        }
+      }
+      return {
+        messagesMap: {
+          ...state.messagesMap,
+          [tabId]: msgs,
+        },
+        contextMap: newContextMap,
       };
     }),
 
@@ -214,17 +243,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const last = msgs[msgs.length - 1];
     if (last.role === "assistant") {
       const promptTokens = get().contextTokensMap[tabId] ?? 0;
-      const msgWithTokens = promptTokens > 0 ? { ...last, promptTokens } : last;
-      await appendMessage(tabId, msgWithTokens);
+      const updates: Partial<Message> = {};
+      if (promptTokens > 0) updates.promptTokens = promptTokens;
+      const msgWithUpdates = { ...last, ...updates };
+      await appendMessage(tabId, msgWithUpdates);
 
       const ctx = get().contextMap[tabId];
       if (ctx) {
-        set((state) => ({
-          contextMap: {
-            ...state.contextMap,
-            [tabId]: [...ctx, msgWithTokens],
-          },
-        }));
+        const lastCtx = ctx[ctx.length - 1];
+        if (lastCtx.role === "assistant" && lastCtx.id === last.id) {
+          set((state) => ({
+            contextMap: {
+              ...state.contextMap,
+              [tabId]: [...ctx.slice(0, -1), msgWithUpdates],
+            },
+          }));
+        }
       }
     }
   },

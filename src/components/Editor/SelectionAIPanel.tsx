@@ -4,7 +4,7 @@ import { useAIConfigStore } from "../../stores/aiConfigStore";
 import { useChatStore } from "../../stores/chatStore";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
-import { getLLMClient } from "../../lib/llmClient";
+import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClient";
 import { buildSystemPrompt } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
@@ -65,7 +65,7 @@ export default function SelectionAIPanel() {
 
       try {
         const client = getLLMClient(aiConfig);
-        const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
+        const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext).prompt;
 
         const result = await client.chat(
           [
@@ -86,8 +86,14 @@ export default function SelectionAIPanel() {
         );
         recordStandaloneUsage(activeFileId, result.usage.promptTokens, result.usage.completionTokens, costVal);
       } catch (e) {
-        if (e instanceof DOMException && e.name === "AbortError") return;
-        setResult((prev) => prev + `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`);
+        if (e instanceof TimeoutError) {
+          console.error(`[SelectionAIPanel] Request timeout: ${e.message}`);
+          setResult((prev) => prev + `\n\n❌ ${t("请求超时", "Request timed out")}`);
+        } else if (e instanceof DOMException && e.name === "AbortError") {
+          return;
+        } else {
+          setResult((prev) => prev + `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`);
+        }
       } finally {
         setIsStreaming(false);
         abortRef.current = null;
@@ -145,7 +151,7 @@ export default function SelectionAIPanel() {
     }
 
     const contextMsgs = useChatStore.getState().getContext(activeFileId);
-    const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
+    const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext).prompt;
     const client = getLLMClient(aiConfig);
 
     const controller = new AbortController();
@@ -157,10 +163,17 @@ export default function SelectionAIPanel() {
       const chatResult = await client.chat(
         [
           { role: "system", content: systemPrompt },
-          ...contextMsgs.map((m) => ({
-            role: m.role as "user" | "assistant",
-            content: m.content,
-          })),
+          ...contextMsgs.map((m) => {
+            const msg: ChatMessage = { role: m.role as ChatMessage["role"], content: m.content };
+            if (m.role === "assistant" && m.toolCalls?.length) {
+              msg.tool_calls = m.toolCalls;
+            }
+            if (m.role === "tool") {
+              msg.tool_call_id = m.toolCallId;
+              msg.name = m.toolName;
+            }
+            return msg;
+          }),
         ],
         (chunk) => {
           appendToLastMessage(activeFileId, chunk);
@@ -175,11 +188,17 @@ export default function SelectionAIPanel() {
       );
       addUsage(activeFileId, chatResult.usage.promptTokens, chatResult.usage.completionTokens, costVal);
     } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      appendToLastMessage(
-        activeFileId,
-        `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`
-      );
+      if (e instanceof TimeoutError) {
+        console.error(`[SelectionAIPanel] Request timeout: ${e.message}`);
+        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+      } else if (e instanceof DOMException && e.name === "AbortError") {
+        return;
+      } else {
+        appendToLastMessage(
+          activeFileId,
+          `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`
+        );
+      }
     } finally {
       setStreaming(false);
       setAbortController(null);

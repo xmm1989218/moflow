@@ -605,3 +605,105 @@
   background-color: var(--moflow-accent);
   opacity: 0.4;
 }
+
+/* Tool-calling UI */
+
+.moflow-ai-tool-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--moflow-text-secondary);
+  background-color: var(--moflow-bg-secondary);
+  border-radius: 8px;
+}
+
+.moflow-ai-tool-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--moflow-border);
+  border-top-color: var(--moflow-accent);
+  border-radius: 50%;
+  animation: moflow-tool-spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes moflow-tool-spin {
+  to { transform: rotate(360deg); }
+}
+
+.moflow-ai-tool-result {
+  margin: 0;
+}
+
+.moflow-ai-tool-result summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--moflow-text-secondary);
+  background-color: var(--moflow-bg-secondary);
+  border-radius: 8px;
+  cursor: pointer;
+  list-style: none;
+  transition: background-color 0.15s;
+}
+
+.moflow-ai-tool-result summary::-webkit-details-marker {
+  display: none;
+}
+
+.moflow-ai-tool-result summary::before {
+  content: "▶";
+  font-size: 10px;
+  transition: transform 0.15s;
+}
+
+.moflow-ai-tool-result details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.moflow-ai-tool-result summary:hover {
+  background-color: var(--moflow-bubble-ai);
+}
+
+.moflow-ai-tool-result-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.moflow-ai-tool-result-content {
+  margin: 4px 0 0 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
+  background-color: var(--moflow-bg-secondary);
+  border-radius: 8px;
+  overflow-x: auto;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--moflow-text);
+}
+
+.moflow-ai-tool-calls-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--moflow-text-secondary);
+  margin-top: 4px;
+}
+
+.moflow-ai-tool-calls-only {
+  padding: 4px 0;
+}
+
+.moflow-ai-tool-calls-only .moflow-ai-tool-calls-summary {
+  margin-top: 0;
+}

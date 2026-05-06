@@ -7,26 +7,71 @@ export function estimateTokens(text: string): number {
   return zhRatio > 0.3 ? Math.ceil(text.length / 2) : Math.ceil(text.length / 4);
 }
 
-function extractStructure(docContent: string): string {
-  const headings = docContent
-    .split("\n")
-    .filter((l) => /^#{1,6}\s/.test(l.trim()));
+function buildOutline(docContent: string): string {
+  const lines = docContent.split("\n");
+  const headings: { level: number; text: string; line: number }[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(/^(#{1,6})\s+(.+)/);
+    if (match) {
+      headings.push({
+        level: match[1].length,
+        text: match[2].trim(),
+        line: i + 1,
+      });
+    }
+  }
+
   if (headings.length === 0) return "";
-  return "文档结构：\n" + headings.join("\n");
+
+  const result: string[] = [];
+  for (let i = 0; i < headings.length; i++) {
+    const h = headings[i];
+    const nextLine =
+      i + 1 < headings.length
+        ? headings[i + 1].line - 1
+        : lines.length;
+    const indent = "  ".repeat(h.level - 1);
+    result.push(`${indent}${h.text} (L${h.line}-${nextLine})`);
+  }
+
+  return result.join("\n");
 }
 
-export function buildSystemPrompt(docContent: string, maxContext: number): string {
-  const reserved = Math.floor(maxContext * 0.35);
+export interface SystemPromptResult {
+  prompt: string;
+  needsTools: boolean;
+}
+
+const isZh = navigator.language.startsWith("zh");
+
+export function buildSystemPrompt(
+  docContent: string,
+  maxContext: number,
+  toolsAvailable: boolean = false
+): SystemPromptResult {
+  const docRatio = toolsAvailable ? 0.50 : 0.65;
+  const reserved = Math.floor(maxContext * (1 - docRatio));
   const availableDocTokens = maxContext - reserved;
 
   if (!docContent || docContent.trim().length === 0) {
-    return "你是 MoFlow 编辑器的 AI 助手。用户当前没有打开文档内容，请直接回答用户的问题。";
+    return {
+      prompt: isZh
+        ? "你是 MoFlow 编辑器的 AI 助手。用户当前没有打开文档内容，请直接回答用户的问题。"
+        : "You are the AI assistant for MoFlow editor. The user has no document open. Please answer their questions directly.",
+      needsTools: false,
+    };
   }
 
   const docTokens = estimateTokens(docContent);
 
   if (docTokens <= availableDocTokens) {
-    return `你是 MoFlow 编辑器的 AI 助手。用户正在编辑以下 Markdown 文档：\n---\n${docContent}\n---\n请基于文档内容回答用户问题。`;
+    return {
+      prompt: isZh
+        ? `你是 MoFlow 编辑器的 AI 助手。用户正在编辑以下 Markdown 文档：\n---\n${docContent}\n---\n请基于文档内容回答用户问题。`
+        : `You are the AI assistant for MoFlow editor. The user is editing the following Markdown document:\n---\n${docContent}\n---\nPlease answer the user's questions based on the document content.`,
+      needsTools: false,
+    };
   }
 
   const zhCount = Array.from(docContent).filter((ch) =>
@@ -37,7 +82,43 @@ export function buildSystemPrompt(docContent: string, maxContext: number): strin
   const maxChars = availableDocTokens * charPerToken;
 
   const truncated = docContent.slice(0, maxChars);
-  const structure = extractStructure(docContent);
+  const outline = buildOutline(docContent);
 
-  return `你是 MoFlow 编辑器的 AI 助手。用户正在编辑以下 Markdown 文档（内容已截断）：\n---\n${truncated}\n---\n${structure}\n---\n请基于文档内容回答用户问题。注意：文档内容较长，上方仅展示了部分内容。`;
+  const prompt = isZh
+    ? `你是 MoFlow 编辑器的 AI 助手。用户正在编辑以下 Markdown 文档（内容较长，仅展示开头部分）：
+
+---文档内容（截断）---
+${truncated}
+---
+
+---文档结构---
+${outline}
+---
+
+你可以使用以下工具来探索文档的完整内容：
+- outline() — 获取完整的标题大纲及行号范围
+- grep(pattern) — 搜索文档，返回匹配行及行号
+- read_lines(start, end) — 读取指定行号范围的内容
+- read_section(heading) — 读取指定标题下的内容
+
+当用户的问题涉及截断部分的内容时，请主动使用工具查找相关信息，而不是猜测。`
+    : `You are the AI assistant for MoFlow editor. The user is editing the following Markdown document (long content, only the beginning is shown):
+
+---Document content (truncated)---
+${truncated}
+---
+
+---Document structure---
+${outline}
+---
+
+You can use the following tools to explore the full document content:
+- outline() — Get the complete heading outline with line ranges
+- grep(pattern) — Search the document, returning matching lines with line numbers
+- read_lines(start, end) — Read a range of lines by line number
+- read_section(heading) — Read content under a specific heading
+
+When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.`;
+
+  return { prompt, needsTools: true };
 }

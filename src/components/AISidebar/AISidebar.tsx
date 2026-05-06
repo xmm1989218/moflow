@@ -3,10 +3,12 @@ import { useChatStore, type Message } from "../../stores/chatStore";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useAIConfigStore } from "../../stores/aiConfigStore";
-import { getLLMClient } from "../../lib/llmClient";
-import { buildSystemPrompt } from "../../lib/contextBuilder";
+import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClient";
+import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
+import { toolDefinitions, executeTool } from "../../lib/tools";
+import type { ToolCall } from "../../lib/types";
 import AIConfigModal from "./AIConfigModal";
 import SlashCommandMenu from "./SlashCommandMenu";
 import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
@@ -16,6 +18,7 @@ import "./AISidebar.css";
 const isZh = navigator.language.startsWith("zh");
 const t = (zh: string, en: string) => (isZh ? zh : en);
 const emptyMessages: Message[] = [];
+const MAX_TOOL_ROUNDS = 10;
 
 function UsageBadge({ tabId, providerId, model }: { tabId: string; providerId: string; model: string }) {
   const contextTokens = useChatStore((s) => s.contextTokensMap[tabId] ?? 0);
@@ -79,12 +82,67 @@ function UsageBadge({ tabId, providerId, model }: { tabId: string; providerId: s
   );
 }
 
+function ToolCallStatus({ name, args }: { name: string; args: Record<string, unknown> }) {
+  let text: string;
+  switch (name) {
+    case "outline":
+      text = t("正在获取文档大纲...", "Getting document outline...");
+      break;
+    case "grep":
+      text = t(`正在搜索: "${args.pattern}"`, `Searching: "${args.pattern}"`);
+      break;
+    case "read_lines":
+      text = t(`正在读取第 ${args.start}-${args.end} 行`, `Reading lines ${args.start}-${args.end}`);
+      break;
+    case "read_section":
+      text = t(`正在读取: ${args.heading}`, `Reading: ${args.heading}`);
+      break;
+    default:
+      text = t(`正在执行: ${name}`, `Executing: ${name}`);
+  }
+
+  return (
+    <div className="moflow-ai-tool-status">
+      <span className="moflow-ai-tool-spinner" />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function ToolResultBlock({ msg }: { msg: Message }) {
+  const lineCount = msg.content.split("\n").length;
+  const summary = `${msg.toolName}() → ${t(`${lineCount} 行结果`, `${lineCount} line(s)`)}`;
+
+  return (
+    <div className="moflow-ai-tool-result">
+      <details>
+        <summary className="moflow-ai-tool-result-summary">
+          <span className="moflow-ai-tool-result-icon">🔧</span>
+          <span>{summary}</span>
+        </summary>
+        <pre className="moflow-ai-tool-result-content">{msg.content}</pre>
+      </details>
+    </div>
+  );
+}
+
+function ToolCallsSummary({ toolCalls }: { toolCalls: ToolCall[] }) {
+  const names = toolCalls.map((tc) => tc.name).join(", ");
+  return (
+    <div className="moflow-ai-tool-calls-summary">
+      <span className="moflow-ai-tool-result-icon">🔧</span>
+      <span>{t("使用了", "Used")} {names}</span>
+    </div>
+  );
+}
+
 export default function AISidebar() {
   const activeFileId = useTabStore((s) => s.activeFileId);
   const messages = useChatStore((s) => s.messagesMap[activeFileId] || emptyMessages);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const addMessage = useChatStore((s) => s.addMessage);
   const appendToLastMessage = useChatStore((s) => s.appendToLastMessage);
+  const addToolCallsToLastMessage = useChatStore((s) => s.addToolCallsToLastMessage);
   const clearMessages = useChatStore((s) => s.clearMessages);
   const flushAssistantMessage = useChatStore((s) => s.flushAssistantMessage);
   const setStreaming = useChatStore((s) => s.setStreaming);
@@ -103,6 +161,7 @@ export default function AISidebar() {
   const slashMenuRef = useRef<SlashCommandMenuHandle>(null);
   const [input, setInput] = useState("");
   const [showConfig, setShowConfig] = useState(false);
+  const [toolCallStatus, setToolCallStatus] = useState<{ name: string; args: Record<string, unknown> } | null>(null);
 
   const slashMenuVisible = input.startsWith("/") && !input.includes(" ");
 
@@ -124,7 +183,7 @@ export default function AISidebar() {
 
     const summaryParts: string[] = [];
     for (const m of contextMsgs) {
-      const label = m.role === "user" ? "User" : "AI";
+      const label = m.role === "user" ? "User" : m.role === "tool" ? "Tool" : "AI";
       summaryParts.push(`${label}: ${m.content.slice(0, 200)}`);
     }
     const summaryContent = summaryParts.join("\n");
@@ -142,7 +201,8 @@ export default function AISidebar() {
 
     try {
       const client = getLLMClient(aiConfig);
-      const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
+      const maxContext = getModelInfo(aiConfig.providerId, aiConfig.model).maxContext;
+      const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext);
       const result = await client.chat(
         [
           { role: "system", content: systemPrompt },
@@ -162,9 +222,15 @@ export default function AISidebar() {
       const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
       useChatStore.getState().recordUsage(activeFileId, promptTokens, completionTokens, costVal);
     } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      appendToLastMessage(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+      if (e instanceof TimeoutError) {
+        console.error(`[AISidebar] Request timeout: ${e.message}`);
+        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+      } else if (e instanceof DOMException && e.name === "AbortError") {
+        return;
+      } else {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+      }
     } finally {
       setStreaming(false);
       abortRef.current = null;
@@ -178,8 +244,8 @@ export default function AISidebar() {
 
     if (text.startsWith("/")) return;
 
-    const contextTokens = useChatStore.getState().contextTokensMap[activeFileId] ?? 0;
     const maxContext = getModelInfo(aiConfig.providerId, aiConfig.model).maxContext || 0;
+    const contextTokens = useChatStore.getState().contextTokensMap[activeFileId] ?? 0;
 
     if (maxContext > 0 && contextTokens > maxContext * 0.8) {
       await doCompact();
@@ -195,38 +261,107 @@ export default function AISidebar() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    const docTokens = estimateTokens(docContent);
+    const docRatio = 0.50;
+    const reserved = Math.floor(maxContext * (1 - docRatio));
+    const needsTools = docTokens > (maxContext - reserved);
+
+    const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsTools);
+    const tools = needsTools ? toolDefinitions : undefined;
+
     try {
       const client = getLLMClient(aiConfig);
-      const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
+      let round = 0;
 
-      const contextMsgs = useChatStore.getState().getContext(activeFileId);
-      const historyMsgs = contextMsgs.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }));
+      while (round <= MAX_TOOL_ROUNDS) {
+        round++;
 
-      const chatMessages = [
-        { role: "system" as const, content: systemPrompt },
-        ...historyMsgs,
-      ];
+        const contextMsgs = useChatStore.getState().getContext(activeFileId);
+        const historyMsgs: ChatMessage[] = contextMsgs.map((m) => {
+          const msg: ChatMessage = { role: m.role as ChatMessage["role"], content: m.content };
+          if (m.role === "assistant" && m.toolCalls?.length) {
+            msg.tool_calls = m.toolCalls;
+          }
+          if (m.role === "tool") {
+            msg.tool_call_id = m.toolCallId;
+            msg.name = m.toolName;
+          }
+          return msg;
+        });
 
-      const result = await client.chat(
-        chatMessages,
-        (chunk) => {
-          appendToLastMessage(activeFileId, chunk);
-        },
-        controller.signal
-      );
+        const chatMessages: ChatMessage[] = [
+          { role: "system", content: systemPrompt },
+          ...historyMsgs,
+        ];
 
-      const promptTokens = result.usage.promptTokens;
-      const completionTokens = result.usage.completionTokens;
-      const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
-      useChatStore.getState().recordUsage(activeFileId, promptTokens, completionTokens, costVal);
+        const result = await client.chat(
+          chatMessages,
+          (chunk) => {
+            appendToLastMessage(activeFileId, chunk);
+          },
+          controller.signal,
+          tools ? { tools } : undefined
+        );
+
+        const promptTokens = result.usage.promptTokens;
+        const completionTokens = result.usage.completionTokens;
+        const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
+        useChatStore.getState().recordUsage(activeFileId, promptTokens, completionTokens, costVal);
+
+        if (result.finishReason !== "tool_calls" || !result.toolCalls?.length) {
+          break;
+        }
+
+        addToolCallsToLastMessage(activeFileId, result.toolCalls);
+        await flushAssistantMessage(activeFileId);
+
+        for (const tc of result.toolCalls) {
+          if (controller.signal.aborted) break;
+
+          let args: Record<string, unknown> = {};
+          try {
+            args = JSON.parse(tc.arguments || "{}");
+          } catch {
+            args = {};
+          }
+
+          setToolCallStatus({ name: tc.name, args });
+
+          const toolResult = executeTool(tc.name, args, docContent);
+
+          const toolMsg = addMessage(activeFileId, {
+            role: "tool",
+            content: toolResult,
+            toolCallId: tc.id,
+            toolName: tc.name,
+          });
+          await appendMessage(activeFileId, toolMsg);
+        }
+
+        setToolCallStatus(null);
+
+        addMessage(activeFileId, { role: "assistant", content: "" });
+
+        if (round >= MAX_TOOL_ROUNDS) {
+          appendToLastMessage(activeFileId, t(
+            "（已达到工具调用次数上限，请基于已有信息回答）",
+            "(Maximum tool call rounds reached. Please answer based on available information.)"
+          ));
+          break;
+        }
+      }
     } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
-      const errorMsg = e instanceof Error ? e.message : String(e);
-      appendToLastMessage(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+      if (e instanceof TimeoutError) {
+        console.error(`[AISidebar] Request timeout: ${e.message}`);
+        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+      } else if (e instanceof DOMException && e.name === "AbortError") {
+        return;
+      } else {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+      }
     } finally {
+      setToolCallStatus(null);
       setStreaming(false);
       abortRef.current = null;
       await flushAssistantMessage(activeFileId);
@@ -320,12 +455,28 @@ export default function AISidebar() {
             <p>{t("有什么关于当前文档的问题？", "Questions about the current document?")}</p>
           </div>
         )}
-        {messages.map((msg) => (
-          msg.content === "/compact" && msg.role === "user" ? (
-            <div key={msg.id} className="moflow-ai-compact-divider">
-              <span>{t("已压缩", "Compacted")}</span>
-            </div>
-          ) : (
+        {messages.map((msg) => {
+          if (msg.content === "/compact" && msg.role === "user") {
+            return (
+              <div key={msg.id} className="moflow-ai-compact-divider">
+                <span>{t("已压缩", "Compacted")}</span>
+              </div>
+            );
+          }
+
+          if (msg.role === "tool") {
+            return <ToolResultBlock key={msg.id} msg={msg} />;
+          }
+
+          if (msg.role === "assistant" && !msg.content && msg.toolCalls?.length) {
+            return (
+              <div key={msg.id} className="moflow-ai-tool-calls-only">
+                <ToolCallsSummary toolCalls={msg.toolCalls} />
+              </div>
+            );
+          }
+
+          return (
             <div key={msg.id} className={`moflow-ai-message moflow-ai-message-${msg.role}`}>
               <div className="moflow-ai-message-content">
                 {msg.role === "assistant" ? (
@@ -333,13 +484,17 @@ export default function AISidebar() {
                 ) : (
                   msg.content
                 )}
+                {msg.role === "assistant" && msg.toolCalls?.length && (
+                  <ToolCallsSummary toolCalls={msg.toolCalls} />
+                )}
                 {msg.role === "assistant" && isStreaming && msg === messages[messages.length - 1] && (
                   <span className="moflow-ai-cursor">▌</span>
                 )}
               </div>
             </div>
-          )
-        ))}
+          );
+        })}
+        {toolCallStatus && <ToolCallStatus name={toolCallStatus.name} args={toolCallStatus.args} />}
         <div ref={messagesEndRef} />
       </div>
 

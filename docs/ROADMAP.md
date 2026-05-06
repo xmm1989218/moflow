@@ -48,36 +48,67 @@
 
 Enable the AI to actively explore the document instead of relying on truncated context.
 
-### Tool Definitions
+### Design Decisions
 
-- [ ] `grep(pattern: string)` — Search the document with regex, return matching lines with line numbers
-- [ ] `read_lines(start: number, end: number)` — Read a range of lines from the document by line number
-- [ ] `read_section(heading: string)` — Read content under a specific heading (until next heading of same or higher level)
+- Tool execution: **frontend JS** (reads docContent in memory, no IPC needed)
+- Mock client: **no tool-calling simulation** (Mock mode sends no tools, stays simple)
+- Persistence: **full** — toolCalls + tool messages saved to JSONL
+- API format: **unified internal format**, each client converts to its own API format
+- Context budget: tool messages count toward contextTokens; when tools sent, doc ratio drops from 65% to 50% (more room for tool interaction)
+- Tool result cap: 3000 chars per result (truncated if exceeded)
+
+### Type & Data Structure
+
+- [ ] `src/lib/types.ts` — New shared types: `ToolCall`, `ToolDefinition`
+- [ ] `llmClient.ts` — Extend `ChatMessage` (add `"tool"` role, `tool_calls`, `tool_call_id`, `name`), `ChatResult` (add `toolCalls`, `finishReason`), `LLMClient.chat()` (add `options.tools`)
+- [ ] `chatStore.ts` — Extend `Message` (add `"tool"` role, `toolCalls`, `toolCallId`, `toolName`)
+- [ ] `chatPersistence.ts` — Deserialize new fields (backwards compatible, missing → undefined)
+
+### Tool Definitions & Execution (`src/lib/tools.ts` — new file)
+
+- [ ] `outline()` — Return heading tree with hierarchy + line ranges (e.g. `2. Methods (L24-89)`)
+- [ ] `grep(pattern)` — Search with regex, return matching lines + line numbers (max 50)
+- [ ] `read_lines(start, end)` — Read line range, 1-indexed, max 200 lines, auto-clamp
+- [ ] `read_section(heading)` — Read content under heading until same/higher level heading
+- [ ] `executeTool(name, args, docContent)` — Route to tool, truncate result to 3000 chars
+- [ ] `toolDefinitions` — Export JSON Schema definitions for all 4 tools
 
 ### LLM Client Changes
 
-- [ ] Add `tools` parameter to `client.chat()` call
-- [ ] Parse model's `tool_call` response (OpenAI/Claude format)
-- [ ] Implement tool execution loop: model returns tool_call → execute tool → feed result back as `tool` role message → model continues
-- [ ] Stream final text reply only (not intermediate tool calls)
+- [ ] `OpenAICompatibleClient` — Add `tools` to request body, parse `delta.tool_calls` + `finish_reason: "tool_calls"`, convert internal messages → OpenAI format
+- [ ] `ClaudeCompatibleClient` — Add `tools` in Claude format, parse `content_block_start(tool_use)` + `input_json_delta` + `stop_reason: "tool_use"`, convert internal messages → Claude format (tool_use content blocks + tool_result user messages)
+- [ ] `MockClient` — No changes (signature adapts to new interface but ignores tools)
 
 ### System Prompt Changes
 
-- [ ] When document is truncated, inform model about available tools
-- [ ] Include document structure (headings) so model knows what sections exist
-- [ ] Remove static truncation hint, replace with tool-aware instructions
+- [ ] `buildSystemPrompt` returns `{ prompt, docIncluded }` instead of string
+- [ ] New param `toolsAvailable: boolean` — when true, doc ratio = 50% (else 65%)
+- [ ] When document truncated: replace truncation hint with tool-aware instructions + outline output (with line ranges)
+- [ ] When document not truncated or empty: existing behavior, no tools mentioned
+
+### Chat Flow — Tool Execution Loop
+
+- [ ] `chatStore` — New actions: `addToolCallsToLastMessage`, `addToolMessage`; modify `getContext` to include `tool` messages; modify `addMessage` to add `tool` messages to contextMap
+- [ ] `AISidebar handleSend` — Loop: `client.chat(tools)` → if `tool_calls`, execute tools → feed results back → repeat; max 10 rounds; only final text streamed via onChunk
+- [ ] Each round's promptTokens accumulated via recordUsage → UsageBadge reflects real cost
+- [ ] Cancellation: check `signal.aborted` before each tool execution and each loop iteration
 
 ### UI Changes
 
-- [ ] Show tool-call activity in chat (e.g. "Searching document..." / "Reading section: Introduction...")
-- [ ] Display tool results in a collapsible block
-- [ ] Allow cancellation during tool execution loop
+- [ ] `toolCallStatus` state — show spinner + description during tool execution (e.g. "🔍 正在搜索: Introduction")
+- [ ] Assistant with empty content + toolCalls → render only `🔧 使用了 outline, read_section` summary line (no bubble)
+- [ ] Assistant with content + toolCalls → markdown content + `🔧 使用了 ...` at bottom
+- [ ] Tool messages → collapsible block: collapsed shows `▶ toolName(args) → N 行结果`, expanded shows `<pre>` content
+- [ ] AISidebar.css — styles for tool-status, tool-result, tool-calls-summary
 
 ### Error Handling
 
-- [ ] Handle invalid tool calls gracefully (unknown tool, bad parameters)
-- [ ] Limit tool call rounds (e.g. max 10 iterations) to prevent infinite loops
-- [ ] Timeout for individual tool execution
+- [ ] Unknown tool → return `"Unknown tool: {name}"` as tool result
+- [ ] Invalid arguments / regex → return descriptive error message
+- [ ] read_lines out of range → auto-clamp
+- [ ] read_section not found → return available headings list
+- [ ] Max 10 rounds → append hint to assistant, stop loop
+- [ ] Tool result too long → truncate to 3000 chars
 
 ---
 
@@ -168,3 +199,14 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] Vim keybindings 模式
 - [ ] 图片上传和管理
 - [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边）
+- [ ] 打开目录（文件夹树浏览，快速打开目录下的文件）
+
+### Skill 市场与 Skill 管理
+
+- [ ] Skill 定义规范（名称、描述、图标、system prompt 模板、工具权限声明）
+- [ ] Skill 管理界面（安装、卸载、启用/禁用、配置）
+- [ ] Skill 市场（浏览、搜索、一键安装；支持本地 skill + 远程仓库）
+- [ ] Skill 运行时（加载 skill 的 system prompt + 工具集，按 skill 限定可用工具范围）
+- [ ] Skill 对话模式（选择 skill 后进入专属对话，独立上下文）
+- [ ] 内置 skill 示例（翻译助手、代码审查、文档润色等）
+- [ ] 社区 skill 分享（GitHub 仓库作为 skill 源，约定目录结构）

@@ -1,10 +1,21 @@
 import type { AIConfig } from "./settings";
 import { getProviderInfo } from "./modelInfo";
 import { estimateTokens } from "./contextBuilder";
+import type { ToolCall, ToolDefinition } from "./types";
+
+export class TimeoutError extends Error {
+  constructor(timeout: number) {
+    super(`Request timed out after ${timeout}ms`);
+    this.name = "TimeoutError";
+  }
+}
 
 export interface ChatMessage {
-  role: "system" | "user" | "assistant";
+  role: "system" | "user" | "assistant" | "tool";
   content: string;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+  name?: string;
 }
 
 export interface ChatUsage {
@@ -15,6 +26,13 @@ export interface ChatUsage {
 
 export interface ChatResult {
   usage: ChatUsage;
+  toolCalls?: ToolCall[];
+  finishReason?: string;
+}
+
+export interface ChatOptions {
+  timeout?: number;
+  tools?: ToolDefinition[];
 }
 
 export interface LLMClient {
@@ -22,7 +40,7 @@ export interface LLMClient {
     messages: ChatMessage[],
     onChunk: (text: string) => void,
     signal: AbortSignal,
-    timeout?: number
+    options?: ChatOptions
   ): Promise<ChatResult>;
 }
 
@@ -30,8 +48,10 @@ class MockClient implements LLMClient {
   async chat(
     messages: ChatMessage[],
     onChunk: (text: string) => void,
-    signal: AbortSignal
+    signal: AbortSignal,
+    options?: ChatOptions
   ): Promise<ChatResult> {
+    void options;
     const lastUser = messages.filter((m) => m.role === "user").pop();
     const userText = lastUser?.content ?? "";
     const docContent = messages.find((m) => m.role === "system")?.content ?? "";
@@ -56,6 +76,26 @@ class MockClient implements LLMClient {
   }
 }
 
+function convertToOpenAIMessages(messages: ChatMessage[]): Record<string, unknown>[] {
+  return messages.map((m) => {
+    if (m.role === "tool") {
+      return { role: "tool", tool_call_id: m.tool_call_id, content: m.content };
+    }
+    if (m.role === "assistant" && m.tool_calls?.length) {
+      return {
+        role: "assistant",
+        content: m.content || null,
+        tool_calls: m.tool_calls.map((tc) => ({
+          id: tc.id,
+          type: "function",
+          function: { name: tc.name, arguments: tc.arguments },
+        })),
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+}
+
 class OpenAICompatibleClient implements LLMClient {
   private endpoint: string;
   private token: string;
@@ -71,32 +111,44 @@ class OpenAICompatibleClient implements LLMClient {
     messages: ChatMessage[],
     onChunk: (text: string) => void,
     signal: AbortSignal,
-    timeout = 30000
+    options?: ChatOptions
   ): Promise<ChatResult> {
+    const timeout = options?.timeout ?? 30000;
     const url = this.endpoint.replace(/\/+$/, "") + "/chat/completions";
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeout);
 
     const onAbort = () => controller.abort();
     signal.addEventListener("abort", onAbort);
 
     let usage: ChatUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
     let fullResponse = "";
+    const toolCallsMap = new Map<number, ToolCall>();
+    let finishReason: string | undefined;
 
     try {
+      const body: Record<string, unknown> = {
+        model: this.model,
+        messages: convertToOpenAIMessages(messages),
+        stream: true,
+        stream_options: { include_usage: true },
+      };
+      if (options?.tools?.length) {
+        body.tools = options.tools;
+      }
+
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.token}`,
         },
-        body: JSON.stringify({
-          model: this.model,
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
-          stream: true,
-          stream_options: { include_usage: true },
-        }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
 
@@ -127,11 +179,30 @@ class OpenAICompatibleClient implements LLMClient {
 
           try {
             const parsed = JSON.parse(data);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              onChunk(content);
-              fullResponse += content;
+            const delta = parsed.choices?.[0]?.delta;
+            if (delta?.content) {
+              onChunk(delta.content);
+              fullResponse += delta.content;
             }
+            if (delta?.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                const idx = tc.index ?? 0;
+                if (!toolCallsMap.has(idx)) {
+                  toolCallsMap.set(idx, {
+                    id: tc.id ?? "",
+                    name: tc.function?.name ?? "",
+                    arguments: tc.function?.arguments ?? "",
+                  });
+                } else {
+                  const existing = toolCallsMap.get(idx)!;
+                  if (tc.id) existing.id = tc.id;
+                  if (tc.function?.name) existing.name = tc.function.name;
+                  if (tc.function?.arguments) existing.arguments += tc.function.arguments;
+                }
+              }
+            }
+            const fr = parsed.choices?.[0]?.finish_reason;
+            if (fr) finishReason = fr;
             if (parsed.usage) {
               usage = {
                 promptTokens: parsed.usage.prompt_tokens ?? 0,
@@ -144,6 +215,11 @@ class OpenAICompatibleClient implements LLMClient {
           }
         }
       }
+    } catch (e) {
+      if (timedOut && e instanceof DOMException && e.name === "AbortError") {
+        throw new TimeoutError(timeout);
+      }
+      throw e;
     } finally {
       clearTimeout(timeoutId);
       signal.removeEventListener("abort", onAbort);
@@ -158,8 +234,69 @@ class OpenAICompatibleClient implements LLMClient {
       };
     }
 
-    return { usage };
+    const result: ChatResult = { usage };
+    if (finishReason) result.finishReason = finishReason;
+    if (toolCallsMap.size > 0) {
+      result.toolCalls = Array.from(toolCallsMap.values());
+    }
+    return result;
   }
+}
+
+interface ClaudeContentBlock {
+  type: string;
+  text?: string;
+  id?: string;
+  name?: string;
+  input?: Record<string, unknown>;
+  tool_use_id?: string;
+  content?: string;
+}
+
+function convertToClaudeMessages(messages: ChatMessage[]): { role: string; content: string | ClaudeContentBlock[] }[] {
+  const result: { role: string; content: string | ClaudeContentBlock[] }[] = [];
+  let pendingToolResults: ClaudeContentBlock[] = [];
+
+  const flushToolResults = () => {
+    if (pendingToolResults.length > 0) {
+      result.push({ role: "user", content: pendingToolResults });
+      pendingToolResults = [];
+    }
+  };
+
+  for (const m of messages) {
+    if (m.role === "tool") {
+      pendingToolResults.push({
+        type: "tool_result",
+        tool_use_id: m.tool_call_id,
+        content: m.content,
+      });
+    } else {
+      flushToolResults();
+
+      if (m.role === "assistant" && m.tool_calls?.length) {
+        const blocks: ClaudeContentBlock[] = [];
+        if (m.content) {
+          blocks.push({ type: "text", text: m.content });
+        }
+        for (const tc of m.tool_calls) {
+          let input: Record<string, unknown> = {};
+          try {
+            input = JSON.parse(tc.arguments || "{}");
+          } catch {
+            // keep empty input
+          }
+          blocks.push({ type: "tool_use", id: tc.id, name: tc.name, input });
+        }
+        result.push({ role: "assistant", content: blocks });
+      } else {
+        result.push({ role: m.role, content: m.content });
+      }
+    }
+  }
+
+  flushToolResults();
+  return result;
 }
 
 class ClaudeCompatibleClient implements LLMClient {
@@ -177,32 +314,49 @@ class ClaudeCompatibleClient implements LLMClient {
     messages: ChatMessage[],
     onChunk: (text: string) => void,
     signal: AbortSignal,
-    timeout = 30000
+    options?: ChatOptions
   ): Promise<ChatResult> {
+    const timeout = options?.timeout ?? 30000;
     const url = this.endpoint.replace(/\/+$/, "") + "/messages";
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeout);
 
     const onAbort = () => controller.abort();
     signal.addEventListener("abort", onAbort);
 
-    const filtered = messages.filter((m) => m.role !== "system");
     const systemMsg = messages.find((m) => m.role === "system");
+    const claudeMessages = convertToClaudeMessages(
+      messages.filter((m) => m.role !== "system")
+    );
 
     let inputTokens = 0;
     let outputTokens = 0;
     let fullResponse = "";
 
+    const toolUseBlocks: Map<number, { id: string; name: string; arguments: string }> = new Map();
+    let stopReason: string | undefined;
+
     try {
       const body: Record<string, unknown> = {
         model: this.model,
         max_tokens: 4096,
-        messages: filtered.map((m) => ({ role: m.role, content: m.content })),
+        messages: claudeMessages,
         stream: true,
       };
       if (systemMsg) {
         body.system = systemMsg.content;
+      }
+      if (options?.tools?.length) {
+        body.tools = options.tools.map((t) => ({
+          name: t.function.name,
+          description: t.function.description,
+          input_schema: t.function.parameters,
+        }));
       }
 
       const res = await fetch(url, {
@@ -242,21 +396,48 @@ class ClaudeCompatibleClient implements LLMClient {
 
           try {
             const parsed = JSON.parse(data);
-            if (parsed.type === "content_block_delta" && parsed.delta?.text) {
+            if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta" && parsed.delta.text) {
               onChunk(parsed.delta.text);
               fullResponse += parsed.delta.text;
+            }
+            if (parsed.type === "content_block_start") {
+              const block = parsed.content_block;
+              if (block?.type === "tool_use") {
+                toolUseBlocks.set(block.index ?? parsed.index ?? 0, {
+                  id: block.id ?? "",
+                  name: block.name ?? "",
+                  arguments: "",
+                });
+              }
+            }
+            if (parsed.type === "content_block_delta" && parsed.delta?.type === "input_json_delta") {
+              const idx = parsed.index ?? 0;
+              const existing = toolUseBlocks.get(idx);
+              if (existing && parsed.delta.partial_json) {
+                existing.arguments += parsed.delta.partial_json;
+              }
             }
             if (parsed.type === "message_start" && parsed.message?.usage) {
               inputTokens = parsed.message.usage.input_tokens ?? 0;
             }
-            if (parsed.type === "message_delta" && parsed.usage) {
-              outputTokens = parsed.usage.output_tokens ?? 0;
+            if (parsed.type === "message_delta") {
+              if (parsed.usage) {
+                outputTokens = parsed.usage.output_tokens ?? 0;
+              }
+              if (parsed.delta?.stop_reason) {
+                stopReason = parsed.delta.stop_reason;
+              }
             }
           } catch {
             // skip
           }
         }
       }
+    } catch (e) {
+      if (timedOut && e instanceof DOMException && e.name === "AbortError") {
+        throw new TimeoutError(timeout);
+      }
+      throw e;
     } finally {
       clearTimeout(timeoutId);
       signal.removeEventListener("abort", onAbort);
@@ -265,18 +446,26 @@ class ClaudeCompatibleClient implements LLMClient {
     if (inputTokens === 0 && outputTokens === 0) {
       const promptTokens = estimateTokens(messages.map((m) => m.content).join(""));
       const completionTokens = estimateTokens(fullResponse);
-      return {
-        usage: { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens },
-      };
+      const usage: ChatUsage = { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens };
+      const result: ChatResult = { usage };
+      if (stopReason) result.finishReason = stopReason === "tool_use" ? "tool_calls" : stopReason;
+      if (toolUseBlocks.size > 0) {
+        result.toolCalls = Array.from(toolUseBlocks.values());
+      }
+      return result;
     }
 
-    return {
-      usage: {
-        promptTokens: inputTokens,
-        completionTokens: outputTokens,
-        totalTokens: inputTokens + outputTokens,
-      },
+    const usage: ChatUsage = {
+      promptTokens: inputTokens,
+      completionTokens: outputTokens,
+      totalTokens: inputTokens + outputTokens,
     };
+    const result: ChatResult = { usage };
+    if (stopReason) result.finishReason = stopReason === "tool_use" ? "tool_calls" : stopReason;
+    if (toolUseBlocks.size > 0) {
+      result.toolCalls = Array.from(toolUseBlocks.values());
+    }
+    return result;
   }
 }
 

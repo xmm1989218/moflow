@@ -30,6 +30,9 @@ function deserializeMessage(line: string): Message | null {
         content: obj.content,
         timestamp: obj.timestamp,
         promptTokens: obj.promptTokens,
+        toolCalls: obj.toolCalls,
+        toolCallId: obj.toolCallId,
+        toolName: obj.toolName,
       };
     }
     return null;
@@ -65,8 +68,8 @@ export async function removeChat(tabId: string): Promise<void> {
     if (await exists(path)) {
       await remove(path);
     }
-  } catch (e) {
-    console.error("[chatPersistence] removeChat error:", e);
+  } catch {
+    // file may not exist, ignore
   }
 }
 
