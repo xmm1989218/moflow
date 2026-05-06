@@ -307,12 +307,16 @@ async fn export_pdf(app: tauri::AppHandle, html: String, path: String) -> Result
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let app_start = std::time::Instant::now();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch])
-        .setup(|app| {
+        .setup(move |app| {
+            println!("[startup] rust-setup: {}ms", app_start.elapsed().as_millis());
+
             #[cfg(desktop)]
             {
                 app.handle().plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {

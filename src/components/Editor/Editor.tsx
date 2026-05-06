@@ -327,6 +327,7 @@ function MilkdownWrapper() {
     });
 
     editorReadyRef.current = true;
+    window.__startupMark?.("editor-ready");
 
     return crepe;
   }, []);

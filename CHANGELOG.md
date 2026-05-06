@@ -1,5 +1,47 @@
 # Changelog
 
+## v0.4.0 (2026-05-07)
+
+### New Features
+
+- Tool-calling support — AI can now actively explore documents using tools instead of relying on truncated context
+  - `outline()` — Get document heading tree with hierarchy and line ranges
+  - `grep(pattern)` — Search document with regex, return matching lines with line numbers
+  - `read_lines(start, end)` — Read a range of lines from the document
+  - `read_section(heading)` — Read content under a specific heading
+  - `webfetch(url)` — Fetch web page content via Rust backend (reqwest, no CORS issues)
+- Reasoning content (thinking mode) — Store and pass back `reasoning_content` for DeepSeek v4 thinking mode; fixes 400 error when DeepSeek requires reasoning_content to be echoed back
+- HTML noise stripping — webfetch automatically removes `<script>`, `<style>`, `<noscript>`, `<svg>`, `<link>`, HTML comments, and `<head>` blocks from fetched pages; Content-Type detection + content sniffing for reliable HTML identification
+- Startup performance monitoring — Milestone markers logged to devtools console and Rust terminal (`rust-setup`, `react-mount`, `session-loaded`, `chat-loaded`, `editor-ready`, `window-shown`)
+- Links in AI messages now open in system browser (tauri-plugin-opener)
+
+### Bug Fixes
+
+- Fixed DeepSeek v4 400 error "content or tool_calls must be set" — assistant messages with empty content now use `""` instead of `null` when no tool_calls present
+- Fixed webfetch CORS failures — migrated from frontend `fetch()` to Rust reqwest backend (native HTTP, no CORS restrictions)
+- Fixed `loadChatHistory` not restoring `contextTokens` — now calls `getContext()` after loading to restore context usage badge
+- Fixed rehype-prism-plus crash on unknown language codes (e.g. `y`) — added `ignoreMissing: true`
+- Fixed `convertToOpenAIMessages` not passing back `reasoning_content` for DeepSeek thinking mode
+
+### Improvements
+
+- LLM default timeout increased from 30s to 60s; webfetch timeout set to 30s
+- Tool result cap increased from 3000 to 6144 chars (6KB)
+- AI sidebar max width increased from 600px to 720px
+- AI assistant messages no longer have max-width constraint (user messages keep 90% bubble width)
+- Tool calls phase no longer displayed separately (spinner during execution, collapsible result after completion)
+- Tool args display uses CSS `text-overflow: ellipsis` for adaptive truncation instead of fixed 50-char JS truncation
+- B-layer tool strategy: document tools sent only when document is truncated; network tools (webfetch) always available
+- Input auto-focuses after streaming ends
+- Debug logging cleaned up (removed request body dump, reasoning_content delta, result summary)
+
+### Dependencies
+
+- Added `reqwest` (Rust) for native HTTP requests
+- Added `regex` (Rust) for HTML noise stripping
+- Added `tauri-plugin-opener` for opening URLs in system browser
+- Added `@tauri-apps/plugin-opener` (JS)
+
 ## v0.3.7 (2026-05-06)
 
 ### New Features

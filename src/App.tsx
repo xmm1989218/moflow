@@ -29,6 +29,10 @@ function App() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    window.__startupMark?.("react-mount");
+  }, []);
+
+  useEffect(() => {
     initSession().then(async () => {
       useAIConfigStore.getState().loadConfig();
       const tabs = useTabStore.getState().files;
@@ -36,10 +40,13 @@ function App() {
       if (paths.length > 0) {
         await invoke("allow_paths", { paths });
       }
+      window.__startupMark?.("session-loaded");
       await Promise.all(tabs.map((tab) => useChatStore.getState().loadChatHistory(tab.id)));
+      window.__startupMark?.("chat-loaded");
       useUpdateStore.getState().checkUpdate();
       requestAnimationFrame(() => {
         getCurrentWindow().show();
+        window.__startupMark?.("window-shown");
       });
     });
   }, []);

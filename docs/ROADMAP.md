@@ -118,6 +118,16 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [x] `println!` log — HTML stripped size comparison (original → cleaned, % removed)
 - [x] `tauri-plugin-opener` — Open URLs in system browser
 
+### Startup Performance Monitoring
+
+- [x] `window.__startupMark(label)` — Global helper to log startup milestones with `performance.now()`
+- [x] Rust `rust-setup` — Time from app start to setup callback
+- [x] Frontend `react-mount` — React first mount
+- [x] Frontend `session-loaded` — Session restore + path permissions
+- [x] Frontend `chat-loaded` — Chat history loading
+- [x] Frontend `editor-ready` — Milkdown editor initialized
+- [x] Frontend `window-shown` — Window first visible
+
 ### Reasoning Content (DeepSeek Thinking Mode)
 
 - [x] `ChatMessage.reasoningContent` — Store and pass back to API (DeepSeek v4 requires it)
