@@ -168,6 +168,9 @@ export default function SelectionAIPanel() {
             if (m.role === "assistant" && m.toolCalls?.length) {
               msg.tool_calls = m.toolCalls;
             }
+            if (m.role === "assistant" && m.reasoningContent) {
+              msg.reasoningContent = m.reasoningContent;
+            }
             if (m.role === "tool") {
               msg.tool_call_id = m.toolCallId;
               msg.name = m.toolName;

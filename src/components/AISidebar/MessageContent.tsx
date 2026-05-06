@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypePrismPlus from "rehype-prism-plus";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import "prismjs/themes/prism.css";
 import "prismjs/themes/prism-tomorrow.css";
 import "./MessageContent.css";
@@ -14,10 +15,17 @@ export default function MessageContent({ content }: MessageContentProps) {
     <div className="moflow-ai-md">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypePrismPlus]}
+        rehypePlugins={[[rehypePrismPlus, { ignoreMissing: true }]]}
         components={{
           a: ({ href, children, ...rest }) => (
-            <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>
+            <a
+              href={href}
+              onClick={(e) => {
+                e.preventDefault();
+                if (href) openUrl(href);
+              }}
+              {...rest}
+            >
               {children}
             </a>
           ),

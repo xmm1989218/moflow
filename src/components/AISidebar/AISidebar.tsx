@@ -7,8 +7,7 @@ import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClien
 import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
-import { toolDefinitions, executeTool } from "../../lib/tools";
-import type { ToolCall } from "../../lib/types";
+import { docToolDefinitions, networkToolDefinitions, executeTool, WEBFETCH_LIMIT } from "../../lib/tools";
 import AIConfigModal from "./AIConfigModal";
 import SlashCommandMenu from "./SlashCommandMenu";
 import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
@@ -97,6 +96,9 @@ function ToolCallStatus({ name, args }: { name: string; args: Record<string, unk
     case "read_section":
       text = t(`正在读取: ${args.heading}`, `Reading: ${args.heading}`);
       break;
+    case "webfetch":
+      text = t(`正在访问: ${args.url}`, `Fetching: ${args.url}`);
+      break;
     default:
       text = t(`正在执行: ${name}`, `Executing: ${name}`);
   }
@@ -109,29 +111,41 @@ function ToolCallStatus({ name, args }: { name: string; args: Record<string, unk
   );
 }
 
-function ToolResultBlock({ msg }: { msg: Message }) {
-  const lineCount = msg.content.split("\n").length;
-  const summary = `${msg.toolName}() → ${t(`${lineCount} 行结果`, `${lineCount} line(s)`)}`;
+function formatToolArgs(name: string, args: Record<string, unknown>): string {
+  const entries = Object.entries(args);
+  if (entries.length === 0) return `${name}()`;
+  const parts = entries.map(([, v]) => String(v));
+  return `${name}(${parts.join(", ")})`;
+}
+
+function ToolResultBlock({ msg, messages }: { msg: Message; messages: Message[] }) {
+  let argsLabel = msg.toolName ?? "";
+  if (msg.toolCallId) {
+    for (const m of messages) {
+      if (m.role === "assistant" && m.toolCalls) {
+        const tc = m.toolCalls.find((c) => c.id === msg.toolCallId);
+        if (tc) {
+          try {
+            const args = JSON.parse(tc.arguments || "{}");
+            argsLabel = formatToolArgs(tc.name, args);
+          } catch {
+            argsLabel = tc.name + "()";
+          }
+          break;
+        }
+      }
+    }
+  }
 
   return (
     <div className="moflow-ai-tool-result">
       <details>
         <summary className="moflow-ai-tool-result-summary">
           <span className="moflow-ai-tool-result-icon">🔧</span>
-          <span>{summary}</span>
+          <span className="moflow-ai-tool-args-text">{argsLabel}</span>
         </summary>
         <pre className="moflow-ai-tool-result-content">{msg.content}</pre>
       </details>
-    </div>
-  );
-}
-
-function ToolCallsSummary({ toolCalls }: { toolCalls: ToolCall[] }) {
-  const names = toolCalls.map((tc) => tc.name).join(", ");
-  return (
-    <div className="moflow-ai-tool-calls-summary">
-      <span className="moflow-ai-tool-result-icon">🔧</span>
-      <span>{t("使用了", "Used")} {names}</span>
     </div>
   );
 }
@@ -143,6 +157,7 @@ export default function AISidebar() {
   const addMessage = useChatStore((s) => s.addMessage);
   const appendToLastMessage = useChatStore((s) => s.appendToLastMessage);
   const addToolCallsToLastMessage = useChatStore((s) => s.addToolCallsToLastMessage);
+  const addReasoningContentToLastMessage = useChatStore((s) => s.addReasoningContentToLastMessage);
   const clearMessages = useChatStore((s) => s.clearMessages);
   const flushAssistantMessage = useChatStore((s) => s.flushAssistantMessage);
   const setStreaming = useChatStore((s) => s.setStreaming);
@@ -162,6 +177,12 @@ export default function AISidebar() {
   const [input, setInput] = useState("");
   const [showConfig, setShowConfig] = useState(false);
   const [toolCallStatus, setToolCallStatus] = useState<{ name: string; args: Record<string, unknown> } | null>(null);
+
+  useEffect(() => {
+    if (!isStreaming) {
+      inputRef.current?.focus();
+    }
+  }, [isStreaming]);
 
   const slashMenuVisible = input.startsWith("/") && !input.includes(" ");
 
@@ -264,14 +285,17 @@ export default function AISidebar() {
     const docTokens = estimateTokens(docContent);
     const docRatio = 0.50;
     const reserved = Math.floor(maxContext * (1 - docRatio));
-    const needsTools = docTokens > (maxContext - reserved);
+    const needsDocTools = docTokens > (maxContext - reserved);
 
-    const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsTools);
-    const tools = needsTools ? toolDefinitions : undefined;
+    const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsDocTools);
+    const tools = needsDocTools
+      ? [...docToolDefinitions, ...networkToolDefinitions]
+      : [...networkToolDefinitions];
 
     try {
       const client = getLLMClient(aiConfig);
       let round = 0;
+      let webfetchCount = 0;
 
       while (round <= MAX_TOOL_ROUNDS) {
         round++;
@@ -281,6 +305,9 @@ export default function AISidebar() {
           const msg: ChatMessage = { role: m.role as ChatMessage["role"], content: m.content };
           if (m.role === "assistant" && m.toolCalls?.length) {
             msg.tool_calls = m.toolCalls;
+          }
+          if (m.role === "assistant" && m.reasoningContent) {
+            msg.reasoningContent = m.reasoningContent;
           }
           if (m.role === "tool") {
             msg.tool_call_id = m.toolCallId;
@@ -300,13 +327,17 @@ export default function AISidebar() {
             appendToLastMessage(activeFileId, chunk);
           },
           controller.signal,
-          tools ? { tools } : undefined
+          { tools }
         );
 
         const promptTokens = result.usage.promptTokens;
         const completionTokens = result.usage.completionTokens;
         const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
         useChatStore.getState().recordUsage(activeFileId, promptTokens, completionTokens, costVal);
+
+        if (result.reasoningContent) {
+          addReasoningContentToLastMessage(activeFileId, result.reasoningContent);
+        }
 
         if (result.finishReason !== "tool_calls" || !result.toolCalls?.length) {
           break;
@@ -325,9 +356,28 @@ export default function AISidebar() {
             args = {};
           }
 
+          if (tc.name === "webfetch") {
+            webfetchCount++;
+            if (webfetchCount > WEBFETCH_LIMIT) {
+              console.warn(`[AISidebar] webfetch limit reached (${WEBFETCH_LIMIT} per request)`);
+              const limitMsg = t(
+                `Webfetch 调用次数已达上限（${WEBFETCH_LIMIT} 次）`,
+                `Webfetch call limit reached (${WEBFETCH_LIMIT} per request)`
+              );
+              const toolMsg = addMessage(activeFileId, {
+                role: "tool",
+                content: limitMsg,
+                toolCallId: tc.id,
+                toolName: tc.name,
+              });
+              await appendMessage(activeFileId, toolMsg);
+              continue;
+            }
+          }
+
           setToolCallStatus({ name: tc.name, args });
 
-          const toolResult = executeTool(tc.name, args, docContent);
+          const toolResult = await executeTool(tc.name, args, docContent, controller.signal);
 
           const toolMsg = addMessage(activeFileId, {
             role: "tool",
@@ -398,7 +448,7 @@ export default function AISidebar() {
 
     const handleMouseMove = (ev: MouseEvent) => {
       const delta = startX - ev.clientX;
-      const newWidth = Math.max(280, Math.min(600, startWidth + delta));
+      const newWidth = Math.max(280, Math.min(720, startWidth + delta));
       setSidebarWidth(newWidth);
     };
 
@@ -465,15 +515,11 @@ export default function AISidebar() {
           }
 
           if (msg.role === "tool") {
-            return <ToolResultBlock key={msg.id} msg={msg} />;
+            return <ToolResultBlock key={msg.id} msg={msg} messages={messages} />;
           }
 
           if (msg.role === "assistant" && !msg.content && msg.toolCalls?.length) {
-            return (
-              <div key={msg.id} className="moflow-ai-tool-calls-only">
-                <ToolCallsSummary toolCalls={msg.toolCalls} />
-              </div>
-            );
+            return null;
           }
 
           return (
@@ -483,9 +529,6 @@ export default function AISidebar() {
                   <MessageContent content={msg.content} />
                 ) : (
                   msg.content
-                )}
-                {msg.role === "assistant" && msg.toolCalls?.length && (
-                  <ToolCallsSummary toolCalls={msg.toolCalls} />
                 )}
                 {msg.role === "assistant" && isStreaming && msg === messages[messages.length - 1] && (
                   <span className="moflow-ai-cursor">▌</span>

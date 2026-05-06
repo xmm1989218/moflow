@@ -1,6 +1,94 @@
 use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 use std::sync::mpsc;
+use regex::Regex;
+
+const WEBFETCH_MAX_BODY: usize = 100 * 1024;
+const WEBFETCH_TIMEOUT_SECS: u64 = 30;
+
+fn strip_html_noise(html: &str) -> String {
+    let patterns: Vec<Regex> = [
+        r"(?is)<head[^>]*>.*?</head>",
+        r"(?is)<script[^>]*>.*?</script>",
+        r"(?is)<style[^>]*>.*?</style>",
+        r"(?is)<noscript[^>]*>.*?</noscript>",
+        r"(?is)<svg[^>]*>.*?</svg>",
+        r"(?i)<link\b[^>]*>",
+        r"(?s)<!--.*?-->",
+    ].iter().map(|p| Regex::new(p).unwrap()).collect();
+
+    let mut result = html.to_string();
+    for re in &patterns {
+        result = re.replace_all(&result, "").into_owned();
+    }
+    result
+}
+
+fn is_html_content(content_type: &str) -> bool {
+    let ct = content_type.to_lowercase();
+    ct.contains("text/html") || ct.contains("application/xhtml")
+}
+
+fn looks_like_html(body: &str) -> bool {
+    let prefix = body.len().min(500);
+    let head = body[..prefix].to_lowercase();
+    head.contains("<!doctype html") || head.contains("<html")
+}
+
+#[tauri::command]
+async fn webfetch(url: String) -> Result<String, String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err(format!("Unsupported URL protocol. Only http and https are allowed."));
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(WEBFETCH_TIMEOUT_SECS))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let res = client.get(&url).send().await.map_err(|e| {
+        if e.is_timeout() {
+            format!("Request timed out after {}s", WEBFETCH_TIMEOUT_SECS)
+        } else if e.is_connect() {
+            format!("Connection failed: {}", e)
+        } else {
+            format!("Request error: {}", e)
+        }
+    })?;
+
+    if !res.status().is_success() {
+        return Err(format!("HTTP error {}: {}", res.status(), res.status().canonical_reason().unwrap_or("Unknown")));
+    }
+
+    let content_type = res.headers()
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+
+    let body = res.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
+
+    let result = if is_html_content(&content_type) || (content_type.is_empty() && looks_like_html(&body)) {
+        let original_size = body.len();
+        let cleaned = strip_html_noise(&body);
+        let cleaned_size = cleaned.len();
+        let removed_pct = if original_size > 0 { 100 - cleaned_size * 100 / original_size } else { 0 };
+        println!("[webfetch] HTML stripped: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
+        if cleaned.len() > WEBFETCH_MAX_BODY {
+            cleaned[..WEBFETCH_MAX_BODY].to_string() + "\n...[response truncated]"
+        } else {
+            cleaned
+        }
+    } else {
+        if body.len() > WEBFETCH_MAX_BODY {
+            body[..WEBFETCH_MAX_BODY].to_string() + "\n...[response truncated]"
+        } else {
+            body
+        }
+    };
+
+    Ok(result)
+}
 
 #[tauri::command]
 async fn allow_paths(app: tauri::AppHandle, paths: Vec<String>) -> Result<(), String> {
@@ -222,7 +310,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths])
+        .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch])
         .setup(|app| {
             #[cfg(desktop)]
             {

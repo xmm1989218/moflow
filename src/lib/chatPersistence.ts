@@ -33,6 +33,7 @@ function deserializeMessage(line: string): Message | null {
         toolCalls: obj.toolCalls,
         toolCallId: obj.toolCallId,
         toolName: obj.toolName,
+        reasoningContent: obj.reasoningContent,
       };
     }
     return null;

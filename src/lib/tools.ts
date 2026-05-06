@@ -1,6 +1,7 @@
 import type { ToolDefinition } from "./types";
+import { invoke } from "@tauri-apps/api/core";
 
-export const toolDefinitions: ToolDefinition[] = [
+export const docToolDefinitions: ToolDefinition[] = [
   {
     type: "function",
     function: {
@@ -62,19 +63,42 @@ export const toolDefinitions: ToolDefinition[] = [
         "读取指定标题下的内容，直到同级或更高级标题为止。标题需精确匹配（不含 # 前缀）。",
       parameters: {
         type: "object",
-        properties: {
-          heading: {
-            type: "string",
-            description: "要读取的标题文本（不含 # 前缀）",
+          properties: {
+            heading: {
+              type: "string",
+              description: "要读取的标题文本（不含 # 前缀）",
+            },
           },
-        },
-        required: ["heading"],
+          required: ["heading"],
       },
     },
   },
 ];
 
-const MAX_TOOL_RESULT_CHARS = 3000;
+export const networkToolDefinitions: ToolDefinition[] = [
+  {
+    type: "function",
+    function: {
+      name: "webfetch",
+      description:
+        "访问指定 URL 的网页内容，返回页面文本。用于获取外部信息或参考资料。仅支持 http/https 协议。",
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "要访问的网页 URL（仅支持 http/https）",
+          },
+        },
+        required: ["url"],
+      },
+    },
+  },
+];
+
+export const WEBFETCH_LIMIT = 3;
+
+const MAX_TOOL_RESULT_CHARS = 6144;
 const MAX_GREP_RESULTS = 50;
 const MAX_READ_LINES = 200;
 
@@ -212,11 +236,32 @@ function toolReadSection(heading: string, docContent: string): string {
   return lines.slice(startLine, endLine).join("\n");
 }
 
-export function executeTool(
+async function toolWebFetch(url: string, signal: AbortSignal): Promise<string> {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return `Unsupported URL protocol: ${parsed.protocol}. Only http and https are allowed.`;
+    }
+  } catch {
+    return `Invalid URL: ${url}`;
+  }
+
+  if (signal.aborted) return "Request cancelled";
+
+  try {
+    const result = await invoke<string>("webfetch", { url });
+    return result;
+  } catch (e) {
+    return `Fetch error: ${e}`;
+  }
+}
+
+export async function executeTool(
   name: string,
   args: Record<string, unknown>,
-  docContent: string
-): string {
+  docContent: string,
+  signal: AbortSignal
+): Promise<string> {
   try {
     let result: string;
     switch (name) {
@@ -235,6 +280,9 @@ export function executeTool(
         break;
       case "read_section":
         result = toolReadSection(String(args.heading ?? ""), docContent);
+        break;
+      case "webfetch":
+        result = await toolWebFetch(String(args.url ?? ""), signal);
         break;
       default:
         return `Unknown tool: ${name}`;

@@ -11,6 +11,7 @@ export interface Message {
   toolCalls?: ToolCall[];
   toolCallId?: string;
   toolName?: string;
+  reasoningContent?: string;
 }
 
 const emptyMessages: Message[] = [];
@@ -30,6 +31,7 @@ interface ChatState {
   addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
   appendToLastMessage: (tabId: string, chunk: string) => void;
   addToolCallsToLastMessage: (tabId: string, toolCalls: ToolCall[]) => void;
+  addReasoningContentToLastMessage: (tabId: string, reasoningContent: string) => void;
   recordUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number) => void;
   recordStandaloneUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number) => void;
   setStreaming: (v: boolean) => void;
@@ -99,7 +101,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => {
       const existing = state.messagesMap[tabId] ?? [];
       const newContextMap = { ...state.contextMap };
-      if (msg.role === "user" || msg.role === "tool") {
+      if (msg.role === "user" || msg.role === "tool" || msg.role === "assistant") {
         const ctx = newContextMap[tabId];
         if (ctx) {
           newContextMap[tabId] = [...ctx, fullMsg];
@@ -144,6 +146,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const lastCtx = ctx[ctx.length - 1];
         if (lastCtx.role === "assistant" && lastCtx.id === last?.id) {
           newContextMap[tabId] = [...ctx.slice(0, -1), { ...lastCtx, toolCalls }];
+        }
+      }
+      return {
+        messagesMap: {
+          ...state.messagesMap,
+          [tabId]: msgs,
+        },
+        contextMap: newContextMap,
+      };
+    }),
+
+  addReasoningContentToLastMessage: (tabId, reasoningContent) =>
+    set((state) => {
+      const msgs = [...(state.messagesMap[tabId] ?? [])];
+      const last = msgs[msgs.length - 1];
+      if (last && last.role === "assistant") {
+        msgs[msgs.length - 1] = { ...last, reasoningContent };
+      }
+      const newContextMap = { ...state.contextMap };
+      const ctx = newContextMap[tabId];
+      if (ctx && ctx.length > 0) {
+        const lastCtx = ctx[ctx.length - 1];
+        if (lastCtx.role === "assistant" && lastCtx.id === last?.id) {
+          newContextMap[tabId] = [...ctx.slice(0, -1), { ...lastCtx, reasoningContent }];
         }
       }
       return {
@@ -272,6 +298,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           [tabId]: msgs,
         },
       }));
+      get().getContext(tabId);
     }
   },
 

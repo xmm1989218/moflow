@@ -98,11 +98,11 @@
 
 .moflow-ai-message {
   display: flex;
-  max-width: 90%;
 }
 
 .moflow-ai-message-user {
   align-self: flex-end;
+  max-width: 90%;
 }
 
 .moflow-ai-message-assistant {
@@ -675,6 +675,20 @@
   flex-shrink: 0;
 }
 
+.moflow-ai-tool-args-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.moflow-ai-tool-args-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
 .moflow-ai-tool-result-content {
   margin: 4px 0 0 0;
   padding: 8px 12px;
@@ -698,6 +712,14 @@
   font-size: 12px;
   color: var(--moflow-text-secondary);
   margin-top: 4px;
+  min-width: 0;
+}
+
+.moflow-ai-tool-calls-summary > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .moflow-ai-tool-calls-only {

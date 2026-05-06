@@ -16,6 +16,7 @@ export interface ChatMessage {
   tool_calls?: ToolCall[];
   tool_call_id?: string;
   name?: string;
+  reasoningContent?: string;
 }
 
 export interface ChatUsage {
@@ -28,6 +29,7 @@ export interface ChatResult {
   usage: ChatUsage;
   toolCalls?: ToolCall[];
   finishReason?: string;
+  reasoningContent?: string;
 }
 
 export interface ChatOptions {
@@ -81,16 +83,22 @@ function convertToOpenAIMessages(messages: ChatMessage[]): Record<string, unknow
     if (m.role === "tool") {
       return { role: "tool", tool_call_id: m.tool_call_id, content: m.content };
     }
-    if (m.role === "assistant" && m.tool_calls?.length) {
-      return {
+    if (m.role === "assistant") {
+      const msg: Record<string, unknown> = {
         role: "assistant",
-        content: m.content || null,
-        tool_calls: m.tool_calls.map((tc) => ({
+        content: m.tool_calls?.length ? (m.content || null) : (m.content || ""),
+      };
+      if (m.reasoningContent) {
+        msg.reasoning_content = m.reasoningContent;
+      }
+      if (m.tool_calls?.length) {
+        msg.tool_calls = m.tool_calls.map((tc) => ({
           id: tc.id,
           type: "function",
           function: { name: tc.name, arguments: tc.arguments },
-        })),
-      };
+        }));
+      }
+      return msg;
     }
     return { role: m.role, content: m.content };
   });
@@ -113,7 +121,7 @@ class OpenAICompatibleClient implements LLMClient {
     signal: AbortSignal,
     options?: ChatOptions
   ): Promise<ChatResult> {
-    const timeout = options?.timeout ?? 30000;
+    const timeout = options?.timeout ?? 60000;
     const url = this.endpoint.replace(/\/+$/, "") + "/chat/completions";
 
     const controller = new AbortController();
@@ -128,6 +136,7 @@ class OpenAICompatibleClient implements LLMClient {
 
     let usage: ChatUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
     let fullResponse = "";
+    let reasoningContent = "";
     const toolCallsMap = new Map<number, ToolCall>();
     let finishReason: string | undefined;
 
@@ -139,7 +148,14 @@ class OpenAICompatibleClient implements LLMClient {
         stream_options: { include_usage: true },
       };
       if (options?.tools?.length) {
-        body.tools = options.tools;
+        body.tools = options.tools.map((t) => {
+          const params = t.function.parameters as Record<string, unknown> | undefined;
+          const props = params?.properties as Record<string, unknown> | undefined;
+          if (props && Object.keys(props).length === 0) {
+            return { type: t.type, function: { name: t.function.name, description: t.function.description } };
+          }
+          return t;
+        });
       }
 
       const res = await fetch(url, {
@@ -154,6 +170,7 @@ class OpenAICompatibleClient implements LLMClient {
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
+        console.error("[LLMClient] OpenAI API error", res.status, text.slice(0, 500));
         throw new Error(`API error ${res.status}: ${text.slice(0, 200)}`);
       }
 
@@ -183,6 +200,9 @@ class OpenAICompatibleClient implements LLMClient {
             if (delta?.content) {
               onChunk(delta.content);
               fullResponse += delta.content;
+            }
+            if (delta?.reasoning_content) {
+              reasoningContent += delta.reasoning_content;
             }
             if (delta?.tool_calls) {
               for (const tc of delta.tool_calls) {
@@ -238,6 +258,9 @@ class OpenAICompatibleClient implements LLMClient {
     if (finishReason) result.finishReason = finishReason;
     if (toolCallsMap.size > 0) {
       result.toolCalls = Array.from(toolCallsMap.values());
+    }
+    if (reasoningContent) {
+      result.reasoningContent = reasoningContent;
     }
     return result;
   }
@@ -316,7 +339,7 @@ class ClaudeCompatibleClient implements LLMClient {
     signal: AbortSignal,
     options?: ChatOptions
   ): Promise<ChatResult> {
-    const timeout = options?.timeout ?? 30000;
+    const timeout = options?.timeout ?? 60000;
     const url = this.endpoint.replace(/\/+$/, "") + "/messages";
 
     const controller = new AbortController();
@@ -352,11 +375,17 @@ class ClaudeCompatibleClient implements LLMClient {
         body.system = systemMsg.content;
       }
       if (options?.tools?.length) {
-        body.tools = options.tools.map((t) => ({
-          name: t.function.name,
-          description: t.function.description,
-          input_schema: t.function.parameters,
-        }));
+        body.tools = options.tools.map((t) => {
+          const props = (t.function.parameters as Record<string, unknown> | undefined)?.properties as Record<string, unknown> | undefined;
+          const inputSchema = (props && Object.keys(props).length === 0)
+            ? { type: "object" as const }
+            : t.function.parameters;
+          return {
+            name: t.function.name,
+            description: t.function.description,
+            input_schema: inputSchema,
+          };
+        });
       }
 
       const res = await fetch(url, {
@@ -372,6 +401,7 @@ class ClaudeCompatibleClient implements LLMClient {
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
+        console.error("[LLMClient] Claude API error", res.status, text.slice(0, 500));
         throw new Error(`API error ${res.status}: ${text.slice(0, 200)}`);
       }
 
