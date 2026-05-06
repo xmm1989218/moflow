@@ -1,23 +1,36 @@
 # MoFlow Roadmap
 
-## v0.3.x — Bug 修复 & 质量提升（patch 迭代）
+## v0.3.6 — Bug 修复 & 质量提升 ✅
 
 ### Bug 修复
 
-- [ ] SelectionAI "Ask" cost 计算修复（当前传 `cost: 0`，应调用 `calculateCost()`）
-- [ ] OpenAI fallback usage 估算修复（`fullResponse` 为空串导致 `completionTokens=0`）
-- [ ] Auto-compact 丢消息修复（触发 compact 时用户输入的消息应暂存，完成后重新发送）
-- [ ] Untitled draft 竞态条件修复（closeTab 后 timer 仍可能触发写文件）
-- [ ] 添加 React ErrorBoundary（防止编辑器崩溃导致整个 UI 白屏）
+- [x] SelectionAI "Ask" cost 计算修复（`calculateCost()` + `getContext()`）
+- [x] OpenAI/Claude fallback usage 估算修复（`fullResponse` 累积 + `estimateTokens` 兜底）
+- [x] Auto-compact 丢消息修复（compact 完成后自动发送用户输入）
+- [x] Untitled draft 竞态条件修复（`clearTimeout` + `untitledTimers.delete`）
+- [x] React ErrorBoundary（全局 + 编辑器级，带 resetKeys）
 
 ### 质量提升
 
-- [ ] i18n 统一（ConfirmCloseDialog、App.tsx、TabBar 中硬编码中文改用 `t()`）
-- [ ] 自动化测试框架搭建（Vitest + React Testing Library）
-- [ ] 核心模块测试覆盖（stores、lib）
-- [ ] appStore 拆分（tabStore、themeStore、sessionStore）
-- [ ] 样式统一（CSS 文件迁移到 Tailwind，主题变量整理）
-- [ ] Toolbar 空组件清理
+- [x] i18n 统一（11 处硬编码中文改用 `t()`）
+- [x] 测试框架搭建（Vitest + RTL + jsdom，12 tests passing）
+- [x] 核心模块测试覆盖（modelInfo 8 tests，toolbarTooltip 4 tests）
+- [x] appStore 三方拆分（tabStore + sessionStore + themeStore，appStore 仅保留 closeDialog + re-exports）
+- [x] Toolbar 空组件清理
+
+### 新增功能
+
+- [x] Toolbar tooltip（内置按钮 + 自定义 AI 按钮均支持，JS 事件委托 + position:fixed 避免 overflow:hidden 裁剪）
+- [x] F8 快捷键切换 AI 侧栏（TitleBar tooltip 显示快捷键提示）
+- [x] Release 脚本重写（7 步流程，lint+build+test+cargo check 先于 commit，失败回滚版本文件）
+- [x] Release CI workflow（增加 lint+build+test+cargo check 步骤）
+- [x] AI config 测试连接日志（catch + no-content 均有 console.error）
+- [x] navigator 安全访问（`toolbarTooltip.ts` 兼容测试环境）
+
+### 推迟项
+
+- [ ] 样式统一（CSS 文件迁移到 Tailwind，主题变量整理）→ 推迟到独立版本
+- [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边，CSS/Win32 API 均未解决）→ 推迟
 
 ---
 
