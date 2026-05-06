@@ -44,6 +44,22 @@ jobs:
         run: cargo check
         working-directory: src-tauri
 
+      - name: Extract release notes from CHANGELOG
+        shell: pwsh
+        run: |
+          $content = Get-Content CHANGELOG.md -Raw
+          $version = "${{ github.ref_name }}"
+          $pattern = "(?s)## $version\s*\([^)]*\)\s*\r?\n(.*?)(?:\r?\n## v|\z)"
+          if ($content -match $pattern) {
+            $body = $Matches[1].TrimEnd()
+          } else {
+            $body = "See CHANGELOG.md for details."
+          }
+          $delimiter = "RELEASE_BODY_$(Get-Random)"
+          echo "RELEASE_BODY<<$delimiter" >> $env:GITHUB_ENV
+          echo $body >> $env:GITHUB_ENV
+          echo "$delimiter" >> $env:GITHUB_ENV
+
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -53,6 +69,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: ${{ github.ref_name }}
-          releaseBody: "See the assets to download and install."
+          releaseBody: ${{ env.RELEASE_BODY }}
           releaseDraft: true
           prerelease: false

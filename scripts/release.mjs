@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
@@ -47,7 +47,7 @@ async function main() {
   console.log(`\n=== MoFlow Release v${version} ===\n`);
 
   // 1. Git status check
-  console.log("Step 1/7: Checking git status...");
+  console.log("Step 1/8: Checking git status...");
   const branch = runQuiet("git rev-parse --abbrev-ref HEAD");
   if (branch !== "master" && branch !== "main") {
     exit(`Not on master/main branch (current: ${branch})`);
@@ -58,12 +58,24 @@ async function main() {
   }
   console.log(`  Branch: ${branch}, working directory clean.\n`);
 
-  // 2. Sync version
-  console.log("Step 2/7: Syncing version numbers...");
+  // 2. Check CHANGELOG
+  console.log("Step 2/8: Checking CHANGELOG.md...");
+  const changelogPath = resolve(root, "CHANGELOG.md");
+  if (!existsSync(changelogPath)) {
+    exit("CHANGELOG.md not found. Create it with an entry for v" + version + " before releasing.");
+  }
+  const changelogContent = readFileSync(changelogPath, "utf-8");
+  if (!changelogContent.includes(`## v${version}`)) {
+    exit(`CHANGELOG.md does not contain an entry for v${version}. Update CHANGELOG.md before releasing.`);
+  }
+  console.log(`  CHANGELOG.md has entry for v${version}.\n`);
+
+  // 3. Sync version
+  console.log("Step 3/8: Syncing version numbers...");
   run(`node scripts/sync-version.mjs ${version}\n`);
 
-  // 3. Lint
-  console.log("Step 3/7: Running lint...");
+  // 4. Lint
+  console.log("Step 4/8: Running lint...");
   try {
     run("bun run lint");
     console.log("  Lint passed.\n");
@@ -72,8 +84,8 @@ async function main() {
     exit("Lint failed. Fix errors and try again.");
   }
 
-  // 4. Type check & build
-  console.log("Step 4/7: Running type check and build...");
+  // 5. Type check & build
+  console.log("Step 5/8: Running type check and build...");
   try {
     run("bun run build");
     console.log("  Build passed.\n");
@@ -82,8 +94,8 @@ async function main() {
     exit("Build failed. Fix errors and try again.");
   }
 
-  // 5. Test
-  console.log("Step 5/7: Running tests...");
+  // 6. Test
+  console.log("Step 6/8: Running tests...");
   try {
     run("bun test");
     console.log("  Tests passed.\n");
@@ -92,8 +104,8 @@ async function main() {
     exit("Tests failed. Fix errors and try again.");
   }
 
-  // 6. Rust check
-  console.log("Step 6/7: Running Rust check...");
+  // 7. Rust check
+  console.log("Step 7/8: Running Rust check...");
   try {
     run("cargo check", { cwd: resolve(root, "src-tauri") });
     console.log("  Rust check passed.\n");
@@ -102,9 +114,9 @@ async function main() {
     exit("Rust check failed. Fix errors and try again.");
   }
 
-  // 7. Commit, tag and push
-  console.log("Step 7/7: Committing, tagging and pushing...");
-  run(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json`);
+  // 8. Commit, tag and push
+  console.log("Step 8/8: Committing, tagging and pushing...");
+  run(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json CHANGELOG.md`);
   const hasStaged = runQuiet("git diff --cached --quiet || echo changed").includes("changed");
   if (hasStaged) {
     run(`git commit -m "chore: bump version to ${version}"\n`);
