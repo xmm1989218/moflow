@@ -64,6 +64,10 @@ src-tauri/              # Backend (Rust + Tauri)
   icons/                # App icons (PNG, ICO, ICNS)
 ```
 
+## Branching Convention
+
+- Development branches for version releases must use `dev/v{version}` format (e.g. `dev/v0.4.0`), **never** `v{version}` — because release tags use `v{version}` format and same-name branches/tags cause `git push origin v0.4.0` ambiguity
+
 ## Code Style
 
 - No comments unless explicitly requested

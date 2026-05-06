@@ -125,7 +125,7 @@ async function main() {
   }
   run(`git tag ${tag}`);
   run("git push");
-  run(`git push origin ${tag}`);
+  run(`git push origin refs/tags/${tag}`);
   console.log(`\n=== Pushed ${tag}. GitHub Actions will build and publish the release. ===`);
   console.log(`  https://github.com/xmm1989218/moflow/actions\n`);
 }
