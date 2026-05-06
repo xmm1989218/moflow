@@ -23,6 +23,7 @@ interface AISelectionState {
   activeAction: AIAction | null;
   sourceLang: LanguageCode;
   targetLang: LanguageCode;
+  lastResult: string;
 
   triggerExplain: (text: string, coords: { x: number; y: number }) => void;
   triggerTranslate: (text: string, coords: { x: number; y: number }) => void;
@@ -30,6 +31,7 @@ interface AISelectionState {
   setTargetLang: (lang: LanguageCode) => void;
   setSourceLang: (lang: LanguageCode) => void;
   swapLanguages: () => void;
+  setLastResult: (r: string) => void;
   dismiss: () => void;
 }
 
@@ -52,17 +54,18 @@ export const useAISelectionStore = create<AISelectionState>((set, get) => ({
   activeAction: null,
   sourceLang: "auto",
   targetLang: getDefaultTargetLang(),
+  lastResult: "",
 
   triggerExplain: (text, coords) => {
-    set({ selectedText: text, selectionCoords: coords, activeAction: "explain" });
+    set({ selectedText: text, selectionCoords: coords, activeAction: "explain", lastResult: "" });
   },
 
   triggerTranslate: (text, coords) => {
-    set({ selectedText: text, selectionCoords: coords, activeAction: "translate" });
+    set({ selectedText: text, selectionCoords: coords, activeAction: "translate", lastResult: "" });
   },
 
   triggerAsk: (text, coords) => {
-    set({ selectedText: text, selectionCoords: coords, activeAction: "ask" });
+    set({ selectedText: text, selectionCoords: coords, activeAction: "ask", lastResult: "" });
   },
 
   setTargetLang: (lang) => {
@@ -81,7 +84,9 @@ export const useAISelectionStore = create<AISelectionState>((set, get) => ({
     });
   },
 
+  setLastResult: (r) => set({ lastResult: r }),
+
   dismiss: () => {
-    set({ activeAction: null, selectedText: "", selectionCoords: null });
+    set({ activeAction: null, selectedText: "", selectionCoords: null, lastResult: "" });
   },
 }));

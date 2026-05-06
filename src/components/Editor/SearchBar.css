@@ -1,0 +1,114 @@
+.moflow-search-bar {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: var(--moflow-bg);
+  border: 1px solid var(--moflow-border);
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  padding: 6px;
+  animation: moflow-search-appear 0.12s ease-out;
+}
+
+@keyframes moflow-search-appear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.moflow-search-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.moflow-search-input {
+  width: 200px;
+  padding: 4px 8px;
+  border: 1px solid var(--moflow-border);
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+  background-color: var(--moflow-bg);
+  color: var(--moflow-text);
+  outline: none;
+}
+
+.moflow-search-input:focus {
+  border-color: var(--moflow-accent);
+}
+
+.moflow-search-input-invalid {
+  border-color: #ef4444;
+}
+
+.moflow-search-input::placeholder {
+  color: var(--moflow-text-secondary);
+}
+
+.moflow-search-match-count {
+  min-width: 48px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--moflow-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.moflow-search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--moflow-text-secondary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: inherit;
+  flex-shrink: 0;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+.moflow-search-btn:hover:not(:disabled) {
+  background-color: var(--moflow-bg-secondary);
+  color: var(--moflow-text);
+}
+
+.moflow-search-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.moflow-search-btn-active {
+  background-color: var(--moflow-accent);
+  color: #ffffff;
+}
+
+.moflow-search-btn-active:hover:not(:disabled) {
+  opacity: 0.85;
+  color: #ffffff;
+}
+
+.moflow-search-close-btn {
+  margin-left: 2px;
+}
+
+.moflow-search-replace-btn {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0 6px;
+}

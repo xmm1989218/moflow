@@ -7,6 +7,7 @@ import { useThemeStore } from "../../stores/themeStore";
 import { getLLMClient } from "../../lib/llmClient";
 import { buildSystemPrompt } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost } from "../../lib/modelInfo";
+import { appendMessage } from "../../lib/chatPersistence";
 import "./SelectionAIPanel.css";
 
 const isZh = navigator.language.startsWith("zh");
@@ -26,6 +27,8 @@ export default function SelectionAIPanel() {
   const setTargetLang = useAISelectionStore((s) => s.setTargetLang);
   const setSourceLang = useAISelectionStore((s) => s.setSourceLang);
   const swapLanguages = useAISelectionStore((s) => s.swapLanguages);
+  const lastResult = useAISelectionStore((s) => s.lastResult);
+  const setLastResult = useAISelectionStore((s) => s.setLastResult);
   const dismiss = useAISelectionStore((s) => s.dismiss);
 
   const aiConfig = useAIConfigStore((s) => s.config);
@@ -33,6 +36,8 @@ export default function SelectionAIPanel() {
   const appendToLastMessage = useChatStore((s) => s.appendToLastMessage);
   const addUsage = useChatStore((s) => s.recordUsage);
   const setStreaming = useChatStore((s) => s.setStreaming);
+  const setAbortController = useChatStore((s) => s.setAbortController);
+  const flushAssistantMessage = useChatStore((s) => s.flushAssistantMessage);
   const toggleAISidebar = useThemeStore((s) => s.toggleAISidebar);
   const showAISidebar = useThemeStore((s) => s.showAISidebar);
   const activeFileId = useTabStore((s) => s.activeFileId);
@@ -44,6 +49,7 @@ export default function SelectionAIPanel() {
   const [result, setResult] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [inputValue, setInputValue] = useState("");
+  const [followUpValue, setFollowUpValue] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +58,7 @@ export default function SelectionAIPanel() {
   const doLLMRequest = useCallback(
     async (prompt: string) => {
       setResult("");
+      setLastResult("");
       setIsStreaming(true);
       const controller = new AbortController();
       abortRef.current = controller;
@@ -86,7 +93,7 @@ export default function SelectionAIPanel() {
         abortRef.current = null;
       }
     },
-    [aiConfig, docContent, activeFileId, recordStandaloneUsage]
+    [aiConfig, docContent, activeFileId, recordStandaloneUsage, setLastResult]
   );
 
   useEffect(() => {
@@ -99,6 +106,12 @@ export default function SelectionAIPanel() {
       doLLMRequest(prompt);
     }
   }, [activeAction, targetLang, selectedText, doLLMRequest]);
+
+  useEffect(() => {
+    if (!isStreaming && result && (activeAction === "explain" || activeAction === "translate")) {
+      setLastResult(result);
+    }
+  }, [isStreaming, result, activeAction, setLastResult]);
 
   useEffect(() => {
     return () => {
@@ -122,16 +135,10 @@ export default function SelectionAIPanel() {
     }
   }, [activeAction, dismiss]);
 
-  const handleAsk = () => {
-    if (!inputValue.trim()) return;
+  const sendToSidebar = async (userContent: string) => {
+    const userMsg = addMessage(activeFileId, { role: "user", content: userContent });
 
-    const question = inputValue.trim();
-    setInputValue("");
-
-    addMessage(activeFileId, {
-      role: "user",
-      content: t(`关于以下文本：\n${selectedText}\n\n用户问题：${question}`, `Regarding the following text:\n${selectedText}\n\nQuestion: ${question}`),
-    });
+    await appendMessage(activeFileId, userMsg);
 
     if (!showAISidebar) {
       toggleAISidebar();
@@ -141,13 +148,13 @@ export default function SelectionAIPanel() {
     const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
     const client = getLLMClient(aiConfig);
 
+    const controller = new AbortController();
+    setAbortController(controller);
     setStreaming(true);
     addMessage(activeFileId, { role: "assistant", content: "" });
 
-    const controller = new AbortController();
-
-    client
-      .chat(
+    try {
+      const chatResult = await client.chat(
         [
           { role: "system", content: systemPrompt },
           ...contextMsgs.map((m) => ({
@@ -159,27 +166,63 @@ export default function SelectionAIPanel() {
           appendToLastMessage(activeFileId, chunk);
         },
         controller.signal
-      )
-      .then((result) => {
-        const { cost: costVal } = calculateCost(
-          result.usage.promptTokens,
-          result.usage.completionTokens,
-          aiConfig.providerId,
-          aiConfig.model
-        );
-        addUsage(activeFileId, result.usage.promptTokens, result.usage.completionTokens, costVal);
-      })
-      .catch((e) => {
-        if (e instanceof DOMException && e.name === "AbortError") return;
-        appendToLastMessage(
-          activeFileId,
-          `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`
-        );
-      })
-      .finally(() => {
-        setStreaming(false);
-      });
+      );
+      const { cost: costVal } = calculateCost(
+        chatResult.usage.promptTokens,
+        chatResult.usage.completionTokens,
+        aiConfig.providerId,
+        aiConfig.model
+      );
+      addUsage(activeFileId, chatResult.usage.promptTokens, chatResult.usage.completionTokens, costVal);
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+      appendToLastMessage(
+        activeFileId,
+        `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`
+      );
+    } finally {
+      setStreaming(false);
+      setAbortController(null);
+      await flushAssistantMessage(activeFileId);
+    }
+  };
 
+  const handleAsk = () => {
+    if (!inputValue.trim()) return;
+
+    const question = inputValue.trim();
+    setInputValue("");
+
+    const userContent = t(
+      `关于以下文本：\n${selectedText}\n\n用户问题：${question}`,
+      `Regarding the following text:\n${selectedText}\n\nQuestion: ${question}`
+    );
+
+    sendToSidebar(userContent);
+    dismiss();
+  };
+
+  const handleFollowUp = () => {
+    if (!followUpValue.trim()) return;
+
+    const question = followUpValue.trim();
+    setFollowUpValue("");
+
+    const actionLabel = activeAction === "translate"
+      ? t("翻译", "Translation")
+      : t("解释", "Explanation");
+
+    const userContent = activeAction === "translate"
+      ? t(
+          `选中文本：\n${selectedText}\n\n${actionLabel}结果：\n${lastResult}\n\n追问：${question}`,
+          `Selected text:\n${selectedText}\n\n${actionLabel}:\n${lastResult}\n\nFollow-up: ${question}`
+        )
+      : t(
+          `选中文本：\n${selectedText}\n\n${actionLabel}结果：\n${lastResult}\n\n追问：${question}`,
+          `Selected text:\n${selectedText}\n\n${actionLabel}:\n${lastResult}\n\nFollow-up: ${question}`
+        );
+
+    sendToSidebar(userContent);
     dismiss();
   };
 
@@ -187,6 +230,16 @@ export default function SelectionAIPanel() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleAsk();
+    }
+    if (e.key === "Escape") {
+      dismiss();
+    }
+  };
+
+  const handleFollowUpKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleFollowUp();
     }
     if (e.key === "Escape") {
       dismiss();
@@ -257,6 +310,29 @@ export default function SelectionAIPanel() {
             </span>
           )}
           {isStreaming && <span className="moflow-selection-ai-cursor">▌</span>}
+        </div>
+      )}
+
+      {(activeAction === "explain" || activeAction === "translate") && !isStreaming && lastResult && (
+        <div className="moflow-selection-ai-followup-row">
+          <input
+            className="moflow-selection-ai-followup-input"
+            type="text"
+            value={followUpValue}
+            onChange={(e) => setFollowUpValue(e.target.value)}
+            onKeyDown={handleFollowUpKeyDown}
+            placeholder={t("继续追问...", "Follow up...")}
+          />
+          <button
+            className="moflow-selection-ai-followup-send"
+            onClick={handleFollowUp}
+            disabled={!followUpValue.trim()}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
         </div>
       )}
 

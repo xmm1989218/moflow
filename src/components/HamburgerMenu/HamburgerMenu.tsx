@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore, type EditorTheme, EDITOR_THEMES } from "../../stores/themeStore";
 import { useUpdateStore } from "../../stores/updateStore";
+import { useSearchStore } from "../../stores/searchStore";
 import { openFile, saveFile, saveFileAs, exportHtml, exportPdf } from "../../lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
@@ -81,6 +82,12 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
       case "export_pdf":
         exportPdf();
         break;
+      case "find":
+        useSearchStore.getState().toggleSearch(false);
+        break;
+      case "replace":
+        useSearchStore.getState().toggleSearch(true);
+        break;
       case "app_system":
         useThemeStore.getState().setAppTheme("system");
         break;
@@ -116,6 +123,9 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
     item("open", t("打开...", "Open..."), { shortcut: "Ctrl+O" }),
     item("save", t("保存", "Save"), { shortcut: "Ctrl+S" }),
     item("save_as", t("另存为...", "Save As..."), { shortcut: "Ctrl+Shift+S" }),
+    sep(),
+    item("find", t("查找", "Find"), { shortcut: "Ctrl+F" }),
+    item("replace", t("替换", "Replace"), { shortcut: "Ctrl+H" }),
     sep(),
     item("export", t("导出", "Export"), {
       submenu: [

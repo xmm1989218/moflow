@@ -29,6 +29,21 @@
 
 ---
 
+## v0.3.7 — 查找替换 & SelectionAI 追问
+
+### 查找替换
+
+- [ ] `Ctrl+F` / `Ctrl+H` 弹出搜索框
+- [ ] 支持正则匹配、大小写敏感
+- [ ] 全部替换
+
+### SelectionAI 追问功能
+
+- [ ] 翻译/解释结果面板底部增加输入框，支持连续追问
+- [ ] 追问上下文同步到 AI 聊天侧栏
+
+---
+
 ## v0.4.0 — Phase 2: Tool-Calling
 
 Enable the AI to actively explore the document instead of relying on truncated context.
@@ -67,17 +82,6 @@ Enable the AI to actively explore the document instead of relying on truncated c
 ---
 
 ## v0.5.0 — 增强功能 I
-
-### 查找替换
-
-- [ ] `Ctrl+F` / `Ctrl+H` 弹出搜索框
-- [ ] 支持正则匹配、大小写敏感
-- [ ] 全部替换
-
-### SelectionAI 追问功能
-
-- [ ] 翻译/解释结果面板底部增加输入框，支持连续追问
-- [ ] 追问上下文同步到 AI 聊天侧栏
 
 ### Selector Toolbar 文字美化
 

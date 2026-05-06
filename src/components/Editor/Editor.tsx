@@ -7,7 +7,10 @@ import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useAISelectionStore } from "../../stores/aiSelectionStore";
 import { highlightPlugin, highlightSchema, toggleHighlightCommand } from "../../lib/highlightMark";
+import { searchPlugin } from "../../lib/searchPlugin";
 import { createHtmlNodeView } from "../../lib/htmlBlock";
+import { useSearchStore } from "../../stores/searchStore";
+import SearchBar from "./SearchBar";
 import { commandsCtx } from "@milkdown/kit/core";
 import { isMarkSelectedCommand } from "@milkdown/kit/preset/commonmark";
 import "@milkdown/crepe/theme/common/style.css";
@@ -294,10 +297,12 @@ function MilkdownWrapper() {
     });
 
     crepe.editor.use(highlightPlugin);
+    crepe.editor.use(searchPlugin);
 
     crepe.on((listener) => {
       listener.mounted((ctx) => {
         const view = ctx.get(editorViewCtx);
+        useSearchStore.getState().setEditorView(view);
         const existing = view.props.nodeViews ?? {};
         view.setProps({
           nodeViews: {
@@ -342,7 +347,10 @@ function MilkdownWrapper() {
   }, [content, loading, getEditor, setGetEditorHTML]);
 
   useEffect(() => {
-    return () => setGetEditorHTML(null);
+    return () => {
+      setGetEditorHTML(null);
+      useSearchStore.getState().setEditorView(null);
+    };
   }, [setGetEditorHTML]);
 
   useEffect(() => {
@@ -488,6 +496,7 @@ function MilkdownWrapper() {
         <SourceModeEditor content={content} setContent={setContent} />
       )}
       <SelectionAIPanel />
+      <SearchBar />
     </div>
   );
 }

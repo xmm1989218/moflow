@@ -24,6 +24,7 @@ MoFlow is a desktop Markdown editor built with Tauri v2 + React + TypeScript + V
 
 **Always run after code changes:**
 - `bun run lint` — ensure no lint errors
+- `tsc -b` — ensure no TypeScript errors
 - `cargo build` (in `src-tauri/`) — ensure Rust compiles
 
 ## Project Structure

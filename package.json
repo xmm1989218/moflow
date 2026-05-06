@@ -34,6 +34,7 @@
     "@tauri-apps/plugin-updater": "^2.10.1",
     "katex": "^0.16.45",
     "prismjs": "^1.30.0",
+    "prosemirror-search": "^1.1.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-markdown": "^10.1.0",

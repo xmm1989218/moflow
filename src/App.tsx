@@ -13,6 +13,7 @@ import { useTabStore } from "./stores/tabStore";
 import { useThemeStore, resolveAppTheme } from "./stores/themeStore";
 import { useUpdateStore } from "./stores/updateStore";
 import { useAIConfigStore } from "./stores/aiConfigStore";
+import { useSearchStore } from "./stores/searchStore";
 import { useChatStore } from "./stores/chatStore";
 import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab } from "./lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -186,6 +187,12 @@ function App() {
         const dir = e.shiftKey ? -1 : 1;
         const nextIdx = (idx + dir + files.length) % files.length;
         state.switchTab(files[nextIdx].id);
+      } else if (mod && e.key === "f") {
+        e.preventDefault();
+        useSearchStore.getState().toggleSearch(false);
+      } else if (mod && e.key === "h") {
+        e.preventDefault();
+        useSearchStore.getState().toggleSearch(true);
       } else if (e.key === "F8") {
         e.preventDefault();
         e.stopPropagation();
