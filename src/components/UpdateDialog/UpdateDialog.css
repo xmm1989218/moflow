@@ -119,3 +119,12 @@
 .moflow-toast-btn-secondary:hover {
   background: var(--ui-bg-secondary);
 }
+
+.moflow-toast-link {
+  color: var(--ui-accent);
+  text-decoration: none;
+}
+
+.moflow-toast-link:hover {
+  text-decoration: none;
+}

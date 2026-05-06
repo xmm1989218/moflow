@@ -48,11 +48,17 @@ export default function UpdateDialog() {
         <div className="moflow-toast-icon">↓</div>
         <div className="moflow-toast-body">
           <div className="moflow-toast-title">
-            {t(`新版本 v${info.version} 可用`, `v${info.version} available`)}
+            {t("新版本 ", "New version ")}
+            <a
+              className="moflow-toast-link"
+              href={`https://github.com/xmm1989218/moflow/releases/tag/v${info.version}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              v{info.version}
+            </a>
+            {t(" 可用", " available")}
           </div>
-          {info.body && (
-            <div className="moflow-toast-desc">{info.body.split("\n")[0]}</div>
-          )}
         </div>
         <div className="moflow-toast-actions">
           <button className="moflow-toast-btn moflow-toast-btn-secondary" onClick={dismiss}>
