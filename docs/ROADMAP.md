@@ -27,11 +27,6 @@
 - [x] AI config 测试连接日志（catch + no-content 均有 console.error）
 - [x] navigator 安全访问（`toolbarTooltip.ts` 兼容测试环境）
 
-### 推迟项
-
-- [ ] 样式统一（CSS 文件迁移到 Tailwind，主题变量整理）→ 推迟到独立版本
-- [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边，CSS/Win32 API 均未解决）→ 推迟
-
 ---
 
 ## v0.4.0 — Phase 2: Tool-Calling
@@ -110,6 +105,16 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
+## v0.6.5 — 样式统一
+
+### CSS → Tailwind 迁移
+
+- [ ] Editor.css 中的自定义样式迁移到 Tailwind 类
+- [ ] 主题变量整理（CSS custom properties → Tailwind theme config）
+- [ ] 全局样式审计，消除重复/冗余规则
+
+---
+
 ## v0.7.0 — 跨平台支持
 
 ### macOS 适配
@@ -158,3 +163,4 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] 多文件上下文（引用其他打开的文档）
 - [ ] Vim keybindings 模式
 - [ ] 图片上传和管理
+- [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边）
