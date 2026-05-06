@@ -87,8 +87,12 @@ export default function AIConfigModal({ open, onClose }: AIConfigModalProps) {
         new AbortController().signal,
         10000
       );
+      if (!gotContent) {
+        console.error("[AIConfigModal] Connection test: no content received from API");
+      }
       setTestResult(gotContent ? "success" : "error");
-    } catch {
+    } catch (e) {
+      console.error("[AIConfigModal] Connection test failed:", e);
       setTestResult("error");
     } finally {
       setTesting(false);

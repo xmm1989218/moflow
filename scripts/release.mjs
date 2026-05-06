@@ -6,12 +6,6 @@ import { execSync } from "child_process";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, "..");
 
-const files = {
-  packageJson: resolve(root, "package.json"),
-  cargoToml: resolve(root, "src-tauri", "Cargo.toml"),
-  tauriConf: resolve(root, "src-tauri", "tauri.conf.json"),
-};
-
 function run(cmd, options = {}) {
   console.log(`  > ${cmd}`);
   return execSync(cmd, { stdio: "inherit", cwd: root, ...options });
@@ -26,16 +20,13 @@ function exit(msg) {
   process.exit(1);
 }
 
-let bumpCommitted = false;
-
-function rollbackCommit() {
-  if (!bumpCommitted) return;
-  console.log("\nRolling back version bump commit...");
+function rollbackVersion() {
+  console.log("\nRolling back version changes...");
   try {
-    runQuiet("git reset HEAD~1");
-    console.log("Rollback complete. Version bump commit undone.");
+    runQuiet("git checkout -- package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json");
+    console.log("Rollback complete. Version files restored.");
   } catch {
-    console.error("Failed to rollback commit. Please manually run: git reset HEAD~1");
+    console.error("Failed to rollback. Please manually restore the version files.");
   }
 }
 
@@ -56,7 +47,7 @@ async function main() {
   console.log(`\n=== MoFlow Release v${version} ===\n`);
 
   // 1. Git status check
-  console.log("Step 1/5: Checking git status...");
+  console.log("Step 1/7: Checking git status...");
   const branch = runQuiet("git rev-parse --abbrev-ref HEAD");
   if (branch !== "master" && branch !== "main") {
     exit(`Not on master/main branch (current: ${branch})`);
@@ -68,32 +59,58 @@ async function main() {
   console.log(`  Branch: ${branch}, working directory clean.\n`);
 
   // 2. Sync version
-  console.log("Step 2/5: Syncing version numbers...");
+  console.log("Step 2/7: Syncing version numbers...");
   run(`node scripts/sync-version.mjs ${version}\n`);
 
-  // 3. Commit version bump
-  console.log("Step 3/5: Committing version bump...");
-  run(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json`);
-  const hasStaged = runQuiet("git diff --cached --quiet || echo changed").includes("changed");
-  if (hasStaged) {
-    run(`git commit -m "chore: bump version to ${version}"\n`);
-    bumpCommitted = true;
-  } else {
-    console.log("  No version changes to commit (already up to date).\n");
-  }
-
-  // 4. Lint
-  console.log("Step 4/5: Running lint...");
+  // 3. Lint
+  console.log("Step 3/7: Running lint...");
   try {
     run("bun run lint");
     console.log("  Lint passed.\n");
   } catch {
-    rollbackCommit();
+    rollbackVersion();
     exit("Lint failed. Fix errors and try again.");
   }
 
-  // 5. Tag and push (CI will build and publish the release)
-  console.log("Step 5/5: Creating git tag and pushing...");
+  // 4. Type check & build
+  console.log("Step 4/7: Running type check and build...");
+  try {
+    run("bun run build");
+    console.log("  Build passed.\n");
+  } catch {
+    rollbackVersion();
+    exit("Build failed. Fix errors and try again.");
+  }
+
+  // 5. Test
+  console.log("Step 5/7: Running tests...");
+  try {
+    run("bun test");
+    console.log("  Tests passed.\n");
+  } catch {
+    rollbackVersion();
+    exit("Tests failed. Fix errors and try again.");
+  }
+
+  // 6. Rust check
+  console.log("Step 6/7: Running Rust check...");
+  try {
+    run("cargo check", { cwd: resolve(root, "src-tauri") });
+    console.log("  Rust check passed.\n");
+  } catch {
+    rollbackVersion();
+    exit("Rust check failed. Fix errors and try again.");
+  }
+
+  // 7. Commit, tag and push
+  console.log("Step 7/7: Committing, tagging and pushing...");
+  run(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json`);
+  const hasStaged = runQuiet("git diff --cached --quiet || echo changed").includes("changed");
+  if (hasStaged) {
+    run(`git commit -m "chore: bump version to ${version}"\n`);
+  } else {
+    console.log("  No version changes to commit (already up to date).\n");
+  }
   run(`git tag ${tag}`);
   run("git push");
   run(`git push origin ${tag}`);

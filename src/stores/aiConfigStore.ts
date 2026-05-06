@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { defaultAIConfig, type AIConfig } from "../lib/settings";
-import { useAppStore } from "./appStore";
+import { useThemeStore } from "./themeStore";
 
 interface AIConfigState {
   config: AIConfig;
@@ -14,7 +14,7 @@ export const useAIConfigStore = create<AIConfigState>((set) => ({
   loaded: false,
 
   loadConfig: () => {
-    const aiConfig = useAppStore.getState().aiConfig;
+    const aiConfig = useThemeStore.getState().aiConfig;
     if (aiConfig) {
       set({ config: aiConfig, loaded: true });
     } else {
@@ -24,6 +24,6 @@ export const useAIConfigStore = create<AIConfigState>((set) => ({
 
   saveConfig: (config) => {
     set({ config });
-    useAppStore.getState().setAIConfig(config);
+    useThemeStore.getState().setAIConfig(config);
   },
 }));

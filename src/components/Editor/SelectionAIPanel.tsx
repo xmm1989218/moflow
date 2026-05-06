@@ -2,10 +2,11 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useAISelectionStore, LANGUAGES, type LanguageCode } from "../../stores/aiSelectionStore";
 import { useAIConfigStore } from "../../stores/aiConfigStore";
 import { useChatStore } from "../../stores/chatStore";
-import { useAppStore } from "../../stores/appStore";
+import { useTabStore } from "../../stores/tabStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { getLLMClient } from "../../lib/llmClient";
 import { buildSystemPrompt } from "../../lib/contextBuilder";
-import { getModelInfo } from "../../lib/modelInfo";
+import { getModelInfo, calculateCost } from "../../lib/modelInfo";
 import "./SelectionAIPanel.css";
 
 const isZh = navigator.language.startsWith("zh");
@@ -32,10 +33,10 @@ export default function SelectionAIPanel() {
   const appendToLastMessage = useChatStore((s) => s.appendToLastMessage);
   const addUsage = useChatStore((s) => s.recordUsage);
   const setStreaming = useChatStore((s) => s.setStreaming);
-  const toggleAISidebar = useAppStore((s) => s.toggleAISidebar);
-  const showAISidebar = useAppStore((s) => s.showAISidebar);
-  const activeFileId = useAppStore((s) => s.activeFileId);
-  const docContent = useAppStore((s) => {
+  const toggleAISidebar = useThemeStore((s) => s.toggleAISidebar);
+  const showAISidebar = useThemeStore((s) => s.showAISidebar);
+  const activeFileId = useTabStore((s) => s.activeFileId);
+  const docContent = useTabStore((s) => {
     const tab = s.files.find((f) => f.id === s.activeFileId);
     return tab?.content ?? "";
   });
@@ -45,6 +46,8 @@ export default function SelectionAIPanel() {
   const [inputValue, setInputValue] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  const recordStandaloneUsage = useChatStore((s) => s.recordStandaloneUsage);
 
   const doLLMRequest = useCallback(
     async (prompt: string) => {
@@ -57,7 +60,7 @@ export default function SelectionAIPanel() {
         const client = getLLMClient(aiConfig);
         const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
 
-        await client.chat(
+        const result = await client.chat(
           [
             { role: "system", content: systemPrompt },
             { role: "user", content: prompt },
@@ -67,6 +70,14 @@ export default function SelectionAIPanel() {
           },
           controller.signal
         );
+
+        const { cost: costVal } = calculateCost(
+          result.usage.promptTokens,
+          result.usage.completionTokens,
+          aiConfig.providerId,
+          aiConfig.model
+        );
+        recordStandaloneUsage(activeFileId, result.usage.promptTokens, result.usage.completionTokens, costVal);
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return;
         setResult((prev) => prev + `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`);
@@ -75,16 +86,16 @@ export default function SelectionAIPanel() {
         abortRef.current = null;
       }
     },
-    [aiConfig, docContent]
+    [aiConfig, docContent, activeFileId, recordStandaloneUsage]
   );
 
   useEffect(() => {
     if (activeAction === "explain" && selectedText) {
-      const prompt = `请用简洁的语言解释以下内容：\n\n${selectedText}`;
+      const prompt = t(`请用简洁的语言解释以下内容：\n\n${selectedText}`, `Briefly explain the following:\n\n${selectedText}`);
       doLLMRequest(prompt);
     } else if (activeAction === "translate" && selectedText) {
       const targetLabel = getLangLabel(targetLang);
-      const prompt = `请将以下内容翻译为${targetLabel}，只输出翻译结果，不要添加任何解释：\n\n${selectedText}`;
+      const prompt = t(`请将以下内容翻译为${targetLabel}，只输出翻译结果，不要添加任何解释：\n\n${selectedText}`, `Translate the following to ${targetLabel}, output only the translation:\n\n${selectedText}`);
       doLLMRequest(prompt);
     }
   }, [activeAction, targetLang, selectedText, doLLMRequest]);
@@ -119,14 +130,14 @@ export default function SelectionAIPanel() {
 
     addMessage(activeFileId, {
       role: "user",
-      content: `关于以下文本：\n${selectedText}\n\n用户问题：${question}`,
+      content: t(`关于以下文本：\n${selectedText}\n\n用户问题：${question}`, `Regarding the following text:\n${selectedText}\n\nQuestion: ${question}`),
     });
 
     if (!showAISidebar) {
       toggleAISidebar();
     }
 
-    const chatMessages = useChatStore.getState().getMessages(activeFileId);
+    const contextMsgs = useChatStore.getState().getContext(activeFileId);
     const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext);
     const client = getLLMClient(aiConfig);
 
@@ -139,7 +150,7 @@ export default function SelectionAIPanel() {
       .chat(
         [
           { role: "system", content: systemPrompt },
-          ...chatMessages.slice(-20).map((m) => ({
+          ...contextMsgs.map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content,
           })),
@@ -150,7 +161,13 @@ export default function SelectionAIPanel() {
         controller.signal
       )
       .then((result) => {
-        addUsage(activeFileId, result.usage.promptTokens, result.usage.completionTokens, 0);
+        const { cost: costVal } = calculateCost(
+          result.usage.promptTokens,
+          result.usage.completionTokens,
+          aiConfig.providerId,
+          aiConfig.model
+        );
+        addUsage(activeFileId, result.usage.promptTokens, result.usage.completionTokens, costVal);
       })
       .catch((e) => {
         if (e instanceof DOMException && e.name === "AbortError") return;

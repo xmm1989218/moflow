@@ -26,6 +26,7 @@ interface ChatState {
   addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
   appendToLastMessage: (tabId: string, chunk: string) => void;
   recordUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number) => void;
+  recordStandaloneUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number) => void;
   setStreaming: (v: boolean) => void;
   setAbortController: (ctrl: AbortController | null) => void;
   stopGeneration: () => void;
@@ -135,6 +136,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ...state.completionTokensMap,
         [tabId]: (state.completionTokensMap[tabId] ?? 0) + completionTokens,
       },
+      totalTokensMap: {
+        ...state.totalTokensMap,
+        [tabId]: (state.totalTokensMap[tabId] ?? 0) + promptTokens + completionTokens,
+      },
+      costMap: {
+        ...state.costMap,
+        [tabId]: (state.costMap[tabId] ?? 0) + cost,
+      },
+    })),
+
+  recordStandaloneUsage: (tabId, promptTokens, completionTokens, cost) =>
+    set((state) => ({
       totalTokensMap: {
         ...state.totalTokensMap,
         [tabId]: (state.totalTokensMap[tabId] ?? 0) + promptTokens + completionTokens,

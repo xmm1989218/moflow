@@ -2,6 +2,9 @@ import { useAppStore, type CloseDialogResult } from "../../stores/appStore";
 import { resolveDialog, resolveAlert } from "../../lib/closeDialog";
 import "./ConfirmCloseDialog.css";
 
+const isZh = navigator.language.startsWith("zh");
+const t = (zh: string, en: string) => (isZh ? zh : en);
+
 export default function ConfirmCloseDialog() {
   const closeDialog = useAppStore((s) => s.closeDialog);
   const hideCloseDialog = useAppStore((s) => s.hideCloseDialog);
@@ -48,18 +51,18 @@ export default function ConfirmCloseDialog() {
           {closeDialog.mode === "confirm-close" ? (
             <>
               <button className="moflow-dialog-btn moflow-dialog-btn-secondary" onClick={() => handleResult("discard")}>
-                不保存
+                {t("不保存", "Discard")}
               </button>
               <button className="moflow-dialog-btn moflow-dialog-btn-tertiary" onClick={() => handleResult("cancel")}>
-                取消
+                {t("取消", "Cancel")}
               </button>
               <button className="moflow-dialog-btn moflow-dialog-btn-primary" onClick={() => handleResult("save")}>
-                保存
+                {t("保存", "Save")}
               </button>
             </>
           ) : (
             <button className="moflow-dialog-btn moflow-dialog-btn-primary" onClick={handleAlertOk}>
-              确认
+              {t("确认", "OK")}
             </button>
           )}
         </div>

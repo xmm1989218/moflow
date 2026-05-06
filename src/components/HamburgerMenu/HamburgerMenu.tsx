@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useAppStore, type EditorTheme, EDITOR_THEMES } from "../../stores/appStore";
+import { useTabStore } from "../../stores/tabStore";
+import { useThemeStore, type EditorTheme, EDITOR_THEMES } from "../../stores/themeStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { openFile, saveFile, saveFileAs, exportHtml, exportPdf } from "../../lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -43,12 +44,12 @@ function item(
 
 export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const appTheme = useAppStore((s) => s.appTheme);
-  const editorTheme = useAppStore((s) => s.editorTheme);
-  const toggleStatusBar = useAppStore((s) => s.toggleStatusBar);
-  const toggleAutoSave = useAppStore((s) => s.toggleAutoSave);
-  const autoSave = useAppStore((s) => s.autoSave);
-  const newFile = useAppStore((s) => s.newFile);
+  const appTheme = useThemeStore((s) => s.appTheme);
+  const editorTheme = useThemeStore((s) => s.editorTheme);
+  const toggleStatusBar = useThemeStore((s) => s.toggleStatusBar);
+  const toggleAutoSave = useThemeStore((s) => s.toggleAutoSave);
+  const autoSave = useThemeStore((s) => s.autoSave);
+  const newFile = useTabStore((s) => s.newFile);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -81,13 +82,13 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
         exportPdf();
         break;
       case "app_system":
-        useAppStore.getState().setAppTheme("system");
+        useThemeStore.getState().setAppTheme("system");
         break;
       case "app_light":
-        useAppStore.getState().setAppTheme("light");
+        useThemeStore.getState().setAppTheme("light");
         break;
       case "app_dark":
-        useAppStore.getState().setAppTheme("dark");
+        useThemeStore.getState().setAppTheme("dark");
         break;
       case "toggle_statusbar":
         toggleStatusBar();
@@ -202,7 +203,7 @@ function SubmenuItem({ item: menuItem, onAction }: { item: MenuItem; onAction: (
                 onClick={() => {
                   if (entry.id.startsWith("editor_theme_")) {
                     const themeId = entry.id.slice("editor_theme_".length) as EditorTheme;
-                    useAppStore.getState().setEditorTheme(themeId);
+                    useThemeStore.getState().setEditorTheme(themeId);
                   } else {
                     onAction(entry.id);
                   }

@@ -1,0 +1,156 @@
+import { Component, useState, type ErrorInfo, type ReactNode } from "react";
+
+const isZh = navigator.language.startsWith("zh");
+const t = (zh: string, en: string) => (isZh ? zh : en);
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+  onReset?: () => void;
+  resetKeys?: unknown[];
+}
+
+interface State {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+  prevResetKeys: unknown[];
+}
+
+export default class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      prevResetKeys: props.resetKeys ?? [],
+    };
+  }
+
+  static getDerivedStateFromError(error: Error): Partial<State> {
+    return { hasError: true, error };
+  }
+
+  static getDerivedStateFromProps(props: Props, state: State): Partial<State> | null {
+    const nextKeys = props.resetKeys ?? [];
+    const prevKeys = state.prevResetKeys;
+    if (nextKeys.length !== prevKeys.length || nextKeys.some((k, i) => k !== prevKeys[i])) {
+      return { hasError: false, error: null, errorInfo: null, prevResetKeys: nextKeys };
+    }
+    return null;
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("[ErrorBoundary]", error);
+    console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
+    this.setState({ errorInfo });
+  }
+
+  handleReset = () => {
+    this.props.onReset?.();
+    this.setState({ hasError: false, error: null, errorInfo: null });
+  };
+
+  handleReload = () => {
+    location.reload();
+  };
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) return this.props.fallback;
+
+      return (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          padding: "32px",
+          textAlign: "center",
+          color: "var(--ui-text)",
+        }}>
+          <div style={{ fontSize: "40px", marginBottom: "16px" }}>⚠️</div>
+          <h2 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
+            {t("应用发生错误", "Something went wrong")}
+          </h2>
+          <p style={{ fontSize: "13px", color: "var(--ui-text-secondary)", marginBottom: "16px" }}>
+            {this.state.error?.message ?? t("未知错误", "Unknown error")}
+          </p>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+            <button
+              onClick={this.handleReset}
+              style={{
+                padding: "6px 16px",
+                borderRadius: "6px",
+                border: "1px solid var(--ui-border)",
+                background: "var(--ui-accent)",
+                color: "#fff",
+                cursor: "pointer",
+                fontSize: "13px",
+              }}
+            >
+              {t("重试", "Retry")}
+            </button>
+            <button
+              onClick={this.handleReload}
+              style={{
+                padding: "6px 16px",
+                borderRadius: "6px",
+                border: "1px solid var(--ui-border)",
+                background: "transparent",
+                color: "var(--ui-text)",
+                cursor: "pointer",
+                fontSize: "13px",
+              }}
+            >
+              {t("重新加载", "Reload")}
+            </button>
+          </div>
+          {this.state.errorInfo && <ErrorDetails errorInfo={this.state.errorInfo} />}
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+function ErrorDetails({ errorInfo }: { errorInfo: ErrorInfo }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div style={{ width: "100%", maxWidth: "500px" }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          fontSize: "12px",
+          color: "var(--ui-text-secondary)",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: "4px 0",
+        }}
+      >
+        {expanded ? t("收起详情 ▲", "Hide details ▲") : t("展开详情 ▼", "Show details ▼")}
+      </button>
+      {expanded && (
+        <pre style={{
+          fontSize: "11px",
+          color: "var(--ui-text-secondary)",
+          background: "var(--ui-bg-secondary)",
+          padding: "12px",
+          borderRadius: "6px",
+          overflow: "auto",
+          maxHeight: "200px",
+          textAlign: "left",
+          whiteSpace: "pre-wrap",
+          wordBreak: "break-word",
+        }}>
+          {errorInfo.componentStack}
+        </pre>
+      )}
+    </div>
+  );
+}

@@ -5,9 +5,12 @@ import TitleBar from "./components/TitleBar/TitleBar";
 import ConfirmCloseDialog from "./components/ConfirmCloseDialog/ConfirmCloseDialog";
 import UpdateDialog from "./components/UpdateDialog/UpdateDialog";
 import AboutDialog from "./components/AboutDialog/AboutDialog";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const AISidebar = lazy(() => import("./components/AISidebar/AISidebar"));
-import { useAppStore, resolveAppTheme, initSession } from "./stores/appStore";
+import { initSession } from "./stores/appStore";
+import { useTabStore } from "./stores/tabStore";
+import { useThemeStore, resolveAppTheme } from "./stores/themeStore";
 import { useUpdateStore } from "./stores/updateStore";
 import { useAIConfigStore } from "./stores/aiConfigStore";
 import { useChatStore } from "./stores/chatStore";
@@ -15,16 +18,19 @@ import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFile
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 
+const isZh = navigator.language.startsWith("zh");
+const t = (zh: string, en: string) => (isZh ? zh : en);
+
 function App() {
-  const appTheme = useAppStore((s) => s.appTheme);
-  const editorTheme = useAppStore((s) => s.editorTheme);
-  const showAISidebar = useAppStore((s) => s.showAISidebar);
+  const appTheme = useThemeStore((s) => s.appTheme);
+  const editorTheme = useThemeStore((s) => s.editorTheme);
+  const showAISidebar = useThemeStore((s) => s.showAISidebar);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     initSession().then(async () => {
       useAIConfigStore.getState().loadConfig();
-      const tabs = useAppStore.getState().files;
+      const tabs = useTabStore.getState().files;
       const paths = tabs.map((t) => t.filePath).filter(Boolean) as string[];
       if (paths.length > 0) {
         await invoke("allow_paths", { paths });
@@ -53,23 +59,23 @@ function App() {
     document.documentElement.setAttribute("data-editor-theme", editorTheme);
   }, [editorTheme]);
 
-  const activeContent = useAppStore((s) => {
+  const activeContent = useTabStore((s) => {
     const tab = s.files.find((f) => f.id === s.activeFileId);
     return tab?.content ?? "";
   });
-  const activeFileId = useAppStore((s) => s.activeFileId);
-  const autoSave = useAppStore((s) => s.autoSave);
+  const activeFileId = useTabStore((s) => s.activeFileId);
+  const autoSave = useThemeStore((s) => s.autoSave);
 
   useEffect(() => {
     if (!autoSave) return;
-    const state = useAppStore.getState();
+    const state = useTabStore.getState();
     const tab = state.files.find((f) => f.id === state.activeFileId);
     if (!tab || !tab.filePath || !tab.isModified || !tab.contentLoaded) return;
 
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
-      const s = useAppStore.getState();
-      if (!s.autoSave) return;
+      const s = useTabStore.getState();
+      if (!useThemeStore.getState().autoSave) return;
       const t = s.files.find((f) => f.id === s.activeFileId);
       if (t && t.filePath && t.isModified) {
         saveFile();
@@ -136,10 +142,10 @@ function App() {
         saveFileAs();
       } else if (mod && e.key === "n") {
         e.preventDefault();
-        useAppStore.getState().newFile();
+        useTabStore.getState().newFile();
       } else if (mod && e.key === "w") {
         e.preventDefault();
-        const state = useAppStore.getState();
+        const state = useTabStore.getState();
         const active = state.getActiveFile();
 
         if (state.files.length === 1) {
@@ -150,8 +156,8 @@ function App() {
         const needConfirm = active.isModified || (active.filePath === null && active.content.length > 0);
         if (needConfirm) {
           const message = active.filePath === null
-            ? "草稿内容未保存，是否保存？"
-            : `「${active.fileName}」有未保存的修改，是否保存？`;
+            ? t("草稿内容未保存，是否保存？", "Draft is unsaved. Save it?")
+            : t(`「${active.fileName}」有未保存的修改，是否保存？`, `"${active.fileName}" has unsaved changes. Save?`);
           confirmCloseTab(message).then((result) => {
             if (result === "cancel") return;
             if (result === "save") {
@@ -160,7 +166,7 @@ function App() {
                 saveFile().then(() => state.closeTab(active.id));
               } else {
                 saveFileAs().then(() => {
-                  const saved = useAppStore.getState().files.find((f) => f.id === active.id);
+                  const saved = useTabStore.getState().files.find((f) => f.id === active.id);
                   if (saved?.filePath) state.closeTab(active.id);
                 });
               }
@@ -173,13 +179,17 @@ function App() {
         }
       } else if (mod && e.key === "Tab") {
         e.preventDefault();
-        const state = useAppStore.getState();
+        const state = useTabStore.getState();
         const files = state.files;
         if (files.length <= 1) return;
         const idx = files.findIndex((f) => f.id === state.activeFileId);
         const dir = e.shiftKey ? -1 : 1;
         const nextIdx = (idx + dir + files.length) % files.length;
         state.switchTab(files[nextIdx].id);
+      } else if (e.key === "F8") {
+        e.preventDefault();
+        e.stopPropagation();
+        useThemeStore.getState().toggleAISidebar();
       } else if (e.key === "F11") {
         e.preventDefault();
         const appWindow = getCurrentWindow();
@@ -209,7 +219,9 @@ function App() {
     >
       <TitleBar />
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <Editor />
+        <ErrorBoundary resetKeys={[activeFileId]}>
+          <Editor />
+        </ErrorBoundary>
         {showAISidebar && <Suspense fallback={null}><AISidebar /></Suspense>}
       </div>
       <StatusBar />

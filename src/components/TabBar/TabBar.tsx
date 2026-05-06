@@ -1,14 +1,17 @@
 import { useEffect, useRef } from "react";
-import { useAppStore } from "../../stores/appStore";
+import { useTabStore } from "../../stores/tabStore";
 import { confirmCloseTab, saveFile, saveFileAs, closeLastTab } from "../../lib/fileOps";
 import "./TabBar.css";
 
+const isZh = navigator.language.startsWith("zh");
+const t = (zh: string, en: string) => (isZh ? zh : en);
+
 export default function TabBar() {
-  const files = useAppStore((s) => s.files);
-  const activeFileId = useAppStore((s) => s.activeFileId);
-  const switchTab = useAppStore((s) => s.switchTab);
-  const closeTab = useAppStore((s) => s.closeTab);
-  const openTab = useAppStore((s) => s.openTab);
+  const files = useTabStore((s) => s.files);
+  const activeFileId = useTabStore((s) => s.activeFileId);
+  const switchTab = useTabStore((s) => s.switchTab);
+  const closeTab = useTabStore((s) => s.closeTab);
+  const openTab = useTabStore((s) => s.openTab);
   const tabsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,21 +33,21 @@ export default function TabBar() {
     const needConfirm = tab.isModified || (tab.filePath === null && tab.content.length > 0);
     if (needConfirm) {
       const message = tab.filePath === null
-        ? "草稿内容未保存，是否保存？"
-        : `「${tab.fileName}」有未保存的修改，是否保存？`;
+        ? t("草稿内容未保存，是否保存？", "Draft is unsaved. Save it?")
+        : t(`「${tab.fileName}」有未保存的修改，是否保存？`, `"${tab.fileName}" has unsaved changes. Save?`);
       const result = await confirmCloseTab(message);
       if (result === "cancel") return;
       if (result === "save") {
-        const prevActive = useAppStore.getState().activeFileId;
-        useAppStore.getState().switchTab(id);
+        const prevActive = useTabStore.getState().activeFileId;
+        useTabStore.getState().switchTab(id);
         if (tab.filePath) {
           await saveFile();
         } else {
           await saveFileAs();
-          const saved = useAppStore.getState().files.find((f) => f.id === id);
+          const saved = useTabStore.getState().files.find((f) => f.id === id);
           if (!saved?.filePath) return;
         }
-        if (prevActive !== id) useAppStore.getState().switchTab(prevActive);
+        if (prevActive !== id) useTabStore.getState().switchTab(prevActive);
       }
     }
     closeTab(id);

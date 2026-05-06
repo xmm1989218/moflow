@@ -1,16 +1,18 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useAppStore } from "../../stores/appStore";
+import { useThemeStore } from "../../stores/themeStore";
 import TabBar from "../TabBar/TabBar";
 
 const HamburgerMenu = lazy(() => import("../HamburgerMenu/HamburgerMenu"));
 import "./TitleBar.css";
 
 const appWindow = getCurrentWindow();
+const isZh = navigator.language.startsWith("zh");
+const t = (zh: string, en: string) => (isZh ? zh : en);
 
 export default function TitleBar() {
-  const showAISidebar = useAppStore((s) => s.showAISidebar);
-  const toggleAISidebar = useAppStore((s) => s.toggleAISidebar);
+  const showAISidebar = useThemeStore((s) => s.showAISidebar);
+  const toggleAISidebar = useThemeStore((s) => s.toggleAISidebar);
   const [isMaximized, setIsMaximized] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -50,7 +52,7 @@ export default function TitleBar() {
         <button
           className={`moflow-titlebar-btn moflow-titlebar-ai-btn${showAISidebar ? " active" : ""}`}
           onClick={toggleAISidebar}
-          title="AI Assistant"
+          title={t("AI 助手 (F8)", "AI Assistant (F8)")}
         >
           <span className="moflow-titlebar-ai-label">AI</span>
         </button>

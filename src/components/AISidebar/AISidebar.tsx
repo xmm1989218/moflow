@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useChatStore, type Message } from "../../stores/chatStore";
-import { useAppStore } from "../../stores/appStore";
+import { useTabStore } from "../../stores/tabStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { useAIConfigStore } from "../../stores/aiConfigStore";
 import { getLLMClient } from "../../lib/llmClient";
 import { buildSystemPrompt } from "../../lib/contextBuilder";
@@ -79,7 +80,7 @@ function UsageBadge({ tabId, providerId, model }: { tabId: string; providerId: s
 }
 
 export default function AISidebar() {
-  const activeFileId = useAppStore((s) => s.activeFileId);
+  const activeFileId = useTabStore((s) => s.activeFileId);
   const messages = useChatStore((s) => s.messagesMap[activeFileId] || emptyMessages);
   const isStreaming = useChatStore((s) => s.isStreaming);
   const addMessage = useChatStore((s) => s.addMessage);
@@ -88,14 +89,14 @@ export default function AISidebar() {
   const flushAssistantMessage = useChatStore((s) => s.flushAssistantMessage);
   const setStreaming = useChatStore((s) => s.setStreaming);
   const stopGeneration = useChatStore((s) => s.stopGeneration);
-  const docContent = useAppStore((s) => {
+  const docContent = useTabStore((s) => {
     const tab = s.files.find((f) => f.id === s.activeFileId);
     return tab?.content ?? "";
   });
   const aiConfig = useAIConfigStore((s) => s.config);
   const saveConfig = useAIConfigStore((s) => s.saveConfig);
-  const sidebarWidth = useAppStore((s) => s.sidebarWidth);
-  const setSidebarWidth = useAppStore((s) => s.setSidebarWidth);
+  const sidebarWidth = useThemeStore((s) => s.sidebarWidth);
+  const setSidebarWidth = useThemeStore((s) => s.setSidebarWidth);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -182,7 +183,6 @@ export default function AISidebar() {
 
     if (maxContext > 0 && contextTokens > maxContext * 0.8) {
       await doCompact();
-      return;
     }
 
     setInput("");

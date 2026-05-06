@@ -428,6 +428,23 @@
   fill: var(--moflow-accent) !important;
 }
 
+.moflow-toolbar-tooltip {
+  position: fixed !important;
+  z-index: 9999 !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+  background: var(--moflow-bg) !important;
+  color: var(--moflow-text) !important;
+  border: 1px solid var(--moflow-border) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  pointer-events: none !important;
+  font-family: var(--moflow-font-body) !important;
+  line-height: 1.4 !important;
+}
+
 /* ── Crepe link tooltip theme override ── */
 
 .moflow-editor-wrapper .milkdown-link-tooltip {

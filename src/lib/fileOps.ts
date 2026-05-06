@@ -1,7 +1,8 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readFile, writeFile } from "@tauri-apps/plugin-fs";
-import { useAppStore, type CloseDialogResult, deleteUntitledContent, deleteSession } from "../stores/appStore";
+import { useTabStore, type CloseDialogResult, deleteUntitledContent, deleteSession } from "../stores/appStore";
 import type { TabState } from "../stores/appStore";
+import { useThemeStore } from "../stores/themeStore";
 import { exportAsHtml } from "./exportHtml";
 import { showConfirmCloseDialog, showAlertDialog } from "./closeDialog";
 import { invoke } from "@tauri-apps/api/core";
@@ -14,9 +15,9 @@ export async function openFile() {
 
   if (!selected) return;
 
-  const existing = useAppStore.getState().findTabByPath(selected);
+  const existing = useTabStore.getState().findTabByPath(selected);
   if (existing) {
-    useAppStore.getState().switchTab(existing.id);
+    useTabStore.getState().switchTab(existing.id);
     return;
   }
 
@@ -25,7 +26,7 @@ export async function openFile() {
   const content = new TextDecoder("utf-8").decode(data);
   const fileName = selected.split(/[/\\]/).pop() || "Untitled.md";
 
-  useAppStore.getState().openTab({
+  useTabStore.getState().openTab({
     filePath: selected,
     fileName,
     content,
@@ -36,8 +37,8 @@ export async function openFile() {
 }
 
 export async function saveFile() {
-  const state = useAppStore.getState();
-  const file = state.getActiveFile();
+  const tabState = useTabStore.getState();
+  const file = tabState.getActiveFile();
 
   if (!file.filePath) {
     await saveFileAs();
@@ -46,13 +47,13 @@ export async function saveFile() {
 
   const data = new TextEncoder().encode(file.content);
   await writeFile(file.filePath, data);
-  state.updateTabMeta(file.id, { isModified: false, lastSavedContent: file.content });
+  tabState.updateTabMeta(file.id, { isModified: false, lastSavedContent: file.content });
 }
 
 export async function saveFileAs() {
-  const state = useAppStore.getState();
-  const file = state.getActiveFile();
-  const editorTheme = state.editorTheme;
+  const tabState = useTabStore.getState();
+  const file = tabState.getActiveFile();
+  const editorTheme = useThemeStore.getState().editorTheme;
 
   const selected = await save({
     defaultPath: file.fileName,
@@ -67,26 +68,26 @@ export async function saveFileAs() {
   const ext = selected.split(".").pop()?.toLowerCase();
 
   if (ext === "html") {
-    const bodyHtml = state.getEditorHTML ? state.getEditorHTML() : "";
+    const bodyHtml = tabState.getEditorHTML ? tabState.getEditorHTML() : "";
     const html = exportAsHtml(bodyHtml, editorTheme);
     const data = new TextEncoder().encode(html);
     await invoke("allow_paths", { paths: [selected] });
     await writeFile(selected, data);
-    state.updateTabMeta(file.id, { isModified: false, lastSavedContent: file.content });
+    tabState.updateTabMeta(file.id, { isModified: false, lastSavedContent: file.content });
   } else {
     const data = new TextEncoder().encode(file.content);
     await invoke("allow_paths", { paths: [selected] });
     await writeFile(selected, data);
     const fileName = selected.split(/[/\\]/).pop() || "Untitled.md";
-    state.updateTabMeta(file.id, { filePath: selected, fileName, isModified: false, lastSavedContent: file.content });
+    tabState.updateTabMeta(file.id, { filePath: selected, fileName, isModified: false, lastSavedContent: file.content });
   }
 }
 
 export async function exportHtml() {
-  const state = useAppStore.getState();
-  const file = state.getActiveFile();
-  const editorTheme = state.editorTheme;
-  const getEditorHTML = state.getEditorHTML;
+  const tabState = useTabStore.getState();
+  const file = tabState.getActiveFile();
+  const editorTheme = useThemeStore.getState().editorTheme;
+  const getEditorHTML = tabState.getEditorHTML;
 
   const selected = await save({
     defaultPath: file.fileName.replace(/\.md$/, ".html"),
@@ -101,10 +102,10 @@ export async function exportHtml() {
 }
 
 export async function exportPdf() {
-  const state = useAppStore.getState();
-  const file = state.getActiveFile();
-  const getEditorHTML = state.getEditorHTML;
-  const editorTheme = state.editorTheme;
+  const tabState = useTabStore.getState();
+  const file = tabState.getActiveFile();
+  const getEditorHTML = tabState.getEditorHTML;
+  const editorTheme = useThemeStore.getState().editorTheme;
 
   const selected = await save({
     defaultPath: file.fileName.replace(/\.md$/, ".pdf"),
@@ -123,9 +124,9 @@ export async function exportPdf() {
 }
 
 export async function loadFileByPath(filePath: string) {
-  const existing = useAppStore.getState().findTabByPath(filePath);
+  const existing = useTabStore.getState().findTabByPath(filePath);
   if (existing) {
-    useAppStore.getState().switchTab(existing.id);
+    useTabStore.getState().switchTab(existing.id);
     return;
   }
 
@@ -134,7 +135,7 @@ export async function loadFileByPath(filePath: string) {
     const data = await readFile(filePath);
     const content = new TextDecoder("utf-8").decode(data);
     const fileName = filePath.split(/[/\\]/).pop() || "Untitled.md";
-    useAppStore.getState().openTab({
+    useTabStore.getState().openTab({
       filePath,
       fileName,
       content,
@@ -148,15 +149,15 @@ export async function loadFileByPath(filePath: string) {
 }
 
 export async function loadTabContent(id: string) {
-  const state = useAppStore.getState();
-  const tab = state.files.find((f) => f.id === id);
+  const tabState = useTabStore.getState();
+  const tab = tabState.files.find((f) => f.id === id);
   if (!tab || !tab.filePath) return;
 
   try {
     await invoke("allow_paths", { paths: [tab.filePath] });
     const data = await readFile(tab.filePath);
     const content = new TextDecoder("utf-8").decode(data);
-    state.updateTabMeta(id, {
+    tabState.updateTabMeta(id, {
       content,
       lastSavedContent: content,
       contentLoaded: true,
@@ -164,18 +165,18 @@ export async function loadTabContent(id: string) {
     });
   } catch {
     await showAlertDialog(`文件「${tab.fileName}」已不存在或已被移动。`);
-    state.closeTab(id);
+    tabState.closeTab(id);
   }
 }
 
 export async function confirmUnsaved(action: string): Promise<boolean> {
-  const file = useAppStore.getState().getActiveFile();
+  const file = useTabStore.getState().getActiveFile();
   if (file.filePath === null && file.content.length > 0) {
     const result = await showConfirmCloseDialog(`草稿内容未保存，是否保存？`);
     if (result === "cancel") return false;
     if (result === "save") {
       await saveFileAs();
-      const saved = useAppStore.getState().files.find((f) => f.id === file.id);
+      const saved = useTabStore.getState().files.find((f) => f.id === file.id);
       if (!saved?.filePath) return false;
     }
     return true;
@@ -233,13 +234,13 @@ export async function closeLastTab(tab: TabState) {
 }
 
 export async function saveAllFiles() {
-  const state = useAppStore.getState();
-  for (const tab of state.files) {
+  const tabState = useTabStore.getState();
+  for (const tab of tabState.files) {
     if (tab.filePath && tab.isModified) {
       try {
         const data = new TextEncoder().encode(tab.content);
         await writeFile(tab.filePath, data);
-        state.updateTabMeta(tab.id, { isModified: false, lastSavedContent: tab.content });
+        tabState.updateTabMeta(tab.id, { isModified: false, lastSavedContent: tab.content });
       } catch (e) {
         console.error("Failed to save file:", tab.filePath, e);
       }

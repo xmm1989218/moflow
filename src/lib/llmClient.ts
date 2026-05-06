@@ -82,6 +82,7 @@ class OpenAICompatibleClient implements LLMClient {
     signal.addEventListener("abort", onAbort);
 
     let usage: ChatUsage = { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+    let fullResponse = "";
 
     try {
       const res = await fetch(url, {
@@ -127,7 +128,10 @@ class OpenAICompatibleClient implements LLMClient {
           try {
             const parsed = JSON.parse(data);
             const content = parsed.choices?.[0]?.delta?.content;
-            if (content) onChunk(content);
+            if (content) {
+              onChunk(content);
+              fullResponse += content;
+            }
             if (parsed.usage) {
               usage = {
                 promptTokens: parsed.usage.prompt_tokens ?? 0,
@@ -147,7 +151,6 @@ class OpenAICompatibleClient implements LLMClient {
 
     if (usage.totalTokens === 0) {
       const promptTokens = estimateTokens(messages.map((m) => m.content).join(""));
-      const fullResponse = "";
       usage = {
         promptTokens,
         completionTokens: estimateTokens(fullResponse),
@@ -189,6 +192,7 @@ class ClaudeCompatibleClient implements LLMClient {
 
     let inputTokens = 0;
     let outputTokens = 0;
+    let fullResponse = "";
 
     try {
       const body: Record<string, unknown> = {
@@ -240,6 +244,7 @@ class ClaudeCompatibleClient implements LLMClient {
             const parsed = JSON.parse(data);
             if (parsed.type === "content_block_delta" && parsed.delta?.text) {
               onChunk(parsed.delta.text);
+              fullResponse += parsed.delta.text;
             }
             if (parsed.type === "message_start" && parsed.message?.usage) {
               inputTokens = parsed.message.usage.input_tokens ?? 0;
@@ -259,8 +264,9 @@ class ClaudeCompatibleClient implements LLMClient {
 
     if (inputTokens === 0 && outputTokens === 0) {
       const promptTokens = estimateTokens(messages.map((m) => m.content).join(""));
+      const completionTokens = estimateTokens(fullResponse);
       return {
-        usage: { promptTokens, completionTokens: 0, totalTokens: promptTokens },
+        usage: { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens },
       };
     }
 

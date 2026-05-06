@@ -1,4 +1,5 @@
-import { useAppStore } from "../../stores/appStore";
+import { useTabStore } from "../../stores/tabStore";
+import { useThemeStore } from "../../stores/themeStore";
 
 const CodeIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -15,16 +16,16 @@ const EyeIcon = () => (
 );
 
 export default function StatusBar() {
-  const showStatusBar = useAppStore((s) => s.showStatusBar);
-  const autoSave = useAppStore((s) => s.autoSave);
-  const mode = useAppStore((s) => {
+  const showStatusBar = useThemeStore((s) => s.showStatusBar);
+  const autoSave = useThemeStore((s) => s.autoSave);
+  const mode = useTabStore((s) => {
     const tab = s.files.find((f) => f.id === s.activeFileId);
     return tab?.mode ?? "wysiwyg";
   });
-  const activeFileId = useAppStore((s) => s.activeFileId);
+  const activeFileId = useTabStore((s) => s.activeFileId);
 
   const setMode = (m: "wysiwyg" | "source") => {
-    useAppStore.getState().updateTabMeta(activeFileId, { mode: m });
+    useTabStore.getState().updateTabMeta(activeFileId, { mode: m });
   };
 
   if (!showStatusBar) return null;
