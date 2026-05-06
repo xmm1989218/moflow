@@ -36,7 +36,7 @@ interface AISelectionState {
 }
 
 function getDefaultTargetLang(): LanguageCode {
-  const lang = navigator.language;
+  const lang = navigator.language ?? "";
   if (lang.startsWith("zh")) return "zh-CN";
   if (lang.startsWith("en")) return "en";
   if (lang.startsWith("ja")) return "ja";
