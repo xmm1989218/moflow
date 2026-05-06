@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
+import type { EditorView } from "@milkdown/prose/view";
 import { useSearchStore } from "../stores/searchStore";
 
 describe("searchStore", () => {
@@ -76,7 +77,7 @@ describe("searchStore", () => {
   });
 
   it("setEditorView stores the view", () => {
-    const mockView = {} as any;
+    const mockView = {} as EditorView;
     useSearchStore.getState().setEditorView(mockView);
     expect(useSearchStore.getState().editorView).toBe(mockView);
     useSearchStore.getState().setEditorView(null);
