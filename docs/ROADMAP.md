@@ -154,33 +154,33 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ### Context View 面板
 
-- [ ] Context View 面板（spec 见 `docs/spec-context-view.md`）
-- [ ] UsageBadge 可点击，切换 AI 聊天 ↔ 上下文视图
-- [ ] Section 1：统计信息 — token 使用量 / 工具列表 / 费用
-- [ ] Section 2：上下文占比 — 堆叠条形图（4 色段 system/user/assistant/tool）+ 图例，estimateTokens 分类累加 + contextTokens 校准
-- [ ] Section 3：原始消息 — contextMap 中的消息，`<details>/<summary>` 折叠/展开，显示 role + id 前 8 位 + toolName/toolCalls
-- [ ] header 标题随视图切换（`AI 助手` ↔ `上下文`），上下文视图时隐藏输入框
-- [ ] 文件变更：`AISidebar.tsx`（showContext state）、新建 `ContextView.tsx`、`AISidebar.css`
+- [x] Context View 面板（spec 见 `docs/spec-context-view.md`）
+- [x] UsageBadge 可点击，切换 AI 聊天 ↔ 上下文视图
+- [x] Section 1：统计信息 — token 使用量 / 工具列表 / 费用
+- [x] Section 2：上下文占比 — 堆叠条形图（4 色段 system/user/assistant/tool）+ 图例，estimateTokens 分类累加 + contextTokens 校准
+- [x] Section 3：原始消息 — contextMap 中的消息，`<details>/<summary>` 折叠/展开，显示 role + id 前 8 位 + toolName/toolCalls
+- [x] header 标题随视图切换（`AI 助手` ↔ `上下文`），上下文视图时隐藏输入框
+- [x] 文件变更：`AISidebar.tsx`（showContext state）、新建 `ContextView.tsx`、`AISidebar.css`
 
 ### webfetch 增强
 
-- [ ] webfetch format 参数（`markdown` / `text` / `html`，LLM 自选，默认 markdown）
-- [ ] markdown 模式：strip noise → strip class/style → html2md（Rust 端 html2md crate）
-- [ ] text 模式：strip noise → strip class/style → strip all tags → 纯文本
-- [ ] html 模式：仅 strip script/style → 返回 HTML（保留 class/id/结构）
-- [ ] 块级噪音剔除新增：nav/footer/aside/header/button/form/iframe/object/embed
-- [ ] class/style 属性剥离（markdown/text 模式）
-- [ ] 自动图片检测（MIME 为 image → base64 `data:{mime};base64,{data}` 返回，跳过 HTML 解析）
-- [ ] User-Agent 伪装（Chrome on Windows）+ Accept 头根据 format 设置优先级
-- [ ] Cloudflare 403 重试（检测 `cf-mitigated: challenge` 头，用真实 UA 重试）
-- [ ] 文件变更：`lib.rs`、`Cargo.toml`（加 html2md + scraper）、`tools.ts`、`contextBuilder.ts`
+- [x] webfetch format 参数（`markdown` / `text` / `html`，LLM 自选，默认 markdown）
+- [x] markdown 模式：strip noise → strip class/style → html2md（Rust 端 htmd crate）
+- [x] text 模式：strip noise → strip class/style → strip all tags → 纯文本
+- [x] html 模式：仅 strip script/style → 返回 HTML（保留 class/id/结构）
+- [x] 块级噪音剔除新增：nav/footer/aside/header/button/form/iframe/object/embed
+- [x] class/style 属性剥离（markdown/text 模式，regex 方式）
+- [x] 自动图片检测（MIME 为 image → base64 `data:{mime};base64,{data}` 返回，跳过 HTML 解析）
+- [x] User-Agent 伪装（Chrome on Windows）+ Accept 头根据 format 设置优先级
+- [x] Cloudflare 403 重试（检测 `cf-mitigated: challenge` 头，用真实 UA 重试）
+- [x] 文件变更：`lib.rs`、`Cargo.toml`（加 htmd + base64）、`tools.ts`、`contextBuilder.ts`
 
 ### compact 优化
 
-- [ ] Tail 保留：compact 后 contextMap 结构改为 `[summary pair] + [最近 2 轮完整对话] + [新消息]`
-- [ ] Tool output 裁剪：compact 前，用 promptTokens 差值按轮累加，超出 `contextTokens * 0.15` 的轮次，tool output 替换为 `[Tool result cleared]`；可裁剪内容 < `contextTokens * 0.1` 时不执行
-- [ ] 结构化摘要：compact 时用 `<previous-summary>` 标签包裹历史摘要，LLM 显式识别并增量更新
-- [ ] 文件变更：`chatStore.ts`（contextMap tail 保留逻辑）、`AISidebar.tsx`（doCompact 实现 tail + pruning）、`contextBuilder.ts`（结构化摘要格式）
+- [x] Tail 保留：compact 后 contextMap 结构改为 `[summary pair] + [最近 2 轮完整对话] + [新消息]`
+- [x] Tool output 裁剪：compact 前，用 promptTokens 差值按轮累加，超出 `contextTokens * 0.15` 的轮次，tool output 替换为 `[Tool result cleared]`；可裁剪内容 < `contextTokens * 0.1` 时不执行
+- [x] 结构化摘要：compact 时用 `<previous-summary>` 标签包裹历史摘要，LLM 显式识别并增量更新
+- [x] 文件变更：`AISidebar.tsx`（doCompact 实现 tail + pruning + structured summary）
 
 ---
 

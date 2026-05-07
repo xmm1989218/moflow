@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.4.1 (2026-05-07)
+
+### New Features
+
+- Context View panel — click UsageBadge to toggle between AI chat and context inspection
+  - Statistics: token usage, tool list, cost
+  - Context Breakdown: stacked bar chart with 4 color segments (system/user/assistant/tool) + legend
+  - Raw Messages: collapsible `<details>` view of contextMap messages (role, id, toolName, toolCalls)
+- webfetch enhancement — 3 format modes (markdown/text/html), LLM selects format via `format` parameter
+  - Markdown mode: strip noise → strip class/style → html2md (Rust `htmd` crate)
+  - Text mode: strip noise → strip class/style → strip all tags → plain text
+  - HTML mode: strip script/style only → return HTML (preserves class/id/structure)
+  - Block-level noise removal: nav/footer/aside/header/button/form/iframe/object/embed
+  - Class/style attribute stripping (markdown/text modes, regex-based)
+  - Auto image detection — MIME image → base64 `data:{mime};base64,{data}` returned, skip HTML parsing
+  - Chrome UA spoofing + Accept header based on format priority
+  - Cloudflare 403 retry — detect `cf-mitigated: challenge` header, retry with real UA
+
+### Improvements
+
+- Compact optimization — tail retention (last 2 user turns kept intact), tool output pruning, structured summary with `<previous-summary>` incremental update
+  - `isCompactSummary` flag on Message to identify compact summary messages (replaces string matching)
+  - `getContext()` rebuild logic: find last `/compact`, count N user turns backwards as tail, combine with messages after `/compact`
+  - No tail copies written to JSONL — tail already exists in messagesMap; compact directly sets contextMap
+- webfetch body limit increased from 100KB to 5MB (Rust), tool result cap from 6KB to 30KB (frontend)
+- ContextView reactivity fix — Zustand selector replaces `getState()` for proper re-render on contextMap changes
+
+### Dependencies
+
+- Added `htmd` (Rust, Apache-2.0) for HTML to Markdown conversion
+- Added `base64` (Rust) for image MIME → base64 encoding
+
 ## v0.4.0 (2026-05-07)
 
 ### New Features

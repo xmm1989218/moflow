@@ -117,7 +117,7 @@ function MessageRow({ msg }: { msg: ContextMessage }) {
 export default function ContextView({ tabId, providerId, model, docContent }: ContextViewProps) {
   const contextTokens = useChatStore((s) => s.contextTokensMap[tabId] ?? 0);
   const cost = useChatStore((s) => s.costMap[tabId] ?? 0);
-  const contextMsgs = useChatStore.getState().getContext(tabId);
+  const contextMsgs = useChatStore((s) => s.contextMap[tabId] ?? []);
 
   const modelInfo = getModelInfo(providerId, model);
   const maxContext = modelInfo.maxContext || 0;

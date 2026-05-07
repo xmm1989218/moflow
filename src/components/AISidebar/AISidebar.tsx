@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useChatStore, type Message } from "../../stores/chatStore";
+import { useChatStore, type Message, COMPACT_TAIL_TURNS } from "../../stores/chatStore";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useAIConfigStore } from "../../stores/aiConfigStore";
@@ -205,20 +205,108 @@ export default function AISidebar() {
     const contextMsgs = useChatStore.getState().getContext(activeFileId);
     if (contextMsgs.length === 0) return;
 
-    const summaryParts: string[] = [];
-    for (const m of contextMsgs) {
-      const label = m.role === "user" ? "User" : m.role === "tool" ? "Tool" : "AI";
-      summaryParts.push(`${label}: ${m.content.slice(0, 200)}`);
-    }
-    const summaryContent = summaryParts.join("\n");
+    const contextTokens = useChatStore.getState().contextTokensMap[activeFileId] ?? 0;
 
-    useChatStore.getState().clearContext(activeFileId);
+    let tailStart = contextMsgs.length;
+    let turnCount = 0;
+    for (let i = contextMsgs.length - 1; i >= 0 && turnCount < COMPACT_TAIL_TURNS; i--) {
+      if (contextMsgs[i].role === "user") {
+        turnCount++;
+        tailStart = i;
+      }
+    }
+    if (turnCount === 0) return;
+
+    const headMsgs = contextMsgs.slice(0, tailStart);
+    const tailMsgs = contextMsgs.slice(tailStart);
+
+    if (headMsgs.length === 0) return;
+
+    const pruneThreshold = contextTokens * 0.1;
+    const keepBudget = contextTokens * 0.15;
+    let prunedHead = headMsgs;
+    if (contextTokens > 0) {
+      const assistantMsgs = headMsgs.filter((m) => m.role === "assistant" && m.promptTokens !== undefined);
+      if (assistantMsgs.length >= 2) {
+        const sorted = [...assistantMsgs].sort((a, b) => (a.promptTokens ?? 0) - (b.promptTokens ?? 0));
+        const diffs: number[] = [];
+        for (let i = 1; i < sorted.length; i++) {
+          diffs.push((sorted[i].promptTokens ?? 0) - (sorted[i - 1].promptTokens ?? 0));
+        }
+        let prunableTokens = 0;
+        for (let i = 0; i < diffs.length; i++) {
+          prunableTokens += diffs[i];
+        }
+        if (prunableTokens >= pruneThreshold) {
+          let keptFromEnd = 0;
+          let cutRound = diffs.length;
+          for (let i = diffs.length - 1; i >= 0; i--) {
+            if (keptFromEnd + diffs[i] > keepBudget) break;
+            keptFromEnd += diffs[i];
+            cutRound = i;
+          }
+          if (cutRound < diffs.length) {
+            const cutAtToken = sorted[cutRound].promptTokens ?? 0;
+            prunedHead = headMsgs.map((m) => {
+              if (m.role === "tool") {
+                let isOldTool = false;
+                for (const a of headMsgs) {
+                  if (a.role === "assistant" && a.promptTokens !== undefined && a.promptTokens < cutAtToken && a.toolCalls) {
+                    if (a.toolCalls.some((tc) => tc.id === m.toolCallId)) {
+                      isOldTool = true;
+                      break;
+                    }
+                  }
+                }
+                if (isOldTool) {
+                  return { ...m, content: "[Tool result cleared]" };
+                }
+              }
+              return m;
+            });
+          }
+        }
+      }
+    }
+
+    let previousSummary: Message | null = null;
+    for (let i = contextMsgs.length - 1; i >= 0; i--) {
+      if (contextMsgs[i].role === "assistant" && contextMsgs[i].isCompactSummary) {
+        previousSummary = contextMsgs[i];
+        break;
+      }
+    }
+
+    let summaryContentParts: string[];
+    const allMsgs = [...prunedHead, ...tailMsgs];
+    if (previousSummary) {
+      const prevIdx = allMsgs.findIndex((m) => m.id === previousSummary.id);
+      const newMsgs = prevIdx >= 0 ? allMsgs.slice(prevIdx + 1) : allMsgs;
+      summaryContentParts = newMsgs.map((m) => {
+        const label = m.role === "user" ? "User" : m.role === "tool" ? "Tool" : "AI";
+        return `${label}: ${m.content}`;
+      });
+    } else {
+      summaryContentParts = allMsgs.map((m) => {
+        const label = m.role === "user" ? "User" : m.role === "tool" ? "Tool" : "AI";
+        return `${label}: ${m.content}`;
+      });
+    }
+    const summaryContent = summaryContentParts.join("\n");
+
+    const summaryPrompt = previousSummary
+      ? isZh
+        ? `<previous-summary>\n${previousSummary.content}\n</previous-summary>\n\n请将以上历史摘要和以下新对话一起总结为一份更新后的摘要，保留关键信息：\n\n${summaryContent}`
+        : `<previous-summary>\n${previousSummary.content}\n</previous-summary>\n\nPlease summarize the previous summary above together with the new conversation below into an updated summary, preserving key information:\n\n${summaryContent}`
+      : isZh
+        ? `请将以下对话历史总结为简洁的摘要，保留关键信息：\n\n${summaryContent}`
+        : `Please summarize the following conversation history concisely, preserving key information:\n\n${summaryContent}`;
 
     const compactMsg = addMessage(activeFileId, { role: "user", content: "/compact" });
     await appendMessage(activeFileId, compactMsg);
 
     setStreaming(true);
-    addMessage(activeFileId, { role: "assistant", content: "" });
+    addMessage(activeFileId, { role: "assistant", content: "", isCompactSummary: true });
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -232,7 +320,7 @@ export default function AISidebar() {
           { role: "system", content: systemPrompt },
           {
             role: "user",
-            content: `请将以下对话历史总结为简洁的摘要，保留关键信息：\n\n${summaryContent}`,
+            content: summaryPrompt,
           },
         ],
         (chunk) => {
@@ -259,6 +347,12 @@ export default function AISidebar() {
       setStreaming(false);
       abortRef.current = null;
       await flushAssistantMessage(activeFileId);
+
+      const allMsgs = useChatStore.getState().messagesMap[activeFileId] ?? [];
+      const summaryMsg = allMsgs[allMsgs.length - 1];
+      useChatStore.setState((state) => ({
+        contextMap: { ...state.contextMap, [activeFileId]: [...tailMsgs, summaryMsg] },
+      }));
     }
   };
 

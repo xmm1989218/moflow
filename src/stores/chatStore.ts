@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { appendMessage, clearChat, removeChat, loadChat } from "../lib/chatPersistence";
 import type { ToolCall } from "../lib/types";
 
+export const COMPACT_TAIL_TURNS = 2;
+
 export interface Message {
   id: string;
   role: "user" | "assistant" | "tool";
@@ -12,6 +14,7 @@ export interface Message {
   toolCallId?: string;
   toolName?: string;
   reasoningContent?: string;
+  isCompactSummary?: boolean;
 }
 
 const emptyMessages: Message[] = [];
@@ -65,19 +68,42 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const msgs = get().messagesMap[tabId] ?? [];
     if (msgs.length === 0) return emptyMessages;
 
-    let contextStart = 0;
+    let compactIdx = -1;
     for (let i = msgs.length - 1; i >= 0; i--) {
       if (msgs[i].role === "user" && msgs[i].content === "/compact") {
-        contextStart = i + 1;
+        compactIdx = i;
         break;
       }
     }
 
-    const contextMsgs = msgs.slice(contextStart).filter(
-      (m) => !(m.role === "user" && m.content === "/compact")
-    );
+    if (compactIdx === -1) {
+      const lastAssistant = [...msgs].reverse().find(
+        (m) => m.role === "assistant" && m.promptTokens !== undefined
+      );
+      set((state) => ({
+        contextMap: { ...state.contextMap, [tabId]: msgs },
+        contextTokensMap: {
+          ...state.contextTokensMap,
+          [tabId]: lastAssistant?.promptTokens ?? 0,
+        },
+      }));
+      return msgs;
+    }
 
-    const lastAssistant = [...msgs].reverse().find(
+    let tailStart = compactIdx;
+    let turnCount = 0;
+    for (let i = compactIdx - 1; i >= 0 && turnCount < COMPACT_TAIL_TURNS; i--) {
+      if (msgs[i].role === "user") {
+        turnCount++;
+        tailStart = i;
+      }
+    }
+
+    const tailMsgs = msgs.slice(tailStart, compactIdx);
+    const afterCompact = msgs.slice(compactIdx + 1);
+    const contextMsgs = [...tailMsgs, ...afterCompact];
+
+    const lastAssistant = [...contextMsgs].reverse().find(
       (m) => m.role === "assistant" && m.promptTokens !== undefined
     );
 

@@ -3,7 +3,7 @@ use tauri_plugin_fs::FsExt;
 use std::sync::mpsc;
 use regex::Regex;
 
-const WEBFETCH_MAX_BODY: usize = 100 * 1024;
+const WEBFETCH_MAX_BODY: usize = 5 * 1024 * 1024;
 const WEBFETCH_TIMEOUT_SECS: u64 = 30;
 const CHROME_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 const REAL_UA: &str = "opencode";

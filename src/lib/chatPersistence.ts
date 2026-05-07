@@ -34,6 +34,7 @@ function deserializeMessage(line: string): Message | null {
         toolCallId: obj.toolCallId,
         toolName: obj.toolName,
         reasoningContent: obj.reasoningContent,
+        isCompactSummary: obj.isCompactSummary,
       };
     }
     return null;

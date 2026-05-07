@@ -103,7 +103,7 @@ export const networkToolDefinitions: ToolDefinition[] = [
 
 export const WEBFETCH_LIMIT = 3;
 
-const MAX_TOOL_RESULT_CHARS = 6144;
+const MAX_TOOL_RESULT_CHARS = 30 * 1024;
 const MAX_GREP_RESULTS = 50;
 const MAX_READ_LINES = 200;
 
