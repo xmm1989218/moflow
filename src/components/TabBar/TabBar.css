@@ -94,6 +94,10 @@
   background-color: color-mix(in srgb, currentColor 12%, transparent);
 }
 
+.moflow-tab-settings-icon {
+  flex-shrink: 0;
+}
+
 .moflow-tabbar-new {
   display: flex;
   align-items: center;

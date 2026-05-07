@@ -4,7 +4,7 @@ import StatusBar from "./components/StatusBar/StatusBar";
 import TitleBar from "./components/TitleBar/TitleBar";
 import ConfirmCloseDialog from "./components/ConfirmCloseDialog/ConfirmCloseDialog";
 import UpdateDialog from "./components/UpdateDialog/UpdateDialog";
-import AboutDialog from "./components/AboutDialog/AboutDialog";
+import SettingsPanel from "./components/SettingsPanel/SettingsPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 const AISidebar = lazy(() => import("./components/AISidebar/AISidebar"));
@@ -26,6 +26,8 @@ function App() {
   const appTheme = useThemeStore((s) => s.appTheme);
   const editorTheme = useThemeStore((s) => s.editorTheme);
   const showAISidebar = useThemeStore((s) => s.showAISidebar);
+  const showSettingsTab = useThemeStore((s) => s.showSettingsTab);
+  const settingsTabActive = useThemeStore((s) => s.settingsTabActive);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -194,6 +196,9 @@ function App() {
         const dir = e.shiftKey ? -1 : 1;
         const nextIdx = (idx + dir + files.length) % files.length;
         state.switchTab(files[nextIdx].id);
+      } else if (mod && e.key === ",") {
+        e.preventDefault();
+        useThemeStore.getState().openSettingsTab();
       } else if (mod && e.key === "f") {
         e.preventDefault();
         useSearchStore.getState().toggleSearch(false);
@@ -233,15 +238,20 @@ function App() {
     >
       <TitleBar />
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <ErrorBoundary resetKeys={[activeFileId]}>
-          <Editor />
-        </ErrorBoundary>
-        {showAISidebar && <Suspense fallback={null}><AISidebar /></Suspense>}
+        <div
+          className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden"
+          style={{ display: showSettingsTab && settingsTabActive ? "none" : undefined }}
+        >
+          <ErrorBoundary resetKeys={[activeFileId]}>
+            <Editor />
+          </ErrorBoundary>
+        </div>
+        {showSettingsTab && settingsTabActive && <SettingsPanel />}
+        {showAISidebar && !(showSettingsTab && settingsTabActive) && <Suspense fallback={null}><AISidebar /></Suspense>}
       </div>
       <StatusBar />
       <ConfirmCloseDialog />
       <UpdateDialog />
-      <AboutDialog />
     </div>
   );
 }

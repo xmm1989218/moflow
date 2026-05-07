@@ -28,13 +28,14 @@ interface ChatState {
   costMap: Record<string, number>;
   isStreaming: boolean;
   abortController: AbortController | null;
+  streamingContentMap: Record<string, string>;
 
   getMessages: (tabId: string) => Message[];
   getContext: (tabId: string) => Message[];
+  getStreamingContent: (tabId: string) => string;
   addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
-  appendToLastMessage: (tabId: string, chunk: string) => void;
-  addToolCallsToLastMessage: (tabId: string, toolCalls: ToolCall[]) => void;
-  addReasoningContentToLastMessage: (tabId: string, reasoningContent: string) => void;
+  appendStreamingContent: (tabId: string, chunk: string) => void;
+  clearStreamingContent: (tabId: string) => void;
   recordUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number) => void;
   recordStandaloneUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number) => void;
   setStreaming: (v: boolean) => void;
@@ -42,7 +43,7 @@ interface ChatState {
   stopGeneration: () => void;
   clearMessages: (tabId: string) => void;
   clearContext: (tabId: string) => void;
-  flushAssistantMessage: (tabId: string) => Promise<void>;
+  cleanupIncompleteToolCalls: (tabId: string) => void;
   loadChatHistory: (tabId: string) => Promise<void>;
   deleteChat: (tabId: string) => void;
 }
@@ -56,9 +57,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   costMap: {},
   isStreaming: false,
   abortController: null,
+  streamingContentMap: {},
 
   getMessages: (tabId: string) => {
     return get().messagesMap[tabId] || emptyMessages;
+  },
+
+  getStreamingContent: (tabId: string) => {
+    return get().streamingContentMap[tabId] ?? "";
   },
 
   getContext: (tabId: string) => {
@@ -144,67 +150,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
     return fullMsg;
   },
 
-  appendToLastMessage: (tabId, chunk) =>
-    set((state) => {
-      const msgs = [...(state.messagesMap[tabId] ?? [])];
-      const last = msgs[msgs.length - 1];
-      if (last && last.role === "assistant") {
-        msgs[msgs.length - 1] = { ...last, content: last.content + chunk };
-      }
-      return {
-        messagesMap: {
-          ...state.messagesMap,
-          [tabId]: msgs,
-        },
-      };
-    }),
+  appendStreamingContent: (tabId, chunk) =>
+    set((state) => ({
+      streamingContentMap: {
+        ...state.streamingContentMap,
+        [tabId]: (state.streamingContentMap[tabId] ?? "") + chunk,
+      },
+    })),
 
-  addToolCallsToLastMessage: (tabId, toolCalls) =>
+  clearStreamingContent: (tabId) =>
     set((state) => {
-      const msgs = [...(state.messagesMap[tabId] ?? [])];
-      const last = msgs[msgs.length - 1];
-      if (last && last.role === "assistant") {
-        msgs[msgs.length - 1] = { ...last, toolCalls };
-      }
-      const newContextMap = { ...state.contextMap };
-      const ctx = newContextMap[tabId];
-      if (ctx && ctx.length > 0) {
-        const lastCtx = ctx[ctx.length - 1];
-        if (lastCtx.role === "assistant" && lastCtx.id === last?.id) {
-          newContextMap[tabId] = [...ctx.slice(0, -1), { ...lastCtx, toolCalls }];
-        }
-      }
-      return {
-        messagesMap: {
-          ...state.messagesMap,
-          [tabId]: msgs,
-        },
-        contextMap: newContextMap,
-      };
-    }),
-
-  addReasoningContentToLastMessage: (tabId, reasoningContent) =>
-    set((state) => {
-      const msgs = [...(state.messagesMap[tabId] ?? [])];
-      const last = msgs[msgs.length - 1];
-      if (last && last.role === "assistant") {
-        msgs[msgs.length - 1] = { ...last, reasoningContent };
-      }
-      const newContextMap = { ...state.contextMap };
-      const ctx = newContextMap[tabId];
-      if (ctx && ctx.length > 0) {
-        const lastCtx = ctx[ctx.length - 1];
-        if (lastCtx.role === "assistant" && lastCtx.id === last?.id) {
-          newContextMap[tabId] = [...ctx.slice(0, -1), { ...lastCtx, reasoningContent }];
-        }
-      }
-      return {
-        messagesMap: {
-          ...state.messagesMap,
-          [tabId]: msgs,
-        },
-        contextMap: newContextMap,
-      };
+      const newMap = { ...state.streamingContentMap };
+      delete newMap[tabId];
+      return { streamingContentMap: newMap };
     }),
 
   recordUsage: (tabId, promptTokens, completionTokens, cost) =>
@@ -248,7 +206,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (ctrl) {
       ctrl.abort();
     }
-    set({ isStreaming: false, abortController: null });
+    set({ abortController: null });
   },
 
   clearMessages: (tabId) => {
@@ -289,28 +247,29 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
     })),
 
-  flushAssistantMessage: async (tabId) => {
-    const msgs = get().messagesMap[tabId];
-    if (!msgs || msgs.length === 0) return;
-    const last = msgs[msgs.length - 1];
-    if (last.role === "assistant") {
-      const promptTokens = get().contextTokensMap[tabId] ?? 0;
-      const updates: Partial<Message> = {};
-      if (promptTokens > 0) updates.promptTokens = promptTokens;
-      const msgWithUpdates = { ...last, ...updates };
-      await appendMessage(tabId, msgWithUpdates);
+  cleanupIncompleteToolCalls: (tabId) => {
+    const msgs = get().messagesMap[tabId] ?? [];
+    if (msgs.length === 0) return;
 
-      const ctx = get().contextMap[tabId];
-      if (ctx) {
-        const lastCtx = ctx[ctx.length - 1];
-        if (lastCtx.role === "assistant" && lastCtx.id === last.id) {
-          set((state) => ({
-            contextMap: {
-              ...state.contextMap,
-              [tabId]: [...ctx.slice(0, -1), msgWithUpdates],
-            },
-          }));
+    const toolResultIds = new Set(
+      msgs.filter((m) => m.role === "tool").map((m) => m.toolCallId)
+    );
+
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === "assistant" && msgs[i].toolCalls?.length) {
+        const missing = msgs[i].toolCalls!.filter((tc) => !toolResultIds.has(tc.id));
+        if (missing.length > 0) {
+          for (const tc of missing) {
+            const toolMsg = get().addMessage(tabId, {
+              role: "tool",
+              content: "Tool call interrupted",
+              toolCallId: tc.id,
+              toolName: tc.name,
+            });
+            appendMessage(tabId, toolMsg);
+          }
         }
+        break;
       }
     }
   },
@@ -325,6 +284,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         },
       }));
       get().getContext(tabId);
+      get().cleanupIncompleteToolCalls(tabId);
     }
   },
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useChatStore, type Message, COMPACT_TAIL_TURNS } from "../../stores/chatStore";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
@@ -8,7 +9,6 @@ import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
 import { docToolDefinitions, networkToolDefinitions, executeTool, WEBFETCH_LIMIT } from "../../lib/tools";
-import AIConfigModal from "./AIConfigModal";
 import SlashCommandMenu from "./SlashCommandMenu";
 import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
 import MessageContent from "./MessageContent";
@@ -156,12 +156,11 @@ export default function AISidebar() {
   const activeFileId = useTabStore((s) => s.activeFileId);
   const messages = useChatStore((s) => s.messagesMap[activeFileId] || emptyMessages);
   const isStreaming = useChatStore((s) => s.isStreaming);
+  const streamingContent = useChatStore((s) => s.streamingContentMap[activeFileId] ?? "");
   const addMessage = useChatStore((s) => s.addMessage);
-  const appendToLastMessage = useChatStore((s) => s.appendToLastMessage);
-  const addToolCallsToLastMessage = useChatStore((s) => s.addToolCallsToLastMessage);
-  const addReasoningContentToLastMessage = useChatStore((s) => s.addReasoningContentToLastMessage);
+  const appendStreamingContent = useChatStore((s) => s.appendStreamingContent);
+  const clearStreamingContent = useChatStore((s) => s.clearStreamingContent);
   const clearMessages = useChatStore((s) => s.clearMessages);
-  const flushAssistantMessage = useChatStore((s) => s.flushAssistantMessage);
   const setStreaming = useChatStore((s) => s.setStreaming);
   const stopGeneration = useChatStore((s) => s.stopGeneration);
   const docContent = useTabStore((s) => {
@@ -177,7 +176,6 @@ export default function AISidebar() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const slashMenuRef = useRef<SlashCommandMenuHandle>(null);
   const [input, setInput] = useState("");
-  const [showConfig, setShowConfig] = useState(false);
   const [showContext, setShowContext] = useState(false);
   const [toolCallStatus, setToolCallStatus] = useState<{ name: string; args: Record<string, unknown> } | null>(null);
 
@@ -191,7 +189,7 @@ export default function AISidebar() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, streamingContent]);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -306,7 +304,7 @@ export default function AISidebar() {
     await appendMessage(activeFileId, compactMsg);
 
     setStreaming(true);
-    addMessage(activeFileId, { role: "assistant", content: "", isCompactSummary: true });
+    clearStreamingContent(activeFileId);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -324,7 +322,7 @@ export default function AISidebar() {
           },
         ],
         (chunk) => {
-          appendToLastMessage(activeFileId, chunk);
+          appendStreamingContent(activeFileId, chunk);
         },
         controller.signal
       );
@@ -333,26 +331,43 @@ export default function AISidebar() {
       const completionTokens = result.usage.completionTokens;
       const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
       useChatStore.getState().recordUsage(activeFileId, promptTokens, completionTokens, costVal);
+
+      const content = useChatStore.getState().streamingContentMap[activeFileId] ?? "";
+      const summaryMsg = addMessage(activeFileId, { role: "assistant", content, isCompactSummary: true });
+      await appendMessage(activeFileId, summaryMsg);
+
+      useChatStore.setState((state) => ({
+        contextMap: { ...state.contextMap, [activeFileId]: [...tailMsgs, summaryMsg] },
+      }));
     } catch (e) {
       if (e instanceof TimeoutError) {
         console.error(`[AISidebar] Request timeout: ${e.message}`);
-        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+        appendStreamingContent(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
       } else if (e instanceof DOMException && e.name === "AbortError") {
-        return;
+        const content = useChatStore.getState().streamingContentMap[activeFileId];
+        if (content) {
+          const summaryMsg = addMessage(activeFileId, { role: "assistant", content, isCompactSummary: true });
+          await appendMessage(activeFileId, summaryMsg);
+          useChatStore.setState((state) => ({
+            contextMap: { ...state.contextMap, [activeFileId]: [...tailMsgs, summaryMsg] },
+          }));
+        }
       } else {
         const errorMsg = e instanceof Error ? e.message : String(e);
-        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+        appendStreamingContent(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+        const content = useChatStore.getState().streamingContentMap[activeFileId] ?? "";
+        if (content) {
+          const summaryMsg = addMessage(activeFileId, { role: "assistant", content, isCompactSummary: true });
+          await appendMessage(activeFileId, summaryMsg);
+          useChatStore.setState((state) => ({
+            contextMap: { ...state.contextMap, [activeFileId]: [...tailMsgs, summaryMsg] },
+          }));
+        }
       }
     } finally {
       setStreaming(false);
       abortRef.current = null;
-      await flushAssistantMessage(activeFileId);
-
-      const allMsgs = useChatStore.getState().messagesMap[activeFileId] ?? [];
-      const summaryMsg = allMsgs[allMsgs.length - 1];
-      useChatStore.setState((state) => ({
-        contextMap: { ...state.contextMap, [activeFileId]: [...tailMsgs, summaryMsg] },
-      }));
+      clearStreamingContent(activeFileId);
     }
   };
 
@@ -374,7 +389,7 @@ export default function AISidebar() {
     await appendMessage(activeFileId, userMsg);
 
     setStreaming(true);
-    addMessage(activeFileId, { role: "assistant", content: "" });
+    clearStreamingContent(activeFileId);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -421,7 +436,7 @@ export default function AISidebar() {
         const result = await client.chat(
           chatMessages,
           (chunk) => {
-            appendToLastMessage(activeFileId, chunk);
+            appendStreamingContent(activeFileId, chunk);
           },
           controller.signal,
           { tools }
@@ -432,16 +447,36 @@ export default function AISidebar() {
         const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
         useChatStore.getState().recordUsage(activeFileId, promptTokens, completionTokens, costVal);
 
-        if (result.reasoningContent) {
-          addReasoningContentToLastMessage(activeFileId, result.reasoningContent);
-        }
+        const content = useChatStore.getState().streamingContentMap[activeFileId] ?? "";
 
         if (result.finishReason !== "tool_calls" || !result.toolCalls?.length) {
+          const assistantMsg = addMessage(activeFileId, {
+            role: "assistant",
+            content,
+            reasoningContent: result.reasoningContent || undefined,
+          });
+          await appendMessage(activeFileId, assistantMsg);
+          clearStreamingContent(activeFileId);
           break;
         }
 
-        addToolCallsToLastMessage(activeFileId, result.toolCalls);
-        await flushAssistantMessage(activeFileId);
+        if (controller.signal.aborted) {
+          if (content) {
+            const assistantMsg = addMessage(activeFileId, { role: "assistant", content });
+            await appendMessage(activeFileId, assistantMsg);
+          }
+          clearStreamingContent(activeFileId);
+          break;
+        }
+
+        const assistantMsg = addMessage(activeFileId, {
+          role: "assistant",
+          content,
+          toolCalls: result.toolCalls,
+          reasoningContent: result.reasoningContent || undefined,
+        });
+        await appendMessage(activeFileId, assistantMsg);
+        clearStreamingContent(activeFileId);
 
         for (const tc of result.toolCalls) {
           if (controller.signal.aborted) break;
@@ -476,6 +511,8 @@ export default function AISidebar() {
 
           const toolResult = await executeTool(tc.name, args, docContent, controller.signal);
 
+          if (controller.signal.aborted) break;
+
           const toolMsg = addMessage(activeFileId, {
             role: "tool",
             content: toolResult,
@@ -485,33 +522,44 @@ export default function AISidebar() {
           await appendMessage(activeFileId, toolMsg);
         }
 
+        if (controller.signal.aborted) break;
+
         setToolCallStatus(null);
 
-        addMessage(activeFileId, { role: "assistant", content: "" });
-
         if (round >= MAX_TOOL_ROUNDS) {
-          appendToLastMessage(activeFileId, t(
-            "（已达到工具调用次数上限，请基于已有信息回答）",
-            "(Maximum tool call rounds reached. Please answer based on available information.)"
-          ));
+          const limitMsg = addMessage(activeFileId, {
+            role: "assistant",
+            content: t(
+              "（已达到工具调用次数上限，请基于已有信息回答）",
+              "(Maximum tool call rounds reached. Please answer based on available information.)"
+            ),
+          });
+          await appendMessage(activeFileId, limitMsg);
           break;
         }
       }
     } catch (e) {
       if (e instanceof TimeoutError) {
         console.error(`[AISidebar] Request timeout: ${e.message}`);
-        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+        appendStreamingContent(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
       } else if (e instanceof DOMException && e.name === "AbortError") {
-        return;
+        // handled in finally
       } else {
         const errorMsg = e instanceof Error ? e.message : String(e);
-        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+        appendStreamingContent(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+      }
+
+      const content = useChatStore.getState().streamingContentMap[activeFileId];
+      if (content) {
+        const assistantMsg = addMessage(activeFileId, { role: "assistant", content });
+        await appendMessage(activeFileId, assistantMsg);
       }
     } finally {
+      useChatStore.getState().cleanupIncompleteToolCalls(activeFileId);
       setToolCallStatus(null);
       setStreaming(false);
       abortRef.current = null;
-      await flushAssistantMessage(activeFileId);
+      clearStreamingContent(activeFileId);
     }
   };
 
@@ -536,6 +584,7 @@ export default function AISidebar() {
   const handleStop = () => {
     stopGeneration();
     abortRef.current?.abort();
+    invoke("cancel_requests");
   };
 
   const handleResizeStart = (e: React.MouseEvent) => {
@@ -583,23 +632,13 @@ export default function AISidebar() {
           {aiConfig.mode === "mock" ? "Mock" : aiConfig.model || "API"}
         </span>
         <UsageBadge tabId={activeFileId} providerId={aiConfig.providerId} model={aiConfig.model} onClick={() => setShowContext((v) => !v)} active={showContext} />
-        <button
-          className="moflow-ai-config-btn"
-          onClick={() => setShowConfig(true)}
-          title={t("AI 配置", "AI Configuration")}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </button>
       </div>
 
       {showContext ? (
         <ContextView tabId={activeFileId} providerId={aiConfig.providerId} model={aiConfig.model} docContent={docContent} />
       ) : (
       <div className="moflow-ai-messages">
-        {messages.length === 0 && (
+        {messages.length === 0 && !streamingContent && (
           <div className="moflow-ai-empty">
             <div className="moflow-ai-empty-icon">✨</div>
             <p>{t("有什么关于当前文档的问题？", "Questions about the current document?")}</p>
@@ -630,13 +669,18 @@ export default function AISidebar() {
                 ) : (
                   msg.content
                 )}
-                {msg.role === "assistant" && isStreaming && msg === messages[messages.length - 1] && (
-                  <span className="moflow-ai-cursor">▌</span>
-                )}
               </div>
             </div>
           );
         })}
+        {streamingContent && (
+          <div className="moflow-ai-message moflow-ai-message-assistant">
+            <div className="moflow-ai-message-content">
+              <MessageContent content={streamingContent} />
+              {isStreaming && <span className="moflow-ai-cursor">▌</span>}
+            </div>
+          </div>
+        )}
         {toolCallStatus && <ToolCallStatus name={toolCallStatus.name} args={toolCallStatus.args} />}
         <div ref={messagesEndRef} />
       </div>
@@ -689,7 +733,6 @@ export default function AISidebar() {
         />
       )}
 
-      <AIConfigModal key={showConfig ? "open" : "closed"} open={showConfig} onClose={() => setShowConfig(false)} />
     </div>
   );
 }

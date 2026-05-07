@@ -1,4 +1,5 @@
 import { check, type Update } from "@tauri-apps/plugin-updater";
+import { readSettings } from "./settings";
 
 export interface UpdateInfo {
   version: string;
@@ -15,7 +16,9 @@ export type UpdateStatus =
   | { state: "error"; message: string };
 
 export async function checkForUpdate(): Promise<Update | null> {
-  return await check();
+  const settings = await readSettings();
+  const proxy = settings.proxyUrl || undefined;
+  return await check(proxy ? { proxy } : undefined);
 }
 
 export async function downloadUpdate(update: Update): Promise<void> {

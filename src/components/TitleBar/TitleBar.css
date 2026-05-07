@@ -70,6 +70,11 @@
   line-height: 1;
 }
 
+.moflow-titlebar-settings-btn {
+  min-width: auto;
+  padding: 0 10px;
+}
+
 .moflow-titlebar-control {
   min-width: 46px;
   padding: 0;

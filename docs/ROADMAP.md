@@ -184,7 +184,97 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
+## v0.4.2 — Settings Tab & 代理支持 ✅
+
+### Settings Tab（全局设置面板）
+
+- [x] TitleBar 右侧添加 ⚙️ 齿轮按钮，点击打开 Settings Tab
+- [x] TabBar 中显示特殊 Settings Tab（齿轮图标 + "设置"，带 × 关闭）
+- [x] Settings Tab 与文件 Tab 可共存，点击文件 Tab 切回编辑器
+- [x] 左侧导航 + 右侧内容布局，max-width 720px 居中
+- [x] 导航项顺序：🎨 外观 → 🤖 AI → 🌐 代理 → ℹ️ 关于
+- [x] 默认进入显示「外观」
+
+### 外观 section
+
+- [x] 应用主题切换（系统/浅色/深色）
+- [x] 编辑器主题选择（下拉）
+- [x] 自动保存开关
+- [x] 显示状态栏开关
+- [x] 汉堡菜单中移除外观/自动保存/状态栏快捷项，统一到 Settings Tab
+
+### AI section
+
+- [x] 从 AIConfigModal 迁移 AI 配置到 Settings Tab 的 AI section
+- [x] 模式切换、服务商、Endpoint、Token、Model、测试连接
+- [x] 移除 AI 侧栏头部的齿轮按钮
+
+### 代理 section
+
+- [x] 代理地址输入框（下拉选 None/HTTP/HTTPS/SOCKS5 + 地址输入 + 保存，一行布局）
+- [x] 保存按钮 + 校验（URL 为空/格式不对 → 错误提示）
+- [x] 保存后 toast 提示：代理变更需重启生效
+- [x] 去掉 proxyEnabled 开关，代理启用由 proxyUrl 是否为空决定
+- [x] Rust: reqwest 添加 socks feature
+- [x] Rust: ProxyState managed state
+- [x] Rust: `set_proxy` command 更新 managed state（validate_proxy_url 校验 + warn 日志）
+- [x] Rust: SettingsJson 用 `#[serde(rename = "proxyUrl")]` 修复 camelCase 反序列化
+- [x] Rust: `webfetch` 命令读取 ProxyState + 环境变量 fallback（HTTPS_PROXY / HTTP_PROXY / ALL_PROXY）
+- [x] Rust: 手动创建主窗口（tauri.conf.json windows 改空数组），setup() 中读 settings 设 proxy_url
+- [x] Rust: export_pdf 的 WebviewWindowBuilder 也设代理
+- [x] 前端: updater.ts 传 proxy 参数给 `check()`
+- [x] 前端: initSession 中调用 `invoke("set_proxy")` 同步 Rust ProxyState
+
+### 关于 section
+
+- [x] 从 AboutDialog 迁移到 Settings Tab 的关于 section
+- [x] MoFlow 图标 + 版本号 + 版权 + 检查更新按钮
+- [x] 删除 AboutDialog 组件
+- [x] 汉堡菜单中「关于 MoFlow」替换为「设置」
+
+### 聊天消息持久化重构
+
+- [x] 删除 `flushAssistantMessage`/`appendToLastMessage`/`addToolCallsToLastMessage`/`addReasoningContentToLastMessage`
+- [x] 新增 `streamingContentMap` — 流式内容存临时变量，不进 messagesMap
+- [x] assistant 消息只在内容完整时 `addMessage` + `appendMessage`（一次性写入）
+- [x] 渲染：streamingContent 作为虚拟消息（带流式光标），不在 messagesMap 里
+- [x] `cleanupIncompleteToolCalls` — 为缺失 tool result 的 toolCall 补 "Tool call interrupted"
+- [x] `loadChatHistory` 加载后调 `cleanupIncompleteToolCalls` 修复磁盘不完整数据
+- [x] `stopGeneration` 不再设 `isStreaming=false`，由 finally 块控制
+
+### webfetch 取消支持
+
+- [x] Rust: `CancelState`（`Mutex<CancellationToken>`）managed state
+- [x] Rust: `cancel_requests` command — cancel 当前 token + 重置新 token
+- [x] Rust: `webfetch` 用 `tokio::select!` 同时等 HTTP 响应和取消信号
+- [x] 前端: handleStop 调用 `invoke("cancel_requests")`
+- [x] Cargo.toml: 加 tokio-util + tokio 依赖
+
+### 清理
+
+- [x] 删除未使用的 AIConfigModal.tsx、AboutDialog.tsx
+- [x] 清理 AISidebar.css 中 `.moflow-ai-config-btn` CSS
+- [x] 删除 updateStore 中未使用的 `aboutVisible`/`setAboutVisible`
+
+---
+
 ## v0.5.0 — 增强功能 I
+
+### 启动速度优化
+
+- [ ] 分析启动瓶颈（基于 `__startupMark` 数据），优化慢路径
+- [ ] 延迟加载非关键模块（AI 侧栏、聊天历史等）
+- [ ] 减少首屏渲染阻塞
+
+### Context Panel 原始消息展示美化
+
+- [ ] 原始消息渲染优化（区分 role 样式、代码块高亮、tool 消息格式化）
+- [ ] 长消息折叠/展开交互改进
+
+### 聊天框滚动优化
+
+- [ ] 快速输出时按住滚动条无法拉上去（auto-scroll 与用户滚动冲突）
+- [ ] 手动上拉后出现抖动（scroll 事件竞争）
 
 ### Selector Toolbar 文字美化
 
@@ -249,7 +339,6 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 - [ ] 大文件编辑性能
 - [ ] 内存占用优化
-- [ ] 启动速度优化
 
 ### 无障碍（a11y）
 
@@ -264,6 +353,8 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ## v1.x — 后续迭代（按需）
 
+- [ ] 优化提示词，让输出更加精简且关键
+- [ ] 增加环境变量配置，方便 skill 等使用
 - [ ] 对话导出（Markdown / JSON）
 - [ ] 聊天历史搜索
 - [ ] 自定义 system prompt 模板

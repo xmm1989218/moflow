@@ -2,11 +2,57 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 use std::sync::mpsc;
 use regex::Regex;
+use serde::Deserialize;
+use tokio_util::sync::CancellationToken;
 
 const WEBFETCH_MAX_BODY: usize = 5 * 1024 * 1024;
 const WEBFETCH_TIMEOUT_SECS: u64 = 30;
 const CHROME_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 const REAL_UA: &str = "opencode";
+
+struct ProxyState {
+    proxy_url: std::sync::Mutex<Option<String>>,
+}
+
+struct CancelState {
+    token: std::sync::Mutex<CancellationToken>,
+}
+
+#[derive(Deserialize)]
+struct SettingsJson {
+    #[serde(rename = "proxyUrl")]
+    proxy_url: Option<String>,
+}
+
+fn validate_proxy_url(url: &str) -> Option<String> {
+    if url.is_empty() {
+        return None;
+    }
+    match url.parse::<url::Url>() {
+        Ok(_) => Some(url.to_string()),
+        Err(e) => {
+            println!("[proxy] warn: invalid proxy URL '{}': {}", url, e);
+            None
+        }
+    }
+}
+
+fn read_proxy_from_settings(app: &tauri::App) -> Option<String> {
+    let path = app.path().app_data_dir().ok().map(|dir| dir.join("settings.json"));
+    let path = match path {
+        Some(p) => p,
+        None => return None,
+    };
+    let data = match std::fs::read(&path) {
+        Ok(d) => d,
+        Err(_) => return None,
+    };
+    let settings: SettingsJson = match serde_json::from_slice(&data) {
+        Ok(s) => s,
+        Err(_) => return None,
+    };
+    settings.proxy_url.as_deref().and_then(validate_proxy_url)
+}
 
 fn accept_header(format: &str) -> &'static str {
     match format {
@@ -112,8 +158,23 @@ fn truncate_body(text: &str) -> String {
     }
 }
 
+fn build_reqwest_client(proxy_url: Option<&str>, user_agent: &str) -> Result<reqwest::Client, String> {
+    let mut builder = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(WEBFETCH_TIMEOUT_SECS))
+        .user_agent(user_agent);
+    if let Some(url) = proxy_url {
+        if !url.is_empty() {
+            println!("[reqwest] using proxy: {}", url);
+            builder = builder.proxy(reqwest::Proxy::all(url).map_err(|e| format!("Invalid proxy URL '{}': {}", url, e))?);
+        }
+    } else {
+        println!("[reqwest] no proxy configured");
+    }
+    builder.build().map_err(|e| e.to_string())
+}
+
 #[tauri::command]
-async fn webfetch(url: String, format: Option<String>) -> Result<String, String> {
+async fn webfetch(url: String, format: Option<String>, app: tauri::AppHandle) -> Result<String, String> {
     let fmt = format.unwrap_or_else(|| "markdown".to_string());
     if fmt != "markdown" && fmt != "text" && fmt != "html" {
         return Err(format!("Invalid format '{}'. Supported: markdown, text, html", fmt));
@@ -124,26 +185,34 @@ async fn webfetch(url: String, format: Option<String>) -> Result<String, String>
     }
 
     let accept = accept_header(&fmt);
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(WEBFETCH_TIMEOUT_SECS))
-        .user_agent(CHROME_UA)
-        .build()
-        .map_err(|e| e.to_string())?;
+    let cancel_token = app.state::<CancelState>().token.lock().unwrap().clone();
+    let proxy_url = app.state::<ProxyState>().proxy_url.lock().ok().and_then(|guard| guard.clone())
+        .or_else(|| std::env::var("HTTPS_PROXY").ok().or_else(|| std::env::var("HTTP_PROXY").ok()).or_else(|| std::env::var("ALL_PROXY").ok()));
 
-    let res = client.get(&url)
-        .header("Accept", accept)
-        .send()
-        .await
-        .map_err(|e| {
-            if e.is_timeout() {
-                format!("Request timed out after {}s", WEBFETCH_TIMEOUT_SECS)
-            } else if e.is_connect() {
-                format!("Connection failed: {}", e)
-            } else {
-                format!("Request error: {}", e)
-            }
-        })?;
+    if let Some(ref p) = proxy_url {
+        println!("[webfetch] proxy: {} -> {}", p, url);
+    } else {
+        println!("[webfetch] no proxy -> {}", url);
+    }
 
+    let client = build_reqwest_client(proxy_url.as_deref(), CHROME_UA)?;
+
+    let res = tokio::select! {
+        res = client.get(&url).header("Accept", accept).send() => res,
+        _ = cancel_token.cancelled() => {
+            return Err("Request cancelled".to_string());
+        }
+    }.map_err(|e| {
+        if e.is_timeout() {
+            format!("Request timed out after {}s", WEBFETCH_TIMEOUT_SECS)
+        } else if e.is_connect() {
+            format!("Connection failed: {}", e)
+        } else {
+            format!("Request error: {}", e)
+        }
+    })?;
+
+    let cancel_token2 = app.state::<CancelState>().token.lock().unwrap().clone();
     let status = res.status();
     let content_type = res.headers()
         .get("content-type")
@@ -157,16 +226,14 @@ async fn webfetch(url: String, format: Option<String>) -> Result<String, String>
         .unwrap_or("");
 
     if status.as_u16() == 403 && cf_mitigated == "challenge" {
-        let retry_res = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(WEBFETCH_TIMEOUT_SECS))
-            .user_agent(REAL_UA)
-            .build()
-            .map_err(|e| e.to_string())?
-            .get(&url)
-            .header("Accept", accept)
-            .send()
-            .await
-            .map_err(|e| format!("Cloudflare retry failed: {}", e))?;
+        let retry_client = build_reqwest_client(proxy_url.as_deref(), REAL_UA)?;
+
+        let retry_res = tokio::select! {
+            res = retry_client.get(&url).header("Accept", accept).send() => res,
+            _ = cancel_token2.cancelled() => {
+                return Err("Request cancelled".to_string());
+            }
+        }.map_err(|e| format!("Cloudflare retry failed: {}", e))?;
 
         if retry_res.status().is_success() {
             let ct = retry_res.headers()
@@ -174,7 +241,13 @@ async fn webfetch(url: String, format: Option<String>) -> Result<String, String>
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("")
                 .to_string();
-            let body = retry_res.bytes().await.map_err(|e| format!("Failed to read response: {}", e))?;
+            let cancel_token3 = app.state::<CancelState>().token.lock().unwrap().clone();
+            let body = tokio::select! {
+                b = retry_res.bytes() => b,
+                _ = cancel_token3.cancelled() => {
+                    return Err("Request cancelled".to_string());
+                }
+            }.map_err(|e| format!("Failed to read response: {}", e))?;
             return process_response(&ct, &body, &fmt);
         } else {
             return Err(format!("HTTP error {} (Cloudflare challenge)", retry_res.status()));
@@ -186,11 +259,23 @@ async fn webfetch(url: String, format: Option<String>) -> Result<String, String>
     }
 
     if is_image_mime(&content_type) {
-        let body = res.bytes().await.map_err(|e| format!("Failed to read response: {}", e))?;
+        let cancel_token3 = app.state::<CancelState>().token.lock().unwrap().clone();
+        let body = tokio::select! {
+            b = res.bytes() => b,
+            _ = cancel_token3.cancelled() => {
+                return Err("Request cancelled".to_string());
+            }
+        }.map_err(|e| format!("Failed to read response: {}", e))?;
         return process_response(&content_type, &body, &fmt);
     }
 
-    let body = res.bytes().await.map_err(|e| format!("Failed to read response: {}", e))?;
+    let cancel_token3 = app.state::<CancelState>().token.lock().unwrap().clone();
+    let body = tokio::select! {
+        b = res.bytes() => b,
+        _ = cancel_token3.cancelled() => {
+            return Err("Request cancelled".to_string());
+        }
+    }.map_err(|e| format!("Failed to read response: {}", e))?;
     process_response(&content_type, &body, &fmt)
 }
 
@@ -242,6 +327,26 @@ fn process_response(content_type: &str, body: &[u8], fmt: &str) -> Result<String
     };
 
     Ok(result)
+}
+
+#[tauri::command]
+fn cancel_requests(state: tauri::State<CancelState>) -> Result<(), String> {
+    let mut token = state.token.lock().map_err(|e| e.to_string())?;
+    token.cancel();
+    *token = CancellationToken::new();
+    Ok(())
+}
+
+#[tauri::command]
+fn set_proxy(proxy_url: Option<String>, state: tauri::State<ProxyState>) -> Result<(), String> {
+    let validated = proxy_url.as_deref().and_then(|u| validate_proxy_url(u));
+    let mut url = state.proxy_url.lock().map_err(|e| e.to_string())?;
+    match &validated {
+        Some(u) => println!("[proxy] set_proxy: {}", u),
+        None => println!("[proxy] set_proxy: disabled"),
+    }
+    *url = validated;
+    Ok(())
 }
 
 #[tauri::command]
@@ -336,7 +441,7 @@ async fn export_pdf(app: tauri::AppHandle, html: String, path: String) -> Result
             .unwrap_or_default()
             .as_millis());
 
-        let webview_window = tauri::WebviewWindowBuilder::new(
+        let mut pdf_builder = tauri::WebviewWindowBuilder::new(
             &app,
             &label,
             tauri::WebviewUrl::External("about:blank".parse().unwrap()),
@@ -344,9 +449,19 @@ async fn export_pdf(app: tauri::AppHandle, html: String, path: String) -> Result
         .visible(false)
         .decorations(false)
         .skip_taskbar(true)
-        .inner_size(1024.0, 768.0)
-        .build()
-        .map_err(|e| e.to_string())?;
+        .inner_size(1024.0, 768.0);
+
+        if let Some(proxy_state) = app.try_state::<ProxyState>() {
+            if let Some(ref url) = *proxy_state.proxy_url.lock().map_err(|e| e.to_string())? {
+                if !url.is_empty() {
+                    if let Ok(parsed) = url.parse::<url::Url>() {
+                        pdf_builder = pdf_builder.proxy_url(parsed);
+                    }
+                }
+            }
+        }
+
+        let webview_window = pdf_builder.build().map_err(|e| e.to_string())?;
 
         let (tx, rx) = mpsc::channel::<Result<bool, String>>();
         let tx_nav = tx.clone();
@@ -467,9 +582,41 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch])
+        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests])
         .setup(move |app| {
             println!("[startup] rust-setup: {}ms", app_start.elapsed().as_millis());
+
+            let proxy_url = read_proxy_from_settings(app);
+
+            let mut window_builder = tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                tauri::WebviewUrl::App("index.html".into()),
+            )
+            .title("MoFlow")
+            .inner_size(1200.0, 800.0)
+            .resizable(true)
+            .center()
+            .decorations(false)
+            .visible(false);
+
+            if let Some(ref url) = proxy_url {
+                if let Ok(parsed) = url.parse::<url::Url>() {
+                    window_builder = window_builder.proxy_url(parsed);
+                    println!("[startup] WebView2 proxy enabled: {}", url);
+                }
+            } else {
+                println!("[startup] no proxy configured for WebView2");
+            }
+
+            window_builder.build().map_err(|e| format!("Failed to create main window: {}", e))?;
+
+            app.manage(ProxyState {
+                proxy_url: std::sync::Mutex::new(proxy_url),
+            });
+            app.manage(CancelState {
+                token: std::sync::Mutex::new(CancellationToken::new()),
+            });
 
             #[cfg(desktop)]
             {

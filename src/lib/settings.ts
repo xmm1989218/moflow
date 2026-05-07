@@ -28,6 +28,7 @@ export interface AppSettings {
   showStatusBar: boolean;
   sidebarWidth: number;
   aiConfig: AIConfig;
+  proxyUrl: string;
 }
 
 export const defaultSettings: AppSettings = {
@@ -37,6 +38,7 @@ export const defaultSettings: AppSettings = {
   showStatusBar: true,
   sidebarWidth: 360,
   aiConfig: { ...defaultAIConfig },
+  proxyUrl: "",
 };
 
 export async function readSettings(): Promise<AppSettings> {
@@ -54,6 +56,7 @@ export async function readSettings(): Promise<AppSettings> {
       ...defaultSettings,
       ...parsed,
       aiConfig: { ...defaultAIConfig, ...(parsed.aiConfig || {}) },
+      proxyUrl: parsed.proxyUrl ?? "",
     };
     return settings;
   } catch {

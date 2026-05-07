@@ -3,6 +3,7 @@ import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, writeFile, mkdir, remove, exists } from "@tauri-apps/plugin-fs";
 import { useChatStore } from "./chatStore";
 import { persistSession } from "./sessionStore";
+import { useThemeStore } from "./themeStore";
 
 export type EditorMode = "wysiwyg" | "source";
 
@@ -153,7 +154,13 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
 
   switchTab: (id) => {
     const state = get();
-    if (id === state.activeFileId) return;
+    const themeState = useThemeStore.getState();
+    if (themeState.settingsTabActive) {
+      themeState.deactivateSettingsTab();
+      if (id === state.activeFileId) return;
+    } else if (id === state.activeFileId) {
+      return;
+    }
     const tab = state.files.find((f) => f.id === id);
     if (!tab) return;
     set({ activeFileId: id });
@@ -252,7 +259,11 @@ export async function initSession() {
     showStatusBar: settings.showStatusBar,
     sidebarWidth: settings.sidebarWidth,
     aiConfig: settings.aiConfig,
+    proxyUrl: settings.proxyUrl ?? "",
   });
+
+  const { invoke } = await import("@tauri-apps/api/core");
+  await invoke("set_proxy", { proxyUrl: settings.proxyUrl || null });
 
   const restored = await restoreSession();
   if (restored) {

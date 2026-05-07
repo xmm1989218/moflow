@@ -12,11 +12,9 @@ interface UpdateState {
   status: UpdateStatus;
   update: Update | null;
   downloadedVersion: string | null;
-  aboutVisible: boolean;
   checkUpdate: (manual?: boolean) => Promise<void>;
   installAndRestart: () => Promise<void>;
   dismiss: () => void;
-  setAboutVisible: (visible: boolean) => void;
 }
 
 let autoDismissTimer: ReturnType<typeof setTimeout> | null = null;
@@ -25,7 +23,6 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
   status: { state: "idle" },
   update: null,
   downloadedVersion: null,
-  aboutVisible: false,
 
   checkUpdate: async (manual = false) => {
     if (autoDismissTimer) {
@@ -101,9 +98,5 @@ export const useUpdateStore = create<UpdateState>((set, get) => ({
       autoDismissTimer = null;
     }
     set({ status: { state: "idle" } });
-  },
-
-  setAboutVisible: (visible: boolean) => {
-    set({ aboutVisible: visible });
   },
 }));

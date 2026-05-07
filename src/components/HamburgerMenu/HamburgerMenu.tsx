@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTabStore } from "../../stores/tabStore";
-import { useThemeStore, type EditorTheme, EDITOR_THEMES } from "../../stores/themeStore";
-import { useUpdateStore } from "../../stores/updateStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { useSearchStore } from "../../stores/searchStore";
 import { openFile, saveFile, saveFileAs, exportHtml, exportPdf } from "../../lib/fileOps";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -45,12 +44,8 @@ function item(
 
 export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const appTheme = useThemeStore((s) => s.appTheme);
-  const editorTheme = useThemeStore((s) => s.editorTheme);
-  const toggleStatusBar = useThemeStore((s) => s.toggleStatusBar);
-  const toggleAutoSave = useThemeStore((s) => s.toggleAutoSave);
-  const autoSave = useThemeStore((s) => s.autoSave);
   const newFile = useTabStore((s) => s.newFile);
+  const openSettingsTab = useThemeStore((s) => s.openSettingsTab);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -88,29 +83,14 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
       case "replace":
         useSearchStore.getState().toggleSearch(true);
         break;
-      case "app_system":
-        useThemeStore.getState().setAppTheme("system");
-        break;
-      case "app_light":
-        useThemeStore.getState().setAppTheme("light");
-        break;
-      case "app_dark":
-        useThemeStore.getState().setAppTheme("dark");
-        break;
-      case "toggle_statusbar":
-        toggleStatusBar();
-        break;
-      case "toggle_autoSave":
-        toggleAutoSave();
-        break;
       case "fullscreen":
         appWindow.isFullscreen().then((fs) => appWindow.setFullscreen(!fs));
         break;
       case "devtools":
         invoke("toggle_devtools");
         break;
-      case "about":
-        useUpdateStore.getState().setAboutVisible(true);
+      case "settings":
+        openSettingsTab();
         break;
       default:
         break;
@@ -134,26 +114,9 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
       ],
     }),
     sep(),
-    item("appearance", t("外观", "Appearance"), {
-      submenu: [
-        item("app_system", t("跟随系统", "System"), { checked: appTheme === "system" }),
-        item("app_light", t("浅色", "Light"), { checked: appTheme === "light" }),
-        item("app_dark", t("深色", "Dark"), { checked: appTheme === "dark" }),
-        sep(),
-        item("editor_themes", t("编辑器主题", "Editor Theme"), {
-          submenu: EDITOR_THEMES.map((th) =>
-            item(`editor_theme_${th.id}`, th.label, { checked: editorTheme === th.id })
-          ),
-        }),
-      ],
-    }),
-    sep(),
-    item("toggle_statusbar", t("切换状态栏", "Toggle Status Bar")),
-    item("toggle_autoSave", t("自动保存", "Auto Save"), { checked: autoSave }),
+    item("settings", t("设置", "Settings"), { shortcut: "Ctrl+," }),
     item("fullscreen", t("全屏", "Fullscreen"), { shortcut: "F11" }),
     item("devtools", t("开发者工具", "Developer Tools"), { shortcut: "F12" }),
-    sep(),
-    item("about", t("关于 MoFlow", "About MoFlow")),
   ];
 
   return (
@@ -211,12 +174,7 @@ function SubmenuItem({ item: menuItem, onAction }: { item: MenuItem; onAction: (
                 key={entry.id}
                 className={`moflow-menu-item${entry.checked ? " checked" : ""}`}
                 onClick={() => {
-                  if (entry.id.startsWith("editor_theme_")) {
-                    const themeId = entry.id.slice("editor_theme_".length) as EditorTheme;
-                    useThemeStore.getState().setEditorTheme(themeId);
-                  } else {
-                    onAction(entry.id);
-                  }
+                  onAction(entry.id);
                 }}
               >
                 <span className="moflow-menu-item-check">

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { useAISelectionStore, LANGUAGES, type LanguageCode } from "../../stores/aiSelectionStore";
 import { useAIConfigStore } from "../../stores/aiConfigStore";
 import { useChatStore } from "../../stores/chatStore";
@@ -33,11 +34,11 @@ export default function SelectionAIPanel() {
 
   const aiConfig = useAIConfigStore((s) => s.config);
   const addMessage = useChatStore((s) => s.addMessage);
-  const appendToLastMessage = useChatStore((s) => s.appendToLastMessage);
+  const appendStreamingContent = useChatStore((s) => s.appendStreamingContent);
+  const clearStreamingContent = useChatStore((s) => s.clearStreamingContent);
   const addUsage = useChatStore((s) => s.recordUsage);
   const setStreaming = useChatStore((s) => s.setStreaming);
   const setAbortController = useChatStore((s) => s.setAbortController);
-  const flushAssistantMessage = useChatStore((s) => s.flushAssistantMessage);
   const toggleAISidebar = useThemeStore((s) => s.toggleAISidebar);
   const showAISidebar = useThemeStore((s) => s.showAISidebar);
   const activeFileId = useTabStore((s) => s.activeFileId);
@@ -122,6 +123,7 @@ export default function SelectionAIPanel() {
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
+      invoke("cancel_requests");
     };
   }, []);
 
@@ -131,6 +133,7 @@ export default function SelectionAIPanel() {
         const target = e.target as HTMLElement;
         if (target.closest(".milkdown-toolbar")) return;
         abortRef.current?.abort();
+        invoke("cancel_requests");
         dismiss();
       }
     }
@@ -157,7 +160,7 @@ export default function SelectionAIPanel() {
     const controller = new AbortController();
     setAbortController(controller);
     setStreaming(true);
-    addMessage(activeFileId, { role: "assistant", content: "" });
+    clearStreamingContent(activeFileId);
 
     try {
       const chatResult = await client.chat(
@@ -179,7 +182,7 @@ export default function SelectionAIPanel() {
           }),
         ],
         (chunk) => {
-          appendToLastMessage(activeFileId, chunk);
+          appendStreamingContent(activeFileId, chunk);
         },
         controller.signal
       );
@@ -190,22 +193,37 @@ export default function SelectionAIPanel() {
         aiConfig.model
       );
       addUsage(activeFileId, chatResult.usage.promptTokens, chatResult.usage.completionTokens, costVal);
+
+      const content = useChatStore.getState().streamingContentMap[activeFileId] ?? "";
+      if (content) {
+        const assistantMsg = addMessage(activeFileId, { role: "assistant", content });
+        await appendMessage(activeFileId, assistantMsg);
+      }
     } catch (e) {
       if (e instanceof TimeoutError) {
         console.error(`[SelectionAIPanel] Request timeout: ${e.message}`);
-        appendToLastMessage(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+        appendStreamingContent(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
       } else if (e instanceof DOMException && e.name === "AbortError") {
-        return;
+        const content = useChatStore.getState().streamingContentMap[activeFileId];
+        if (content) {
+          const assistantMsg = addMessage(activeFileId, { role: "assistant", content });
+          await appendMessage(activeFileId, assistantMsg);
+        }
       } else {
-        appendToLastMessage(
+        appendStreamingContent(
           activeFileId,
           `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`
         );
+        const content = useChatStore.getState().streamingContentMap[activeFileId] ?? "";
+        if (content) {
+          const assistantMsg = addMessage(activeFileId, { role: "assistant", content });
+          await appendMessage(activeFileId, assistantMsg);
+        }
       }
     } finally {
       setStreaming(false);
       setAbortController(null);
-      await flushAssistantMessage(activeFileId);
+      clearStreamingContent(activeFileId);
     }
   };
 

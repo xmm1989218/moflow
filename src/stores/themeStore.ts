@@ -33,6 +33,7 @@ function persistSettings(get: () => ThemeState) {
     showStatusBar: s.showStatusBar,
     sidebarWidth: s.sidebarWidth,
     aiConfig: s.aiConfig,
+    proxyUrl: s.proxyUrl,
   });
 }
 
@@ -44,6 +45,9 @@ interface ThemeState {
   sidebarWidth: number;
   autoSave: boolean;
   aiConfig: AIConfig;
+  proxyUrl: string;
+  showSettingsTab: boolean;
+  settingsTabActive: boolean;
 
   setAppTheme: (theme: AppTheme) => void;
   setEditorTheme: (theme: EditorTheme) => void;
@@ -52,6 +56,11 @@ interface ThemeState {
   setSidebarWidth: (w: number) => void;
   toggleAutoSave: () => void;
   setAIConfig: (config: AIConfig) => void;
+  setProxyUrl: (v: string) => void;
+  openSettingsTab: () => void;
+  closeSettingsTab: () => void;
+  activateSettingsTab: () => void;
+  deactivateSettingsTab: () => void;
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
@@ -62,6 +71,9 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   sidebarWidth: 360,
   autoSave: false,
   aiConfig: { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" },
+  proxyUrl: "",
+  showSettingsTab: false,
+  settingsTabActive: false,
 
   setAppTheme: (appTheme) => {
     set({ appTheme });
@@ -94,5 +106,26 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   setAIConfig: (aiConfig) => {
     set({ aiConfig });
     persistSettings(get);
+  },
+
+  setProxyUrl: (proxyUrl) => {
+    set({ proxyUrl });
+    persistSettings(get);
+  },
+
+  openSettingsTab: () => {
+    set({ showSettingsTab: true, settingsTabActive: true });
+  },
+
+  closeSettingsTab: () => {
+    set({ showSettingsTab: false, settingsTabActive: false });
+  },
+
+  activateSettingsTab: () => {
+    set({ settingsTabActive: true });
+  },
+
+  deactivateSettingsTab: () => {
+    set({ settingsTabActive: false });
   },
 }));

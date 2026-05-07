@@ -10,19 +10,7 @@
     "beforeBuildCommand": "bun run build"
   },
   "app": {
-    "windows": [
-      {
-        "title": "MoFlow",
-        "width": 1200,
-        "height": 800,
-        "resizable": true,
-        "fullscreen": false,
-        "center": true,
-        "dragDropEnabled": true,
-        "decorations": false,
-        "visible": false
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": "default-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' http://ipc.localhost https://ipc.localhost ws://localhost:* https://* http://*; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net data:; img-src 'self' asset: https://asset.localhost data: blob:"
     }
