@@ -12,6 +12,7 @@ import AIConfigModal from "./AIConfigModal";
 import SlashCommandMenu from "./SlashCommandMenu";
 import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
 import MessageContent from "./MessageContent";
+import ContextView from "./ContextView";
 import "./AISidebar.css";
 
 const isZh = navigator.language.startsWith("zh");
@@ -19,7 +20,7 @@ const t = (zh: string, en: string) => (isZh ? zh : en);
 const emptyMessages: Message[] = [];
 const MAX_TOOL_ROUNDS = 10;
 
-function UsageBadge({ tabId, providerId, model }: { tabId: string; providerId: string; model: string }) {
+function UsageBadge({ tabId, providerId, model, onClick, active }: { tabId: string; providerId: string; model: string; onClick: () => void; active: boolean }) {
   const contextTokens = useChatStore((s) => s.contextTokensMap[tabId] ?? 0);
   const totalTokens = useChatStore((s) => s.totalTokensMap[tabId] ?? 0);
   const cost = useChatStore((s) => s.costMap[tabId] ?? 0);
@@ -40,7 +41,8 @@ function UsageBadge({ tabId, providerId, model }: { tabId: string; providerId: s
 
   return (
     <div
-      className="moflow-ai-usage-badge"
+      className={`moflow-ai-usage-badge${active ? " moflow-ai-usage-badge-active" : ""}`}
+      onClick={onClick}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
@@ -176,6 +178,7 @@ export default function AISidebar() {
   const slashMenuRef = useRef<SlashCommandMenuHandle>(null);
   const [input, setInput] = useState("");
   const [showConfig, setShowConfig] = useState(false);
+  const [showContext, setShowContext] = useState(false);
   const [toolCallStatus, setToolCallStatus] = useState<{ name: string; args: Record<string, unknown> } | null>(null);
 
   useEffect(() => {
@@ -481,11 +484,11 @@ export default function AISidebar() {
     <div className="moflow-ai-sidebar" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
       <div className="moflow-ai-resize-handle" onMouseDown={handleResizeStart} />
       <div className="moflow-ai-header">
-        <span className="moflow-ai-header-title">{t("AI 助手", "AI Assistant")}</span>
+        <span className="moflow-ai-header-title">{showContext ? t("上下文", "Context") : t("AI 助手", "AI Assistant")}</span>
         <span className="moflow-ai-header-mode">
           {aiConfig.mode === "mock" ? "Mock" : aiConfig.model || "API"}
         </span>
-        <UsageBadge tabId={activeFileId} providerId={aiConfig.providerId} model={aiConfig.model} />
+        <UsageBadge tabId={activeFileId} providerId={aiConfig.providerId} model={aiConfig.model} onClick={() => setShowContext((v) => !v)} active={showContext} />
         <button
           className="moflow-ai-config-btn"
           onClick={() => setShowConfig(true)}
@@ -498,6 +501,9 @@ export default function AISidebar() {
         </button>
       </div>
 
+      {showContext ? (
+        <ContextView tabId={activeFileId} providerId={aiConfig.providerId} model={aiConfig.model} docContent={docContent} />
+      ) : (
       <div className="moflow-ai-messages">
         {messages.length === 0 && (
           <div className="moflow-ai-empty">
@@ -540,7 +546,9 @@ export default function AISidebar() {
         {toolCallStatus && <ToolCallStatus name={toolCallStatus.name} args={toolCallStatus.args} />}
         <div ref={messagesEndRef} />
       </div>
+      )}
 
+      {!showContext && (
       <div className="moflow-ai-input-area">
         {isStreaming ? (
           <button className="moflow-ai-stop-btn" onClick={handleStop}>
@@ -574,6 +582,7 @@ export default function AISidebar() {
           </>
         )}
       </div>
+      )}
 
       {slashMenuVisible && !isStreaming && (
         <SlashCommandMenu

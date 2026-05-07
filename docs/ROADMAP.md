@@ -150,12 +150,37 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.4.1 — Context View
+## v0.4.1 — Context View & webfetch 增强 & compact 优化
+
+### Context View 面板
 
 - [ ] Context View 面板（spec 见 `docs/spec-context-view.md`）
-- [ ] 展示当前 contextMap 中的消息列表
-- [ ] 显示每条消息的 token 估算
-- [ ] 显示 contextTokens / maxContext 使用率
+- [ ] UsageBadge 可点击，切换 AI 聊天 ↔ 上下文视图
+- [ ] Section 1：统计信息 — token 使用量 / 工具列表 / 费用
+- [ ] Section 2：上下文占比 — 堆叠条形图（4 色段 system/user/assistant/tool）+ 图例，estimateTokens 分类累加 + contextTokens 校准
+- [ ] Section 3：原始消息 — contextMap 中的消息，`<details>/<summary>` 折叠/展开，显示 role + id 前 8 位 + toolName/toolCalls
+- [ ] header 标题随视图切换（`AI 助手` ↔ `上下文`），上下文视图时隐藏输入框
+- [ ] 文件变更：`AISidebar.tsx`（showContext state）、新建 `ContextView.tsx`、`AISidebar.css`
+
+### webfetch 增强
+
+- [ ] webfetch format 参数（`markdown` / `text` / `html`，LLM 自选，默认 markdown）
+- [ ] markdown 模式：strip noise → strip class/style → html2md（Rust 端 html2md crate）
+- [ ] text 模式：strip noise → strip class/style → strip all tags → 纯文本
+- [ ] html 模式：仅 strip script/style → 返回 HTML（保留 class/id/结构）
+- [ ] 块级噪音剔除新增：nav/footer/aside/header/button/form/iframe/object/embed
+- [ ] class/style 属性剥离（markdown/text 模式）
+- [ ] 自动图片检测（MIME 为 image → base64 `data:{mime};base64,{data}` 返回，跳过 HTML 解析）
+- [ ] User-Agent 伪装（Chrome on Windows）+ Accept 头根据 format 设置优先级
+- [ ] Cloudflare 403 重试（检测 `cf-mitigated: challenge` 头，用真实 UA 重试）
+- [ ] 文件变更：`lib.rs`、`Cargo.toml`（加 html2md + scraper）、`tools.ts`、`contextBuilder.ts`
+
+### compact 优化
+
+- [ ] Tail 保留：compact 后 contextMap 结构改为 `[summary pair] + [最近 2 轮完整对话] + [新消息]`
+- [ ] Tool output 裁剪：compact 前，用 promptTokens 差值按轮累加，超出 `contextTokens * 0.15` 的轮次，tool output 替换为 `[Tool result cleared]`；可裁剪内容 < `contextTokens * 0.1` 时不执行
+- [ ] 结构化摘要：compact 时用 `<previous-summary>` 标签包裹历史摘要，LLM 显式识别并增量更新
+- [ ] 文件变更：`chatStore.ts`（contextMap tail 保留逻辑）、`AISidebar.tsx`（doCompact 实现 tail + pruning）、`contextBuilder.ts`（结构化摘要格式）
 
 ---
 
@@ -248,12 +273,12 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边）
 - [ ] 打开目录（文件夹树浏览，快速打开目录下的文件）
 
-### webfetch 增强
+### webfetch 增强（已移至 v0.4.1）
 
-- [ ] nav/footer/aside/header/button/form 整块删除（HTML 噪声剔除第二阶段）
-- [ ] class/style 属性剥离（需引入 scraper，避免正则误删代码示例中的属性）
-- [ ] scraper 结构化提取（h1→#、a→text(url)、表格等，输出 Markdown）
-- [ ] webfetch raw 参数（默认提取文本，raw=true 返回原始 HTML，保留排版相关信息）
+- [x] nav/footer/aside/header/button/form 整块删除 → v0.4.1 markdown/text 模式 strip_noise
+- [x] class/style 属性剥离 → v0.4.1 markdown/text 模式 strip_class_style
+- [x] scraper 结构化提取 → v0.4.1 markdown 模式（html2md crate）
+- [x] webfetch raw 参数 → v0.4.1 html 模式（最小剔除，保留结构和属性）
 
 ### Skill 市场与 Skill 管理
 

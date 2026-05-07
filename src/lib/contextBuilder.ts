@@ -45,8 +45,8 @@ export interface SystemPromptResult {
 
 const isZh = navigator.language.startsWith("zh");
 
-const webfetchInstructionZh = `你可以使用 webfetch(url) 访问网页内容来获取外部信息或参考资料。如果文档内容已足够回答，不需要使用此工具。`;
-const webfetchInstructionEn = `You can use webfetch(url) to access web page content for external information or references. If the document content is sufficient to answer, there is no need to use this tool.`;
+const webfetchInstructionZh = `你可以使用 webfetch(url, format?) 访问网页内容来获取外部信息或参考资料。format 参数可选：markdown（默认，HTML转Markdown结构化输出）、text（纯文本提取）、html（保留HTML结构）。图片 URL 自动返回 base64 数据。如果文档内容已足够回答，不需要使用此工具。`;
+const webfetchInstructionEn = `You can use webfetch(url, format?) to access web page content for external information or references. Optional format parameter: markdown (default, HTML to structured Markdown), text (plain text extraction), html (preserve HTML structure). Image URLs automatically return base64 data. If the document content is sufficient to answer, there is no need to use this tool.`;
 
 export function buildSystemPrompt(
   docContent: string,
@@ -103,7 +103,7 @@ ${outline}
 - grep(pattern) — 搜索文档，返回匹配行及行号
 - read_lines(start, end) — 读取指定行号范围的内容
 - read_section(heading) — 读取指定标题下的内容
-- webfetch(url) — 访问网页内容获取外部信息
+- webfetch(url, format?) — 访问网页内容获取外部信息（format: markdown/text/html）
 
 当用户的问题涉及截断部分的内容时，请主动使用工具查找相关信息，而不是猜测。`
     : `You are the AI assistant for MoFlow editor. The user is editing the following Markdown document (long content, only the beginning is shown):
@@ -121,7 +121,7 @@ You can use the following tools to explore the full document content:
 - grep(pattern) — Search the document, returning matching lines with line numbers
 - read_lines(start, end) — Read a range of lines by line number
 - read_section(heading) — Read content under a specific heading
-- webfetch(url) — Access web page content for external information
+- webfetch(url, format?) — Access web page content for external information (format: markdown/text/html)
 
 When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.`;
 

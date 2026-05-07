@@ -5,14 +5,31 @@ use regex::Regex;
 
 const WEBFETCH_MAX_BODY: usize = 100 * 1024;
 const WEBFETCH_TIMEOUT_SECS: u64 = 30;
+const CHROME_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
+const REAL_UA: &str = "opencode";
 
-fn strip_html_noise(html: &str) -> String {
+fn accept_header(format: &str) -> &'static str {
+    match format {
+        "markdown" => "text/markdown;q=1.0, text/x-markdown;q=0.9, text/plain;q=0.8, text/html;q=0.7, */*;q=0.1",
+        "text" => "text/plain;q=1.0, text/markdown;q=0.9, text/html;q=0.8, */*;q=0.1",
+        "html" => "text/html;q=1.0, application/xhtml+xml;q=0.9, text/plain;q=0.8, text/markdown;q=0.7, */*;q=0.1",
+        _ => "*/*",
+    }
+}
+
+fn strip_html_noise_full(html: &str) -> String {
     let patterns: Vec<Regex> = [
         r"(?is)<head[^>]*>.*?</head>",
         r"(?is)<script[^>]*>.*?</script>",
         r"(?is)<style[^>]*>.*?</style>",
         r"(?is)<noscript[^>]*>.*?</noscript>",
         r"(?is)<svg[^>]*>.*?</svg>",
+        r"(?is)<nav[^>]*>.*?</nav>",
+        r"(?is)<footer[^>]*>.*?</footer>",
+        r"(?is)<aside[^>]*>.*?</aside>",
+        r"(?is)<iframe[^>]*>.*?</iframe>",
+        r"(?is)<object[^>]*>.*?</object>",
+        r"(?is)<embed[^>]*>.*?</embed>",
         r"(?i)<link\b[^>]*>",
         r"(?s)<!--.*?-->",
     ].iter().map(|p| Regex::new(p).unwrap()).collect();
@@ -22,6 +39,53 @@ fn strip_html_noise(html: &str) -> String {
         result = re.replace_all(&result, "").into_owned();
     }
     result
+}
+
+fn strip_block_elements(html: &str) -> String {
+    let patterns: Vec<Regex> = [
+        r"(?is)<header[^>]*>.*?</header>",
+        r"(?is)<form[^>]*>.*?</form>",
+        r"(?is)<button[^>]*>.*?</button>",
+    ].iter().map(|p| Regex::new(p).unwrap()).collect();
+
+    let mut result = html.to_string();
+    for re in &patterns {
+        result = re.replace_all(&result, "").into_owned();
+    }
+    result
+}
+
+fn strip_script_style(html: &str) -> String {
+    let patterns: Vec<Regex> = [
+        r"(?is)<script[^>]*>.*?</script>",
+        r"(?is)<style[^>]*>.*?</style>",
+        r"(?s)<!--.*?-->",
+    ].iter().map(|p| Regex::new(p).unwrap()).collect();
+
+    let mut result = html.to_string();
+    for re in &patterns {
+        result = re.replace_all(&result, "").into_owned();
+    }
+    result
+}
+
+fn strip_class_style_attrs(html: &str) -> String {
+    let class_re = Regex::new(r#"\s+class\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)"#).unwrap();
+    let style_re = Regex::new(r#"\s+style\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)"#).unwrap();
+    let result = class_re.replace_all(html, "");
+    style_re.replace_all(&result, "").into_owned()
+}
+
+fn strip_all_tags(html: &str) -> String {
+    let re = Regex::new(r"<[^>]+>").unwrap();
+    let result = re.replace_all(html, "");
+    let ws_re = Regex::new(r"\n{3,}").unwrap();
+    let result = ws_re.replace_all(&result, "\n\n");
+    result.trim().to_string()
+}
+
+fn html_to_markdown(html: &str) -> String {
+    htmd::convert(html).unwrap_or_else(|e| format!("[HTML to Markdown conversion error: {}]", e))
 }
 
 fn is_html_content(content_type: &str) -> bool {
@@ -35,56 +99,146 @@ fn looks_like_html(body: &str) -> bool {
     head.contains("<!doctype html") || head.contains("<html")
 }
 
+fn is_image_mime(content_type: &str) -> bool {
+    let ct = content_type.to_lowercase();
+    ct.starts_with("image/") && !ct.contains("svg")
+}
+
+fn truncate_body(text: &str) -> String {
+    if text.len() <= WEBFETCH_MAX_BODY {
+        text.to_string()
+    } else {
+        text[..WEBFETCH_MAX_BODY].to_string() + "\n...[response truncated]"
+    }
+}
+
 #[tauri::command]
-async fn webfetch(url: String) -> Result<String, String> {
-    if !url.starts_with("http://") && !url.starts_with("https://") {
-        return Err(format!("Unsupported URL protocol. Only http and https are allowed."));
+async fn webfetch(url: String, format: Option<String>) -> Result<String, String> {
+    let fmt = format.unwrap_or_else(|| "markdown".to_string());
+    if fmt != "markdown" && fmt != "text" && fmt != "html" {
+        return Err(format!("Invalid format '{}'. Supported: markdown, text, html", fmt));
     }
 
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Unsupported URL protocol. Only http and https are allowed.".to_string());
+    }
+
+    let accept = accept_header(&fmt);
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(WEBFETCH_TIMEOUT_SECS))
+        .user_agent(CHROME_UA)
         .build()
         .map_err(|e| e.to_string())?;
 
-    let res = client.get(&url).send().await.map_err(|e| {
-        if e.is_timeout() {
-            format!("Request timed out after {}s", WEBFETCH_TIMEOUT_SECS)
-        } else if e.is_connect() {
-            format!("Connection failed: {}", e)
-        } else {
-            format!("Request error: {}", e)
-        }
-    })?;
+    let res = client.get(&url)
+        .header("Accept", accept)
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_timeout() {
+                format!("Request timed out after {}s", WEBFETCH_TIMEOUT_SECS)
+            } else if e.is_connect() {
+                format!("Connection failed: {}", e)
+            } else {
+                format!("Request error: {}", e)
+            }
+        })?;
 
-    if !res.status().is_success() {
-        return Err(format!("HTTP error {}: {}", res.status(), res.status().canonical_reason().unwrap_or("Unknown")));
-    }
-
+    let status = res.status();
     let content_type = res.headers()
         .get("content-type")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
         .to_string();
 
-    let body = res.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
+    let cf_mitigated = res.headers()
+        .get("cf-mitigated")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
 
-    let result = if is_html_content(&content_type) || (content_type.is_empty() && looks_like_html(&body)) {
-        let original_size = body.len();
-        let cleaned = strip_html_noise(&body);
-        let cleaned_size = cleaned.len();
-        let removed_pct = if original_size > 0 { 100 - cleaned_size * 100 / original_size } else { 0 };
-        println!("[webfetch] HTML stripped: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
-        if cleaned.len() > WEBFETCH_MAX_BODY {
-            cleaned[..WEBFETCH_MAX_BODY].to_string() + "\n...[response truncated]"
+    if status.as_u16() == 403 && cf_mitigated == "challenge" {
+        let retry_res = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(WEBFETCH_TIMEOUT_SECS))
+            .user_agent(REAL_UA)
+            .build()
+            .map_err(|e| e.to_string())?
+            .get(&url)
+            .header("Accept", accept)
+            .send()
+            .await
+            .map_err(|e| format!("Cloudflare retry failed: {}", e))?;
+
+        if retry_res.status().is_success() {
+            let ct = retry_res.headers()
+                .get("content-type")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("")
+                .to_string();
+            let body = retry_res.bytes().await.map_err(|e| format!("Failed to read response: {}", e))?;
+            return process_response(&ct, &body, &fmt);
         } else {
-            cleaned
+            return Err(format!("HTTP error {} (Cloudflare challenge)", retry_res.status()));
         }
-    } else {
-        if body.len() > WEBFETCH_MAX_BODY {
-            body[..WEBFETCH_MAX_BODY].to_string() + "\n...[response truncated]"
-        } else {
-            body
+    }
+
+    if !status.is_success() {
+        return Err(format!("HTTP error {}: {}", status, status.canonical_reason().unwrap_or("Unknown")));
+    }
+
+    if is_image_mime(&content_type) {
+        let body = res.bytes().await.map_err(|e| format!("Failed to read response: {}", e))?;
+        return process_response(&content_type, &body, &fmt);
+    }
+
+    let body = res.bytes().await.map_err(|e| format!("Failed to read response: {}", e))?;
+    process_response(&content_type, &body, &fmt)
+}
+
+fn process_response(content_type: &str, body: &[u8], fmt: &str) -> Result<String, String> {
+    if is_image_mime(content_type) {
+        let encoded = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, body);
+        return Ok(format!("data:{};base64,{}", content_type, encoded));
+    }
+
+    let body_text = String::from_utf8_lossy(body).into_owned();
+
+    let is_html = is_html_content(content_type) || (content_type.is_empty() && looks_like_html(&body_text));
+
+    if !is_html {
+        return Ok(truncate_body(&body_text));
+    }
+
+    let original_size = body_text.len();
+
+    let result = match fmt {
+        "markdown" => {
+            let cleaned = strip_html_noise_full(&body_text);
+            let cleaned = strip_block_elements(&cleaned);
+            let cleaned = strip_class_style_attrs(&cleaned);
+            let md = html_to_markdown(&cleaned);
+            let cleaned_size = md.len();
+            let removed_pct = if original_size > 0 { 100 - cleaned_size * 100 / original_size } else { 0 };
+            println!("[webfetch] markdown: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
+            truncate_body(&md)
         }
+        "text" => {
+            let cleaned = strip_html_noise_full(&body_text);
+            let cleaned = strip_block_elements(&cleaned);
+            let cleaned = strip_class_style_attrs(&cleaned);
+            let text = strip_all_tags(&cleaned);
+            let cleaned_size = text.len();
+            let removed_pct = if original_size > 0 { 100 - cleaned_size * 100 / original_size } else { 0 };
+            println!("[webfetch] text: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
+            truncate_body(&text)
+        }
+        "html" => {
+            let cleaned = strip_script_style(&body_text);
+            let cleaned_size = cleaned.len();
+            let removed_pct = if original_size > 0 { 100 - cleaned_size * 100 / original_size } else { 0 };
+            println!("[webfetch] html: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
+            truncate_body(&cleaned)
+        }
+        _ => truncate_body(&body_text),
     };
 
     Ok(result)

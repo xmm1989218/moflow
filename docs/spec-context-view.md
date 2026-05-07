@@ -21,13 +21,12 @@
 │ Cost: $0.02                     │
 │                                 │
 │ 上下文占比                      │  ← section header
-│ system  ████░░░░  35%           │  ← 灰色
-│ user    ██░░░░░░  12%           │  ← 蓝色
-│ assistant ███░░░░  28%          │  ← 绿色
-│ tool    █░░░░░░░   8%           │  ← 紫色
+│ ████████░░░░░░░░░░░░            │  ← 堆叠条形图（一行 4 色段）
+│ ● system 35%  ● user 12%       │  ← 图例
+│ ● assistant 28%  ● tool 8%     │
 │                                 │
 │ 原始消息                        │  ← section header
-│ ▶ system    abc123              │  ← 折叠态：role + id前8位 + ▶
+│ ▶ system    abc123              │  ← 折叠态：role + id前8位
 │ ▶ user      def456              │
 │   Methods 部分写了什么？        │  ← 展开态：原始内容
 │ ▶ assistant ghi789  [outline,..]│  ← toolCalls 标注工具名
@@ -44,25 +43,25 @@
 | 项目 | 数据来源 | 说明 |
 |---|---|---|
 | Token 使用 | `chatStore.contextTokensMap[tabId]` / `modelInfo.maxContext` | 如 `1,684 / 128,000 tokens` |
-| 工具定义 | `buildSystemPrompt()` 返回的 `needsTools` 为 true 时，列出 `toolDefinitions` 中的工具名 | 无工具时不显示此行 |
+| 工具定义 | `buildSystemPrompt()` 返回的 `needsDocTools` 为 true 时，列出 `toolDefinitions` 中的工具名 | 无工具时不显示此行 |
 | 费用 | `chatStore.costMap[tabId]` + `modelInfo.currency` | `formatCost()` 格式化 |
 
-### 2. 上下文占比
+### 2. 上下文占比（堆叠条形图）
 
-- 数据来源：`buildSystemPrompt()` 拿到 system prompt 内容，`chatStore.getContext()` 拿到历史消息
-- 用 `estimateTokens()` 分类统计四类 token：
-  - `system`：system prompt + tools 定义（JSON Schema）的 token 估算
-  - `user`：所有 `role === "user"` 消息的 token 估算之和
-  - `assistant`：所有 `role === "assistant"` 消息（含 toolCalls 的 arguments）的 token 估算之和
-  - `tool`：所有 `role === "tool"` 消息的 token 估算之和
-- 横向条形图，每行格式：`分类名 ██...░░░ 百分比%`
-- 颜色：system 灰 `#9ca3af`、user 蓝 `#3b82f6`、assistant 绿 `#22c55e`、tool 紫 `#a855f7`
-- 条形图最大宽度按容器宽度百分比，按各类占总上下文的比例渲染
+- 一行堆叠横向条（`h-2 w-full rounded-full`），4 色段按比例排列：
+  - system 灰 `#9ca3af`
+  - user 蓝 `#3b82f6`
+  - assistant 绿 `#22c55e`
+  - tool 紫 `#a855f7`
+- 条形图下方图例：4 行，每行 `● 分类名 百分比%`
+- 数据来源：
+  - `estimateTokens()` 按角色分类累加（system = systemPrompt，user = role=user 消息，assistant = role=assistant 消息含 toolCalls.arguments，tool = role=tool 消息）
+  - 归一化到 `contextTokens`：估算总和 < contextTokens → 差额归入 "other"（不显示为独立段，调整比例使总量匹配）；估算总和 > contextTokens → 按比例缩小各类
 - 百分比基于上下文总 token（四类之和），不是 maxContext
 
 ### 3. 原始消息
 
-- 遍历完整上下文：`[systemMsg, ...contextMsgs]`
+- 遍历 contextMap：`[systemMsg, ...contextMsgs]`
 - 每条消息一行折叠态：
 
 | 角色 | 显示 | 展开默认 | 颜色 |
@@ -89,7 +88,7 @@
 |---|---|
 | `AISidebar.tsx` | 新增 `showContext` state；UsageBadge 加 `onClick` + `cursor: pointer`；header 标题条件渲染；内容区条件渲染 `ContextView`；上下文视图时隐藏 input |
 | `ContextView.tsx` | **新建**，上下文视图组件（三个 section + 原始消息列表） |
-| `AISidebar.css` | section header、占比条形图、原始消息折叠块等样式 |
+| `AISidebar.css` | section header、堆叠条形图、图例、原始消息折叠块等样式 |
 
 ## ContextView 数据流
 
@@ -102,7 +101,7 @@ function ContextView({ tabId, providerId, model, aiConfig, docContent }) {
   const { prompt: systemPrompt, needsTools } = buildSystemPrompt(docContent, maxContext, ...);
 
   // 统计信息
-  // 上下文占比：分类 estimateTokens
+  // 上下文占比：estimateTokens 分类累加 → 归一化到 contextTokens → 渲染堆叠条 + 图例
   // 原始消息：[systemMsg, ...contextMsgs] 遍历渲染
 }
 ```
@@ -110,5 +109,5 @@ function ContextView({ tabId, providerId, model, aiConfig, docContent }) {
 ## 无需变更的文件
 
 - `chatStore.ts` — 复用现有 `getContext()`
-- `contextBuilder.ts` — 复用现有 `buildSystemPrompt()`
+- `contextBuilder.ts` — 复用现有 `buildSystemPrompt()`、`estimateTokens()`
 - `llmClient.ts` — 无变更

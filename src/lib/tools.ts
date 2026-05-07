@@ -81,13 +81,18 @@ export const networkToolDefinitions: ToolDefinition[] = [
     function: {
       name: "webfetch",
       description:
-        "访问指定 URL 的网页内容，返回页面文本。用于获取外部信息或参考资料。仅支持 http/https 协议。",
+        "访问指定 URL 的网页内容。支持三种格式：markdown（默认，HTML转Markdown结构化输出）、text（纯文本提取）、html（保留HTML结构）。仅支持 http/https 协议。图片 URL 自动返回 base64 数据。",
       parameters: {
         type: "object",
         properties: {
           url: {
             type: "string",
             description: "要访问的网页 URL（仅支持 http/https）",
+          },
+          format: {
+            type: "string",
+            enum: ["markdown", "text", "html"],
+            description: "返回格式：markdown=结构化Markdown（默认），text=纯文本，html=原始HTML",
           },
         },
         required: ["url"],
@@ -236,7 +241,7 @@ function toolReadSection(heading: string, docContent: string): string {
   return lines.slice(startLine, endLine).join("\n");
 }
 
-async function toolWebFetch(url: string, signal: AbortSignal): Promise<string> {
+async function toolWebFetch(url: string, format: string | undefined, signal: AbortSignal): Promise<string> {
   try {
     const parsed = new URL(url);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
@@ -249,7 +254,7 @@ async function toolWebFetch(url: string, signal: AbortSignal): Promise<string> {
   if (signal.aborted) return "Request cancelled";
 
   try {
-    const result = await invoke<string>("webfetch", { url });
+    const result = await invoke<string>("webfetch", { url, format: format || "markdown" });
     return result;
   } catch (e) {
     return `Fetch error: ${e}`;
@@ -282,7 +287,7 @@ export async function executeTool(
         result = toolReadSection(String(args.heading ?? ""), docContent);
         break;
       case "webfetch":
-        result = await toolWebFetch(String(args.url ?? ""), signal);
+        result = await toolWebFetch(String(args.url ?? ""), args.format != null ? String(args.format) : undefined, signal);
         break;
       default:
         return `Unknown tool: ${name}`;
