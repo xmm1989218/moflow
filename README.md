@@ -34,6 +34,8 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **AI Tool-Calling** — AI can actively explore documents via tools (outline, grep, read_lines, read_section) and fetch web content instead of relying on truncated context
 - **Context View** — Inspect token usage, context breakdown, and raw messages in a dedicated panel
 - **Selection AI** — Explain, translate, or ask questions about selected text
+- **Settings Tab** — Unified settings panel with appearance, AI config, proxy, and about sections
+- **Proxy Support** — HTTP/HTTPS/SOCKS5 proxy for AI requests and web content fetching
 - **Find & Replace** — Regex support, case-sensitive search, replace all
 - **Auto Update** — Silent check on startup, background download, non-intrusive notification with one-click install & restart
 - **Status bar** — Word count, cursor position, file info at a glance

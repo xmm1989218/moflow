@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.4.2 (2026-05-08)
+
+### New Features
+
+- Settings Tab — unified settings panel with monochrome SVG nav icons, Windows Terminal-inspired layout
+  - Appearance: app theme (system/light/dark), editor theme, auto-save toggle, status bar toggle
+  - AI: mode/provider/endpoint/token/model selection + test connection (migrated from AIConfigModal)
+  - Proxy: dropdown (None/HTTP/HTTPS/SOCKS5) + address input + save, all on one row
+  - About: MoFlow icon, version, copyright, check for updates
+- Proxy support — HTTP/HTTPS/SOCKS5 proxy for AI requests and web content fetching
+  - WebView2 proxy set at window creation via `proxy_url()` (requires restart)
+  - `webfetch` and `export_pdf` read proxy from `ProxyState` managed state (immediate effect)
+  - `updater.ts` passes proxy to `check()` for update checks
+  - Environment variable fallback: `HTTPS_PROXY` / `HTTP_PROXY` / `ALL_PROXY`
+- webfetch cancellation — `CancelState` + `CancellationToken` + `tokio::select!` for millisecond-level abort when user stops generation
+
+### Bug Fixes
+
+- Fixed proxy not working — Rust `SettingsJson` used snake_case (`proxy_enabled`/`proxy_url`) but `settings.json` stores camelCase (`proxyEnabled`/`proxyUrl`); added `#[serde(rename = "proxyUrl")]`
+- Fixed proxy not syncing on startup — `initSession` now calls `invoke("set_proxy")` to sync Rust `ProxyState`
+- Fixed duplicate React key error — root cause: `flushAssistantMessage` could write the same message ID to JSONL twice when user aborted during tool execution; eliminated by removing flush entirely
+- Fixed incomplete context causing API 400 errors — assistant messages with `toolCalls` but missing tool results now get "Tool call interrupted" error results appended via `cleanupIncompleteToolCalls`
+- Fixed stop button not truly stopping — `stopGeneration` no longer sets `isStreaming=false`; only the `finally` block does after async code completes, preventing users from sending new messages before the old request finishes
+- Fixed webfetch taking up to 30s to cancel — `tokio::select!` drops the reqwest future immediately on cancel
+
+### Improvements
+
+- Chat persistence refactor — removed `flushAssistantMessage`, `appendToLastMessage`, `addToolCallsToLastMessage`, `addReasoningContentToLastMessage`; assistant messages now use `streamingContentMap` during streaming and are only added to `messagesMap` + JSONL when content is complete (one-shot `addMessage` + `appendMessage`)
+- Removed `proxyEnabled` — proxy is now determined solely by `proxyUrl` being non-empty; `validate_proxy_url` logs warnings for invalid URLs
+- `loadChatHistory` now calls `cleanupIncompleteToolCalls` after loading to fix incomplete data on disk (e.g. from crashes)
+- Streaming cursor only shown on virtual `streamingContent` message, not on `messagesMap` entries
+- Deleted unused `AIConfigModal.tsx`, `AboutDialog.tsx`, `.moflow-ai-config-btn` CSS, `aboutVisible` from `updateStore`
+
+### Dependencies
+
+- Added `tokio-util` (Rust) with `rt` feature for `CancellationToken`
+- Added `tokio` (Rust) with `macros` feature for `tokio::select!`
+
 ## v0.4.1 (2026-05-07)
 
 ### New Features
