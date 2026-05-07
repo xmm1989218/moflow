@@ -170,9 +170,9 @@ describe('tools', () => {
 
     describe('truncation', () => {
       it('truncates long results', async () => {
-        const longDoc = 'x'.repeat(10000)
+        const longDoc = 'x'.repeat(40000)
         const result = await executeTool('read_lines', { start: 1, end: 1 }, longDoc, mockSignal)
-        expect(result.length).toBeLessThan(10000)
+        expect(result.length).toBeLessThan(40000)
         expect(result).toContain('截断')
       })
     })
