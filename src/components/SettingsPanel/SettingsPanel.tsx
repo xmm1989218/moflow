@@ -1,16 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useThemeStore, EDITOR_THEMES, type EditorTheme } from "../../stores/themeStore";
-import { useAIConfigStore } from "../../stores/aiConfigStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { getLLMClient } from "../../lib/llmClient";
 import { getProviders, getProviderInfo, getProviderModels } from "../../lib/modelInfo";
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import type { AIConfig } from "../../lib/settings";
+import { t, isZh } from "../../lib/i18n";
 import "./SettingsPanel.css";
-
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
 
 type Section = "appearance" | "ai" | "proxy" | "about";
 
@@ -119,24 +116,24 @@ function AppearanceSection() {
 }
 
 function AISection() {
-  const config = useAIConfigStore((s) => s.config);
-  const saveConfig = useAIConfigStore((s) => s.saveConfig);
-  const [draft, setDraft] = useState<AIConfig>({ ...config });
+  const aiConfig = useThemeStore((s) => s.aiConfig);
+  const setAIConfig = useThemeStore((s) => s.setAIConfig);
+  const [draft, setDraft] = useState<AIConfig>({ ...aiConfig });
   const [showToken, setShowToken] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
   const currentProvider = getProviderInfo(draft.providerId);
   const currentModels = getProviderModels(draft.providerId);
-  const isKnownModel = currentModels.some((m) => m.id === config.model);
+  const isKnownModel = currentModels.some((m) => m.id === aiConfig.model);
   const [modelInputMode, setModelInputMode] = useState<"select" | "input">(
-    isKnownModel || !config.model ? "select" : "input"
+    isKnownModel || !aiConfig.model ? "select" : "input"
   );
   const providerList = getProviders();
 
   const handleModeChange = (mode: "mock" | "real") => {
     const newDraft = { ...draft, mode };
     setDraft(newDraft);
-    saveConfig(newDraft);
+    setAIConfig(newDraft);
   };
 
   const handleProviderChange = (providerId: string) => {
@@ -154,7 +151,7 @@ function AISection() {
     };
     setDraft(newDraft);
     setModelInputMode(models.length > 0 ? "select" : "input");
-    saveConfig(newDraft);
+    setAIConfig(newDraft);
   };
 
   const handleModelSelect = (modelId: string) => {
@@ -165,13 +162,13 @@ function AISection() {
     }
     const newDraft = { ...draft, model: modelId };
     setDraft(newDraft);
-    saveConfig(newDraft);
+    setAIConfig(newDraft);
   };
 
   const handleFieldChange = (field: keyof AIConfig, value: string) => {
     const newDraft = { ...draft, [field]: value };
     setDraft(newDraft);
-    saveConfig(newDraft);
+    setAIConfig(newDraft);
   };
 
   const handleTest = async () => {
@@ -456,9 +453,9 @@ function AboutSection() {
   const [version, setVersion] = useState("");
   const checkUpdate = useUpdateStore((s) => s.checkUpdate);
 
-  useState(() => {
+  useEffect(() => {
     getVersion().then(setVersion);
-  });
+  }, []);
 
   return (
     <div className="moflow-settings-section">

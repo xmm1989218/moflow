@@ -1,9 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useSearchStore } from "../../stores/searchStore";
+import { t } from "../../lib/i18n";
 import "./SearchBar.css";
-
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
 
 export default function SearchBar() {
   const visible = useSearchStore((s) => s.visible);

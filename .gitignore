@@ -23,6 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 latest.json
+package-lock.json
 
 # Secrets and credentials
 .env

@@ -150,7 +150,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.4.1 — Context View & webfetch 增强 & compact 优化
+## v0.4.1 — Context View & webfetch 增强 & compact 优化 ✅
 
 ### Context View 面板
 
@@ -255,6 +255,50 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [x] 删除未使用的 AIConfigModal.tsx、AboutDialog.tsx
 - [x] 清理 AISidebar.css 中 `.moflow-ai-config-btn` CSS
 - [x] 删除 updateStore 中未使用的 `aboutVisible`/`setAboutVisible`
+
+---
+
+## v0.4.3 — 代码质量全面清理 ✅
+
+### 删除冗余代码
+
+- [x] 删除未调用的 `confirmUnsaved()` 函数
+- [x] 删除 `completionTokensMap`（被维护但无组件读取）
+- [x] 删除 `getMessages()`/`getStreamingContent()`/`clearContext()`（仅测试用）
+- [x] 删除 `aiConfigStore`（`themeStore.aiConfig` 的冗余副本），所有引用改为直接使用 `themeStore`
+- [x] 删除 Vite 脚手架残留 `react.svg`/`vite.svg`
+- [x] 删除 7 个冗余 Milkdown 依赖 + `@testing-library/react`
+- [x] 删除 `vite.config.ts` 中的 Vue.js `define` 指令
+- [x] 删除 Rust 依赖 `scraper`/`bytes` + `Win32_Graphics_Gdi` feature
+- [x] `println!` → `log::` 宏（13 处）
+- [x] 修复 ROADMAP v0.4.1 缺 ✅
+
+### 修 Bug
+
+- [x] 修复 `useState(() => sideEffect)` → `useEffect`（AboutSection）
+- [x] 修复 Prism CSS 双主题导入冲突（删除 prism.css，保留 prism-tomorrow.css）
+- [x] 修复 compact 失败时部分内容被存为 context summary
+- [x] 修复未识别 `/` 命令静默丢弃 → 显示错误提示
+- [x] 修复 Rust UTF-8 切片 panic（`text[..N]` → `String::truncate`）
+
+### 性能优化
+
+- [x] AISidebar 选择器用 `useShallow` 合并，减少无关 tab 变化触发的重渲染
+- [x] `scrollIntoView` 加 50ms throttle，避免 streaming 时频繁调用
+- [x] `remarkPlugins`/`rehypePlugins` 提升为模块常量，避免 ReactMarkdown 全量重解析
+- [x] ContextView 重计算加 `useMemo`（`buildSystemPrompt`/`estimateTokens` 等）
+- [x] Editor 双 `files.find()` 合并为单选择器
+- [x] Rust: 23 个 Regex 用 `LazyLock` 缓存，避免每次 webfetch 重新编译
+- [x] Rust: `export_pdf` 的 `mpsc::recv()` 改用 `spawn_blocking` 避免阻塞 async runtime
+- [x] Rust: `allow_paths` 改同步 fn（无 `.await` 不需 async）
+
+### 代码重构
+
+- [x] 提取 `src/lib/i18n.ts`（16 个文件重复的 `t(zh, en)` → 统一导入）
+- [x] 合并 `buildOutline`/`toolOutline` 重复逻辑（`tools.ts` 改用 `contextBuilder.buildOutline`）
+- [x] Rust: `read_proxy_from_settings` 用 `let-else` 简化
+- [x] Rust: `get_cancel_token` 辅助函数减少重复代码
+- [x] Rust: `strip_patterns` 通用函数消除 `strip_*` 函数间重复
 
 ---
 

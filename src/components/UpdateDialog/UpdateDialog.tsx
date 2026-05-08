@@ -1,9 +1,7 @@
 import { useEffect } from "react";
 import { useUpdateStore } from "../../stores/updateStore";
+import { t } from "../../lib/i18n";
 import "./UpdateDialog.css";
-
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
 
 export default function UpdateDialog() {
   const status = useUpdateStore((s) => s.status);

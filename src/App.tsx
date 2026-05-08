@@ -12,15 +12,12 @@ import { initSession } from "./stores/appStore";
 import { useTabStore } from "./stores/tabStore";
 import { useThemeStore, resolveAppTheme } from "./stores/themeStore";
 import { useUpdateStore } from "./stores/updateStore";
-import { useAIConfigStore } from "./stores/aiConfigStore";
 import { useSearchStore } from "./stores/searchStore";
 import { useChatStore } from "./stores/chatStore";
 import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab } from "./lib/fileOps";
+import { t } from "./lib/i18n";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
 
 function App() {
   const appTheme = useThemeStore((s) => s.appTheme);
@@ -36,7 +33,6 @@ function App() {
 
   useEffect(() => {
     initSession().then(async () => {
-      useAIConfigStore.getState().loadConfig();
       const tabs = useTabStore.getState().files;
       const paths = tabs.map((t) => t.filePath).filter(Boolean) as string[];
       if (paths.length > 0) {
@@ -69,10 +65,6 @@ function App() {
     document.documentElement.setAttribute("data-editor-theme", editorTheme);
   }, [editorTheme]);
 
-  const activeContent = useTabStore((s) => {
-    const tab = s.files.find((f) => f.id === s.activeFileId);
-    return tab?.content ?? "";
-  });
   const activeFileId = useTabStore((s) => s.activeFileId);
   const autoSave = useThemeStore((s) => s.autoSave);
 
@@ -95,7 +87,7 @@ function App() {
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [activeContent, activeFileId, autoSave]);
+  }, [activeFileId, autoSave]);
 
   useEffect(() => {
     if (appTheme !== "system") return;
@@ -242,7 +234,7 @@ function App() {
           className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden"
           style={{ display: showSettingsTab && settingsTabActive ? "none" : undefined }}
         >
-          <ErrorBoundary resetKeys={[activeFileId]}>
+          <ErrorBoundary>
             <Editor />
           </ErrorBoundary>
         </div>

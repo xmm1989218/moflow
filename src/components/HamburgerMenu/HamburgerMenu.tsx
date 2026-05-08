@@ -3,12 +3,11 @@ import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useSearchStore } from "../../stores/searchStore";
 import { openFile, saveFile, saveFileAs, exportHtml, exportPdf } from "../../lib/fileOps";
+import { t } from "../../lib/i18n";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import "./HamburgerMenu.css";
 
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
 const appWindow = getCurrentWindow();
 
 interface MenuItem {

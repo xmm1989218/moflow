@@ -513,8 +513,7 @@ export function getLLMClient(config: AIConfig): LLMClient {
   return new OpenAICompatibleClient(config.apiEndpoint, config.apiToken, config.model);
 }
 
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
+import { t } from "./i18n";
 
 function generateMockResponse(userMessage: string, docContent: string): string {
   const lines = docContent.split("\n").filter((l) => l.trim());

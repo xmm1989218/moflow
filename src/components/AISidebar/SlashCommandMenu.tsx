@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
-import { useAIConfigStore } from "../../stores/aiConfigStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { getProviderModels } from "../../lib/modelInfo";
+import { t, isZh } from "../../lib/i18n";
 import "./SlashCommandMenu.css";
-
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
 
 const COMMANDS = [
   { id: "new", label: "/new", descZh: "清空对话", descEn: "Clear chat" },
@@ -29,7 +27,7 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
     const [highlightIndex, setHighlightIndex] = useState(0);
     const [phase, setPhase] = useState<"commands" | "models">("commands");
     const menuRef = useRef<HTMLDivElement>(null);
-    const config = useAIConfigStore((s) => s.config);
+    const config = useThemeStore((s) => s.aiConfig);
     const models = getProviderModels(config.providerId);
 
     const query = input.slice(1).toLowerCase();

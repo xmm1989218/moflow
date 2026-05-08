@@ -1,7 +1,5 @@
 import { Component, useState, type ErrorInfo, type ReactNode } from "react";
-
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
+import { t } from "../lib/i18n";
 
 interface Props {
   children: ReactNode;

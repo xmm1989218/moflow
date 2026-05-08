@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useAISelectionStore, LANGUAGES, type LanguageCode } from "../../stores/aiSelectionStore";
-import { useAIConfigStore } from "../../stores/aiConfigStore";
 import { useChatStore } from "../../stores/chatStore";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
@@ -9,10 +8,8 @@ import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClien
 import { buildSystemPrompt } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
+import { t, isZh } from "../../lib/i18n";
 import "./SelectionAIPanel.css";
-
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
 
 function getLangLabel(code: LanguageCode): string {
   const lang = LANGUAGES.find((l) => l.code === code);
@@ -32,7 +29,7 @@ export default function SelectionAIPanel() {
   const setLastResult = useAISelectionStore((s) => s.setLastResult);
   const dismiss = useAISelectionStore((s) => s.dismiss);
 
-  const aiConfig = useAIConfigStore((s) => s.config);
+  const aiConfig = useThemeStore((s) => s.aiConfig);
   const addMessage = useChatStore((s) => s.addMessage);
   const appendStreamingContent = useChatStore((s) => s.appendStreamingContent);
   const clearStreamingContent = useChatStore((s) => s.clearStreamingContent);

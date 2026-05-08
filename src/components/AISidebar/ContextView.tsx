@@ -1,10 +1,9 @@
+import { useMemo } from "react";
 import { useChatStore, type Message } from "../../stores/chatStore";
 import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, formatCost } from "../../lib/modelInfo";
 import { docToolDefinitions, networkToolDefinitions } from "../../lib/tools";
-
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
+import { t } from "../../lib/i18n";
 
 interface ContextViewProps {
   tabId: string;
@@ -119,28 +118,23 @@ export default function ContextView({ tabId, providerId, model, docContent }: Co
   const cost = useChatStore((s) => s.costMap[tabId] ?? 0);
   const contextMsgs = useChatStore((s) => s.contextMap[tabId] ?? []);
 
-  const modelInfo = getModelInfo(providerId, model);
+  const modelInfo = useMemo(() => getModelInfo(providerId, model), [providerId, model]);
   const maxContext = modelInfo.maxContext || 0;
   const currency = modelInfo.currency || "USD";
 
-  const needsDocTools = (() => {
+  const { tools, breakdown, totalBreakdown } = useMemo(() => {
     const docRatio = 0.50;
     const reserved = Math.floor(maxContext * (1 - docRatio));
-    return estimateTokens(docContent) > (maxContext - reserved);
-  })();
+    const needsDocTools = estimateTokens(docContent) > (maxContext - reserved);
 
-  const { prompt: systemPrompt, needsDocTools: promptNeedsDocTools } = buildSystemPrompt(
-    docContent,
-    maxContext,
-    needsDocTools
-  );
-
-  const tools = promptNeedsDocTools
-    ? [...docToolDefinitions, ...networkToolDefinitions]
-    : [...networkToolDefinitions];
-
-  const breakdown = computeBreakdown(systemPrompt, contextMsgs, contextTokens);
-  const totalBreakdown = breakdown.reduce((sum, b) => sum + b.tokens, 0);
+    const { prompt, needsDocTools: promptNeedsDocTools } = buildSystemPrompt(docContent, maxContext, needsDocTools);
+    const toolList = promptNeedsDocTools
+      ? [...docToolDefinitions, ...networkToolDefinitions]
+      : [...networkToolDefinitions];
+    const bd = computeBreakdown(prompt, contextMsgs, contextTokens);
+    const total = bd.reduce((sum, b) => sum + b.tokens, 0);
+    return { tools: toolList, breakdown: bd, totalBreakdown: total };
+  }, [docContent, contextMsgs, contextTokens, maxContext]);
 
   return (
     <div className="moflow-ctx-view">

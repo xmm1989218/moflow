@@ -3,20 +3,19 @@ import { invoke } from "@tauri-apps/api/core";
 import { useChatStore, type Message, COMPACT_TAIL_TURNS } from "../../stores/chatStore";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
-import { useAIConfigStore } from "../../stores/aiConfigStore";
 import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClient";
 import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
 import { docToolDefinitions, networkToolDefinitions, executeTool, WEBFETCH_LIMIT } from "../../lib/tools";
+import { useShallow } from "zustand/react/shallow";
 import SlashCommandMenu from "./SlashCommandMenu";
 import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
 import MessageContent from "./MessageContent";
 import ContextView from "./ContextView";
+import { t, isZh } from "../../lib/i18n";
 import "./AISidebar.css";
 
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
 const emptyMessages: Message[] = [];
 const MAX_TOOL_ROUNDS = 10;
 
@@ -154,21 +153,25 @@ function ToolResultBlock({ msg, messages }: { msg: Message; messages: Message[] 
 
 export default function AISidebar() {
   const activeFileId = useTabStore((s) => s.activeFileId);
-  const messages = useChatStore((s) => s.messagesMap[activeFileId] || emptyMessages);
-  const isStreaming = useChatStore((s) => s.isStreaming);
-  const streamingContent = useChatStore((s) => s.streamingContentMap[activeFileId] ?? "");
-  const addMessage = useChatStore((s) => s.addMessage);
-  const appendStreamingContent = useChatStore((s) => s.appendStreamingContent);
-  const clearStreamingContent = useChatStore((s) => s.clearStreamingContent);
-  const clearMessages = useChatStore((s) => s.clearMessages);
-  const setStreaming = useChatStore((s) => s.setStreaming);
-  const stopGeneration = useChatStore((s) => s.stopGeneration);
+  const { messages, isStreaming, streamingContent, addMessage, appendStreamingContent, clearStreamingContent, clearMessages, setStreaming, stopGeneration } = useChatStore(
+    useShallow((s) => ({
+      messages: s.messagesMap[activeFileId] || emptyMessages,
+      isStreaming: s.isStreaming,
+      streamingContent: s.streamingContentMap[activeFileId] ?? "",
+      addMessage: s.addMessage,
+      appendStreamingContent: s.appendStreamingContent,
+      clearStreamingContent: s.clearStreamingContent,
+      clearMessages: s.clearMessages,
+      setStreaming: s.setStreaming,
+      stopGeneration: s.stopGeneration,
+    }))
+  );
   const docContent = useTabStore((s) => {
     const tab = s.files.find((f) => f.id === s.activeFileId);
     return tab?.content ?? "";
   });
-  const aiConfig = useAIConfigStore((s) => s.config);
-  const saveConfig = useAIConfigStore((s) => s.saveConfig);
+  const aiConfig = useThemeStore((s) => s.aiConfig);
+  const setAIConfig = useThemeStore((s) => s.setAIConfig);
   const sidebarWidth = useThemeStore((s) => s.sidebarWidth);
   const setSidebarWidth = useThemeStore((s) => s.setSidebarWidth);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -187,8 +190,14 @@ export default function AISidebar() {
 
   const slashMenuVisible = input.startsWith("/") && !input.includes(" ");
 
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 50);
+    return () => { if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current); };
   }, [messages, streamingContent]);
 
   useEffect(() => {
@@ -355,14 +364,6 @@ export default function AISidebar() {
       } else {
         const errorMsg = e instanceof Error ? e.message : String(e);
         appendStreamingContent(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
-        const content = useChatStore.getState().streamingContentMap[activeFileId] ?? "";
-        if (content) {
-          const summaryMsg = addMessage(activeFileId, { role: "assistant", content, isCompactSummary: true });
-          await appendMessage(activeFileId, summaryMsg);
-          useChatStore.setState((state) => ({
-            contextMap: { ...state.contextMap, [activeFileId]: [...tailMsgs, summaryMsg] },
-          }));
-        }
       }
     } finally {
       setStreaming(false);
@@ -375,7 +376,12 @@ export default function AISidebar() {
     const text = input.trim();
     if (!text || isStreaming) return;
 
-    if (text.startsWith("/")) return;
+    if (text.startsWith("/")) {
+      const errMsg = addMessage(activeFileId, { role: "assistant", content: `❌ ${t("未知命令。可用命令: /new, /compact, /models", "Unknown command. Available: /new, /compact, /models")}` });
+      await appendMessage(activeFileId, errMsg);
+      setInput("");
+      return;
+    }
 
     const maxContext = getModelInfo(aiConfig.providerId, aiConfig.model).maxContext || 0;
     const contextTokens = useChatStore.getState().contextTokensMap[activeFileId] ?? 0;
@@ -578,7 +584,7 @@ export default function AISidebar() {
 
   const handleSelectModel = (modelId: string) => {
     setInput("");
-    saveConfig({ ...aiConfig, model: modelId });
+    setAIConfig({ ...aiConfig, model: modelId });
   };
 
   const handleStop = () => {

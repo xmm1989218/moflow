@@ -2,10 +2,8 @@ import { useEffect, useRef } from "react";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { confirmCloseTab, saveFile, saveFileAs, closeLastTab } from "../../lib/fileOps";
+import { t } from "../../lib/i18n";
 import "./TabBar.css";
-
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
 
 export default function TabBar() {
   const files = useTabStore((s) => s.files);

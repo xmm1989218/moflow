@@ -23,16 +23,13 @@ interface ChatState {
   messagesMap: Record<string, Message[]>;
   contextMap: Record<string, Message[]>;
   contextTokensMap: Record<string, number>;
-  completionTokensMap: Record<string, number>;
   totalTokensMap: Record<string, number>;
   costMap: Record<string, number>;
   isStreaming: boolean;
   abortController: AbortController | null;
   streamingContentMap: Record<string, string>;
 
-  getMessages: (tabId: string) => Message[];
   getContext: (tabId: string) => Message[];
-  getStreamingContent: (tabId: string) => string;
   addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
   appendStreamingContent: (tabId: string, chunk: string) => void;
   clearStreamingContent: (tabId: string) => void;
@@ -42,7 +39,6 @@ interface ChatState {
   setAbortController: (ctrl: AbortController | null) => void;
   stopGeneration: () => void;
   clearMessages: (tabId: string) => void;
-  clearContext: (tabId: string) => void;
   cleanupIncompleteToolCalls: (tabId: string) => void;
   loadChatHistory: (tabId: string) => Promise<void>;
   deleteChat: (tabId: string) => void;
@@ -52,20 +48,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   messagesMap: {},
   contextMap: {},
   contextTokensMap: {},
-  completionTokensMap: {},
   totalTokensMap: {},
   costMap: {},
   isStreaming: false,
   abortController: null,
   streamingContentMap: {},
-
-  getMessages: (tabId: string) => {
-    return get().messagesMap[tabId] || emptyMessages;
-  },
-
-  getStreamingContent: (tabId: string) => {
-    return get().streamingContentMap[tabId] ?? "";
-  },
 
   getContext: (tabId: string) => {
     const existing = get().contextMap[tabId];
@@ -171,10 +158,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ...state.contextTokensMap,
         [tabId]: promptTokens,
       },
-      completionTokensMap: {
-        ...state.completionTokensMap,
-        [tabId]: (state.completionTokensMap[tabId] ?? 0) + completionTokens,
-      },
       totalTokensMap: {
         ...state.totalTokensMap,
         [tabId]: (state.totalTokensMap[tabId] ?? 0) + promptTokens + completionTokens,
@@ -224,10 +207,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ...state.contextTokensMap,
         [tabId]: 0,
       },
-      completionTokensMap: {
-        ...state.completionTokensMap,
-        [tabId]: 0,
-      },
       totalTokensMap: {
         ...state.totalTokensMap,
         [tabId]: 0,
@@ -238,14 +217,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
     }));
   },
-
-  clearContext: (tabId) =>
-    set((state) => ({
-      contextMap: {
-        ...state.contextMap,
-        [tabId]: [],
-      },
-    })),
 
   cleanupIncompleteToolCalls: (tabId) => {
     const msgs = get().messagesMap[tabId] ?? [];
@@ -297,8 +268,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       delete newContext[tabId];
       const newContextTokens = { ...state.contextTokensMap };
       delete newContextTokens[tabId];
-      const newCompletionTokens = { ...state.completionTokensMap };
-      delete newCompletionTokens[tabId];
       const newTotalTokens = { ...state.totalTokensMap };
       delete newTotalTokens[tabId];
       const newCost = { ...state.costMap };
@@ -307,7 +276,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messagesMap: newMessages,
         contextMap: newContext,
         contextTokensMap: newContextTokens,
-        completionTokensMap: newCompletionTokens,
         totalTokensMap: newTotalTokens,
         costMap: newCost,
       };

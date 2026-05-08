@@ -18,7 +18,8 @@ import "@milkdown/crepe/theme/nord.css";
 import "@milkdown/crepe/theme/nord-dark.css";
 import "./Editor.css";
 import SelectionAIPanel from "./SelectionAIPanel";
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, memo } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 const HANDLE_WIDTH = 36;
 const HANDLE_MIN_GAP = 2;
@@ -32,7 +33,7 @@ function getBlockHandleMetrics() {
   return { milkdownLeft, offset };
 }
 
-const isZh = navigator.language.startsWith("zh");
+import { isZh } from "../../lib/i18n";
 
 const SLASH_MD_MAP: Record<string, { zh: string; md: string }> = {
   "Text": { zh: "正文", md: "paragraph" },
@@ -56,7 +57,7 @@ const SLASH_MD_MAP: Record<string, { zh: string; md: string }> = {
 const explainIcon = `
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" data-toolbar-key="explain">
     <path d="M2 3.5C2 3.22386 2.22386 3 2.5 3H8C10.7614 3 13 5.23858 13 8V20.5C13 20.7761 12.7761 21 12.5 21H12C11.1716 21 10.5 20.3284 10.5 19.5V17.5C10.5 16.1193 9.38071 15 8 15H2.5C2.22386 15 2 14.7761 2 14.5V3.5ZM4.5 5V13H8C8.88071 13 9.70849 13.2488 10.4157 13.6817C10.7753 13.9023 11.2836 13.7381 11.3304 13.3219C11.3761 12.9177 11 12.5871 11 12.1803V8C11 6.34315 9.65685 5 8 5H4.5Z"/>
-    <path d="M22 3.5C22 3.22386 21.7761 3 21.5 3H16C13.2386 3 11 5.23858 11 8V20.5C11 20.7761 11.2239 21 11.5 21H12C12.8284 21 13.5 20.3284 13.5 19.5V17.5C13.5 16.1193 14.6193 15 16 15H21.5C21.7761 15 22 14.7761 22 14.5V3.5ZM19.5 5V13H16C15.1193 13 14.2915 13.2488 13.5843 13.6817C13.2247 13.9023 12.7164 13.7381 12.6696 13.3219C12.6239 12.9177 13 12.5871 13 12.1803V8C13 6.34315 14.3431 5 16 5H19.5Z"/>
+    <path d="M22 3.5C22 3.22386 21.7761 3 21.5 3H16C13.2386 3 11 5.23858 11 8V20.5C11 20.7761 11.2239 21 11.5 21H12C12.8284 21 13.5 20.3284 13.5 19.5V17.5C13.5 16.1193 14.6193 15 16 15H21.5C21.7761 21 22 14.7761 22 14.5V3.5ZM19.5 5V13H16C15.1193 13 14.2915 13.2488 13.5843 13.6817C13.2247 13.9023 12.7164 13.7381 12.6696 13.3219C12.6239 12.9177 13 12.5871 13 12.1803V8C13 6.34315 14.3431 5 16 5H19.5Z"/>
   </svg>
 `;
 
@@ -82,23 +83,24 @@ const highlightIcon = `
 
 import { toolbarTooltipMap, BUILT_IN_TOOLTIP_KEYS } from "../../lib/toolbarTooltip";
 
-function MilkdownWrapper() {
-  const activeFileId = useTabStore((s) => s.activeFileId);
-  const content = useTabStore((s) => {
-    const tab = s.files.find((f) => f.id === s.activeFileId);
-    return tab?.content ?? "";
-  });
+interface MilkdownWrapperProps {
+  tabId: string;
+}
+
+const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapperProps) {
+  const { content, mode } = useTabStore(
+    useShallow((s) => {
+      const tab = s.files.find((f) => f.id === tabId);
+      return { content: tab?.content ?? "", mode: tab?.mode ?? "wysiwyg" };
+    })
+  );
   const editorTheme = useThemeStore((s) => s.editorTheme);
-  const mode = useTabStore((s) => {
-    const tab = s.files.find((f) => f.id === s.activeFileId);
-    return tab?.mode ?? "wysiwyg";
-  });
   const updateTabContent = useTabStore((s) => s.updateTabContent);
   const setGetEditorHTML = useTabStore((s) => s.setGetEditorHTML);
 
   const setContent = useCallback(
-    (c: string) => updateTabContent(activeFileId, c),
-    [activeFileId, updateTabContent]
+    (c: string) => updateTabContent(tabId, c),
+    [tabId, updateTabContent]
   );
 
   const contentRef = useRef(content);
@@ -302,7 +304,7 @@ function MilkdownWrapper() {
     crepe.on((listener) => {
       listener.mounted((ctx) => {
         const view = ctx.get(editorViewCtx);
-        useSearchStore.getState().setEditorView(view);
+        useSearchStore.getState().setEditorView(tabId, view);
         const existing = view.props.nodeViews ?? {};
         view.setProps({
           nodeViews: {
@@ -315,22 +317,23 @@ function MilkdownWrapper() {
       listener.markdownUpdated((_ctx, markdown) => {
         if (editorReadyRef.current) {
           syncedContentRef.current = markdown;
-            const currentId = useTabStore.getState().activeFileId;
-            if (justLoadedRef.current) {
-              justLoadedRef.current = false;
-              useTabStore.getState().updateTabMeta(currentId, { content: markdown });
-            } else {
-              useTabStore.getState().updateTabContent(currentId, markdown);
+          if (justLoadedRef.current) {
+            justLoadedRef.current = false;
+            useTabStore.getState().updateTabMeta(tabId, { content: markdown });
+          } else {
+            useTabStore.getState().updateTabContent(tabId, markdown);
           }
         }
       });
     });
 
     editorReadyRef.current = true;
-    window.__startupMark?.("editor-ready");
+    if (tabId === useTabStore.getState().activeFileId) {
+      window.__startupMark?.("editor-ready");
+    }
 
     return crepe;
-  }, []);
+  }, [tabId]);
 
   useEffect(() => {
     if (loading) return;
@@ -338,21 +341,21 @@ function MilkdownWrapper() {
     if (!editor || editor.status !== EditorStatus.Created) return;
 
     const getHTMLFn = () => editor.action(getHTML());
-    setGetEditorHTML(getHTMLFn);
+    setGetEditorHTML(tabId, getHTMLFn);
 
     if (content === syncedContentRef.current) return;
 
     justLoadedRef.current = true;
     editor.action(replaceAll(content, true));
     syncedContentRef.current = content;
-  }, [content, loading, getEditor, setGetEditorHTML]);
+  }, [content, loading, getEditor, setGetEditorHTML, tabId]);
 
   useEffect(() => {
     return () => {
-      setGetEditorHTML(null);
-      useSearchStore.getState().setEditorView(null);
+      setGetEditorHTML(tabId, null);
+      useSearchStore.getState().setEditorView(tabId, null);
     };
-  }, [setGetEditorHTML]);
+  }, [setGetEditorHTML, tabId]);
 
   useEffect(() => {
     let tooltipEl: HTMLElement | null = null;
@@ -417,7 +420,7 @@ function MilkdownWrapper() {
   }, []);
 
   useEffect(() => {
-    const wrapper = document.querySelector(".moflow-editor-wrapper") as HTMLElement | null;
+    const wrapper = document.querySelector(`[data-tab-id="${tabId}"] .moflow-editor-wrapper`) as HTMLElement | null;
     if (!wrapper) return;
 
     const onMove = (e: MouseEvent) => {
@@ -432,7 +435,7 @@ function MilkdownWrapper() {
       wrapper.removeEventListener("mousemove", onMove);
       wrapper.removeEventListener("mouseleave", onLeave);
     };
-  }, []);
+  }, [tabId]);
 
   useEffect(() => {
     const mergedIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="18" viewBox="0 0 28 18" fill="none"><path d="M3 9h8M7 5v8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="18" cy="4" r="1.2" fill="currentColor"/><circle cx="18" cy="9" r="1.2" fill="currentColor"/><circle cx="18" cy="14" r="1.2" fill="currentColor"/><circle cx="22" cy="4" r="1.2" fill="currentColor"/><circle cx="22" cy="9" r="1.2" fill="currentColor"/><circle cx="22" cy="14" r="1.2" fill="currentColor"/></svg>`;
@@ -500,7 +503,7 @@ function MilkdownWrapper() {
       <SearchBar />
     </div>
   );
-}
+});
 
 function SourceModeEditor({ content, setContent }: { content: string; setContent: (c: string) => void }) {
   return (
@@ -516,9 +519,26 @@ function SourceModeEditor({ content, setContent }: { content: string; setContent
 }
 
 export default function Editor() {
+  const files = useTabStore((s) => s.files);
+  const activeFileId = useTabStore((s) => s.activeFileId);
+
   return (
-    <MilkdownProvider>
-      <MilkdownWrapper />
-    </MilkdownProvider>
+    <div className="relative flex-1 min-h-0">
+      {files.map((tab) => (
+        <div
+          key={tab.id}
+          data-tab-id={tab.id}
+          className="absolute inset-0"
+          style={{
+            visibility: tab.id === activeFileId ? "visible" : "hidden",
+            pointerEvents: tab.id === activeFileId ? "auto" : "none",
+          }}
+        >
+          <MilkdownProvider>
+            <MilkdownWrapper tabId={tab.id} />
+          </MilkdownProvider>
+        </div>
+      ))}
+    </div>
   );
 }

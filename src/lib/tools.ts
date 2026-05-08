@@ -1,5 +1,7 @@
 import type { ToolDefinition } from "./types";
 import { invoke } from "@tauri-apps/api/core";
+import { buildOutline } from "./contextBuilder";
+import { t } from "./i18n";
 
 export const docToolDefinitions: ToolDefinition[] = [
   {
@@ -113,36 +115,8 @@ function truncateResult(text: string): string {
 }
 
 function toolOutline(docContent: string): string {
-  const lines = docContent.split("\n");
-  const headings: { level: number; text: string; line: number }[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    const match = lines[i].match(/^(#{1,6})\s+(.+)/);
-    if (match) {
-      headings.push({
-        level: match[1].length,
-        text: match[2].trim(),
-        line: i + 1,
-      });
-    }
-  }
-
-  if (headings.length === 0) {
-    return "文档没有标题结构";
-  }
-
-  const result: string[] = [];
-  for (let i = 0; i < headings.length; i++) {
-    const h = headings[i];
-    const nextLine =
-      i + 1 < headings.length
-        ? headings[i + 1].line - 1
-        : lines.length;
-    const indent = "  ".repeat(h.level - 1);
-    result.push(`${indent}${h.text} (L${h.line}-${nextLine})`);
-  }
-
-  return result.join("\n");
+  const result = buildOutline(docContent);
+  return result || t("文档没有标题结构", "Document has no heading structure");
 }
 
 function toolGrep(pattern: string, docContent: string): string {

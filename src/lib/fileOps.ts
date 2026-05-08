@@ -68,7 +68,7 @@ export async function saveFileAs() {
   const ext = selected.split(".").pop()?.toLowerCase();
 
   if (ext === "html") {
-    const bodyHtml = tabState.getEditorHTML ? tabState.getEditorHTML() : "";
+    const bodyHtml = tabState.getEditorHTML() ? tabState.getEditorHTML()!() : "";
     const html = exportAsHtml(bodyHtml, editorTheme);
     const data = new TextEncoder().encode(html);
     await invoke("allow_paths", { paths: [selected] });
@@ -87,7 +87,7 @@ export async function exportHtml() {
   const tabState = useTabStore.getState();
   const file = tabState.getActiveFile();
   const editorTheme = useThemeStore.getState().editorTheme;
-  const getEditorHTML = tabState.getEditorHTML;
+  const getHTMLFn = tabState.getEditorHTML();
 
   const selected = await save({
     defaultPath: file.fileName.replace(/\.md$/, ".html"),
@@ -96,7 +96,7 @@ export async function exportHtml() {
 
   if (!selected) return;
 
-  const bodyHtml = getEditorHTML ? getEditorHTML() : "";
+  const bodyHtml = getHTMLFn ? getHTMLFn() : "";
   const html = exportAsHtml(bodyHtml, editorTheme);
   await writeFile(selected, new TextEncoder().encode(html));
 }
@@ -104,7 +104,7 @@ export async function exportHtml() {
 export async function exportPdf() {
   const tabState = useTabStore.getState();
   const file = tabState.getActiveFile();
-  const getEditorHTML = tabState.getEditorHTML;
+  const getHTMLFn = tabState.getEditorHTML();
   const editorTheme = useThemeStore.getState().editorTheme;
 
   const selected = await save({
@@ -114,7 +114,7 @@ export async function exportPdf() {
 
   if (!selected) return;
 
-  const bodyHtml = getEditorHTML ? getEditorHTML() : "";
+  const bodyHtml = getHTMLFn ? getHTMLFn() : "";
   const html = exportAsHtml(bodyHtml, editorTheme);
 
   const ok: boolean = await invoke("export_pdf", { html, path: selected });
@@ -167,25 +167,6 @@ export async function loadTabContent(id: string) {
     await showAlertDialog(`文件「${tab.fileName}」已不存在或已被移动。`);
     tabState.closeTab(id);
   }
-}
-
-export async function confirmUnsaved(action: string): Promise<boolean> {
-  const file = useTabStore.getState().getActiveFile();
-  if (file.filePath === null && file.content.length > 0) {
-    const result = await showConfirmCloseDialog(`草稿内容未保存，是否保存？`);
-    if (result === "cancel") return false;
-    if (result === "save") {
-      await saveFileAs();
-      const saved = useTabStore.getState().files.find((f) => f.id === file.id);
-      if (!saved?.filePath) return false;
-    }
-    return true;
-  }
-  if (!file.isModified) return true;
-  const result = await showConfirmCloseDialog(`「${file.fileName}」有未保存的修改，${action}？`);
-  if (result === "cancel") return false;
-  if (result === "save") await saveFile();
-  return true;
 }
 
 export async function confirmCloseTab(message: string): Promise<CloseDialogResult> {

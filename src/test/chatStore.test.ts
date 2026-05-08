@@ -10,7 +10,6 @@ describe("chatStore", () => {
       messagesMap: {},
       contextMap: {},
       contextTokensMap: {},
-      completionTokensMap: {},
       totalTokensMap: {},
       costMap: {},
       isStreaming: false,
@@ -24,29 +23,29 @@ describe("chatStore", () => {
       expect(useChatStore.getState().streamingContentMap).toEqual({});
     });
 
-    it("getStreamingContent returns empty string for unknown tab", () => {
-      expect(useChatStore.getState().getStreamingContent("unknown")).toBe("");
+    it("returns empty string for unknown tab", () => {
+      expect(useChatStore.getState().streamingContentMap["unknown"] ?? "").toBe("");
     });
 
     it("appendStreamingContent accumulates content", () => {
       useChatStore.getState().appendStreamingContent(TEST_TAB, "Hello");
-      expect(useChatStore.getState().getStreamingContent(TEST_TAB)).toBe("Hello");
+      expect(useChatStore.getState().streamingContentMap[TEST_TAB]).toBe("Hello");
 
       useChatStore.getState().appendStreamingContent(TEST_TAB, " World");
-      expect(useChatStore.getState().getStreamingContent(TEST_TAB)).toBe("Hello World");
+      expect(useChatStore.getState().streamingContentMap[TEST_TAB]).toBe("Hello World");
     });
 
     it("clearStreamingContent removes tab content", () => {
       useChatStore.getState().appendStreamingContent(TEST_TAB, "content");
       useChatStore.getState().clearStreamingContent(TEST_TAB);
-      expect(useChatStore.getState().getStreamingContent(TEST_TAB)).toBe("");
+      expect(useChatStore.getState().streamingContentMap[TEST_TAB] ?? "").toBe("");
     });
 
     it("clearStreamingContent does not affect other tabs", () => {
       useChatStore.getState().appendStreamingContent("tab1", "a");
       useChatStore.getState().appendStreamingContent("tab2", "b");
       useChatStore.getState().clearStreamingContent("tab1");
-      expect(useChatStore.getState().getStreamingContent("tab2")).toBe("b");
+      expect(useChatStore.getState().streamingContentMap["tab2"]).toBe("b");
     });
   });
 

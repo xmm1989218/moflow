@@ -1,6 +1,6 @@
 use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
-use std::sync::mpsc;
+use std::sync::{LazyLock, mpsc};
 use regex::Regex;
 use serde::Deserialize;
 use tokio_util::sync::CancellationToken;
@@ -31,18 +31,15 @@ fn validate_proxy_url(url: &str) -> Option<String> {
     match url.parse::<url::Url>() {
         Ok(_) => Some(url.to_string()),
         Err(e) => {
-            println!("[proxy] warn: invalid proxy URL '{}': {}", url, e);
+            log::warn!("[proxy] invalid proxy URL '{}': {}", url, e);
             None
         }
     }
 }
 
 fn read_proxy_from_settings(app: &tauri::App) -> Option<String> {
-    let path = app.path().app_data_dir().ok().map(|dir| dir.join("settings.json"));
-    let path = match path {
-        Some(p) => p,
-        None => return None,
-    };
+    let dir = app.path().app_data_dir().ok()?;
+    let path = dir.join("settings.json");
     let data = match std::fs::read(&path) {
         Ok(d) => d,
         Err(_) => return None,
@@ -63,8 +60,8 @@ fn accept_header(format: &str) -> &'static str {
     }
 }
 
-fn strip_html_noise_full(html: &str) -> String {
-    let patterns: Vec<Regex> = [
+static NOISE_FULL_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    [
         r"(?is)<head[^>]*>.*?</head>",
         r"(?is)<script[^>]*>.*?</script>",
         r"(?is)<style[^>]*>.*?</style>",
@@ -78,55 +75,64 @@ fn strip_html_noise_full(html: &str) -> String {
         r"(?is)<embed[^>]*>.*?</embed>",
         r"(?i)<link\b[^>]*>",
         r"(?s)<!--.*?-->",
-    ].iter().map(|p| Regex::new(p).unwrap()).collect();
+    ].iter().map(|p| Regex::new(p).unwrap()).collect()
+});
 
-    let mut result = html.to_string();
-    for re in &patterns {
-        result = re.replace_all(&result, "").into_owned();
-    }
-    result
-}
-
-fn strip_block_elements(html: &str) -> String {
-    let patterns: Vec<Regex> = [
+static BLOCK_ELEMENT_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    [
         r"(?is)<header[^>]*>.*?</header>",
         r"(?is)<form[^>]*>.*?</form>",
         r"(?is)<button[^>]*>.*?</button>",
-    ].iter().map(|p| Regex::new(p).unwrap()).collect();
+    ].iter().map(|p| Regex::new(p).unwrap()).collect()
+});
 
-    let mut result = html.to_string();
-    for re in &patterns {
-        result = re.replace_all(&result, "").into_owned();
-    }
-    result
-}
-
-fn strip_script_style(html: &str) -> String {
-    let patterns: Vec<Regex> = [
+static SCRIPT_STYLE_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
+    [
         r"(?is)<script[^>]*>.*?</script>",
         r"(?is)<style[^>]*>.*?</style>",
         r"(?s)<!--.*?-->",
-    ].iter().map(|p| Regex::new(p).unwrap()).collect();
+    ].iter().map(|p| Regex::new(p).unwrap()).collect()
+});
 
+static CLASS_ATTR_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"\s+class\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)"#).unwrap()
+});
+
+static STYLE_ATTR_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"\s+style\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)"#).unwrap()
+});
+
+static TAG_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"<[^>]+>").unwrap());
+static MULTI_NEWLINE_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\n{3,}").unwrap());
+
+fn strip_patterns(html: &str, patterns: &[Regex]) -> String {
     let mut result = html.to_string();
-    for re in &patterns {
+    for re in patterns {
         result = re.replace_all(&result, "").into_owned();
     }
     result
 }
 
+fn strip_html_noise_full(html: &str) -> String {
+    strip_patterns(html, &NOISE_FULL_PATTERNS)
+}
+
+fn strip_block_elements(html: &str) -> String {
+    strip_patterns(html, &BLOCK_ELEMENT_PATTERNS)
+}
+
+fn strip_script_style(html: &str) -> String {
+    strip_patterns(html, &SCRIPT_STYLE_PATTERNS)
+}
+
 fn strip_class_style_attrs(html: &str) -> String {
-    let class_re = Regex::new(r#"\s+class\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)"#).unwrap();
-    let style_re = Regex::new(r#"\s+style\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)"#).unwrap();
-    let result = class_re.replace_all(html, "");
-    style_re.replace_all(&result, "").into_owned()
+    let result = CLASS_ATTR_RE.replace_all(html, "");
+    STYLE_ATTR_RE.replace_all(&result, "").into_owned()
 }
 
 fn strip_all_tags(html: &str) -> String {
-    let re = Regex::new(r"<[^>]+>").unwrap();
-    let result = re.replace_all(html, "");
-    let ws_re = Regex::new(r"\n{3,}").unwrap();
-    let result = ws_re.replace_all(&result, "\n\n");
+    let result = TAG_RE.replace_all(html, "");
+    let result = MULTI_NEWLINE_RE.replace_all(&result, "\n\n");
     result.trim().to_string()
 }
 
@@ -140,8 +146,9 @@ fn is_html_content(content_type: &str) -> bool {
 }
 
 fn looks_like_html(body: &str) -> bool {
-    let prefix = body.len().min(500);
-    let head = body[..prefix].to_lowercase();
+    let mut s = body.to_string();
+    s.truncate(500);
+    let head = s.to_lowercase();
     head.contains("<!doctype html") || head.contains("<html")
 }
 
@@ -154,7 +161,10 @@ fn truncate_body(text: &str) -> String {
     if text.len() <= WEBFETCH_MAX_BODY {
         text.to_string()
     } else {
-        text[..WEBFETCH_MAX_BODY].to_string() + "\n...[response truncated]"
+        let mut s = text.to_string();
+        s.truncate(WEBFETCH_MAX_BODY);
+        s.push_str("\n...[response truncated]");
+        s
     }
 }
 
@@ -164,13 +174,17 @@ fn build_reqwest_client(proxy_url: Option<&str>, user_agent: &str) -> Result<req
         .user_agent(user_agent);
     if let Some(url) = proxy_url {
         if !url.is_empty() {
-            println!("[reqwest] using proxy: {}", url);
+            log::info!("[reqwest] using proxy: {}", url);
             builder = builder.proxy(reqwest::Proxy::all(url).map_err(|e| format!("Invalid proxy URL '{}': {}", url, e))?);
         }
     } else {
-        println!("[reqwest] no proxy configured");
+        log::info!("[reqwest] no proxy configured");
     }
     builder.build().map_err(|e| e.to_string())
+}
+
+fn get_cancel_token(app: &tauri::AppHandle) -> CancellationToken {
+    app.state::<CancelState>().token.lock().unwrap().clone()
 }
 
 #[tauri::command]
@@ -185,14 +199,14 @@ async fn webfetch(url: String, format: Option<String>, app: tauri::AppHandle) ->
     }
 
     let accept = accept_header(&fmt);
-    let cancel_token = app.state::<CancelState>().token.lock().unwrap().clone();
+    let cancel_token = get_cancel_token(&app);
     let proxy_url = app.state::<ProxyState>().proxy_url.lock().ok().and_then(|guard| guard.clone())
         .or_else(|| std::env::var("HTTPS_PROXY").ok().or_else(|| std::env::var("HTTP_PROXY").ok()).or_else(|| std::env::var("ALL_PROXY").ok()));
 
     if let Some(ref p) = proxy_url {
-        println!("[webfetch] proxy: {} -> {}", p, url);
+        log::info!("[webfetch] proxy: {} -> {}", p, url);
     } else {
-        println!("[webfetch] no proxy -> {}", url);
+        log::info!("[webfetch] no proxy -> {}", url);
     }
 
     let client = build_reqwest_client(proxy_url.as_deref(), CHROME_UA)?;
@@ -212,7 +226,7 @@ async fn webfetch(url: String, format: Option<String>, app: tauri::AppHandle) ->
         }
     })?;
 
-    let cancel_token2 = app.state::<CancelState>().token.lock().unwrap().clone();
+    let cancel_token2 = get_cancel_token(&app);
     let status = res.status();
     let content_type = res.headers()
         .get("content-type")
@@ -241,7 +255,7 @@ async fn webfetch(url: String, format: Option<String>, app: tauri::AppHandle) ->
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("")
                 .to_string();
-            let cancel_token3 = app.state::<CancelState>().token.lock().unwrap().clone();
+            let cancel_token3 = get_cancel_token(&app);
             let body = tokio::select! {
                 b = retry_res.bytes() => b,
                 _ = cancel_token3.cancelled() => {
@@ -259,7 +273,7 @@ async fn webfetch(url: String, format: Option<String>, app: tauri::AppHandle) ->
     }
 
     if is_image_mime(&content_type) {
-        let cancel_token3 = app.state::<CancelState>().token.lock().unwrap().clone();
+        let cancel_token3 = get_cancel_token(&app);
         let body = tokio::select! {
             b = res.bytes() => b,
             _ = cancel_token3.cancelled() => {
@@ -269,7 +283,7 @@ async fn webfetch(url: String, format: Option<String>, app: tauri::AppHandle) ->
         return process_response(&content_type, &body, &fmt);
     }
 
-    let cancel_token3 = app.state::<CancelState>().token.lock().unwrap().clone();
+    let cancel_token3 = get_cancel_token(&app);
     let body = tokio::select! {
         b = res.bytes() => b,
         _ = cancel_token3.cancelled() => {
@@ -303,7 +317,7 @@ fn process_response(content_type: &str, body: &[u8], fmt: &str) -> Result<String
             let md = html_to_markdown(&cleaned);
             let cleaned_size = md.len();
             let removed_pct = if original_size > 0 { 100 - cleaned_size * 100 / original_size } else { 0 };
-            println!("[webfetch] markdown: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
+            log::info!("[webfetch] markdown: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
             truncate_body(&md)
         }
         "text" => {
@@ -313,14 +327,14 @@ fn process_response(content_type: &str, body: &[u8], fmt: &str) -> Result<String
             let text = strip_all_tags(&cleaned);
             let cleaned_size = text.len();
             let removed_pct = if original_size > 0 { 100 - cleaned_size * 100 / original_size } else { 0 };
-            println!("[webfetch] text: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
+            log::info!("[webfetch] text: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
             truncate_body(&text)
         }
         "html" => {
             let cleaned = strip_script_style(&body_text);
             let cleaned_size = cleaned.len();
             let removed_pct = if original_size > 0 { 100 - cleaned_size * 100 / original_size } else { 0 };
-            println!("[webfetch] html: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
+            log::info!("[webfetch] html: {} -> {} bytes ({}% removed)", original_size, cleaned_size, removed_pct);
             truncate_body(&cleaned)
         }
         _ => truncate_body(&body_text),
@@ -342,15 +356,15 @@ fn set_proxy(proxy_url: Option<String>, state: tauri::State<ProxyState>) -> Resu
     let validated = proxy_url.as_deref().and_then(|u| validate_proxy_url(u));
     let mut url = state.proxy_url.lock().map_err(|e| e.to_string())?;
     match &validated {
-        Some(u) => println!("[proxy] set_proxy: {}", u),
-        None => println!("[proxy] set_proxy: disabled"),
+        Some(u) => log::info!("[proxy] set_proxy: {}", u),
+        None => log::info!("[proxy] set_proxy: disabled"),
     }
     *url = validated;
     Ok(())
 }
 
 #[tauri::command]
-async fn allow_paths(app: tauri::AppHandle, paths: Vec<String>) -> Result<(), String> {
+fn allow_paths(app: tauri::AppHandle, paths: Vec<String>) -> Result<(), String> {
     let scope = app.fs_scope();
     for path in &paths {
         scope.allow_file(path).map_err(|e| e.to_string())?;
@@ -519,7 +533,7 @@ async fn export_pdf(app: tauri::AppHandle, html: String, path: String) -> Result
                 let core_for_nav = core.clone();
                 let core_for_pdf = core_7;
                 let settings_for_pdf = settings;
-                let path_h_for_pdf = path_h.clone();
+                let path_h_for_pdf = path_h;
                 let mut nav_token: i64 = 0;
 
                 let nav_handler = NavigationCompletedEventHandler::create(
@@ -560,7 +574,9 @@ async fn export_pdf(app: tauri::AppHandle, html: String, path: String) -> Result
             })
             .map_err(|e| e.to_string())?;
 
-        let result = rx.recv().map_err(|e| e.to_string())??;
+        let result = tokio::task::spawn_blocking(move || {
+            rx.recv().map_err(|e| e.to_string()).and_then(|r| r)
+        }).await.map_err(|e| e.to_string())??;
 
         let _ = webview_window.close();
 
@@ -584,7 +600,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests])
         .setup(move |app| {
-            println!("[startup] rust-setup: {}ms", app_start.elapsed().as_millis());
+            log::info!("[startup] rust-setup: {}ms", app_start.elapsed().as_millis());
 
             let proxy_url = read_proxy_from_settings(app);
 
@@ -603,10 +619,10 @@ pub fn run() {
             if let Some(ref url) = proxy_url {
                 if let Ok(parsed) = url.parse::<url::Url>() {
                     window_builder = window_builder.proxy_url(parsed);
-                    println!("[startup] WebView2 proxy enabled: {}", url);
+                    log::info!("[startup] WebView2 proxy enabled: {}", url);
                 }
             } else {
-                println!("[startup] no proxy configured for WebView2");
+                log::info!("[startup] no proxy configured for WebView2");
             }
 
             window_builder.build().map_err(|e| format!("Failed to create main window: {}", e))?;

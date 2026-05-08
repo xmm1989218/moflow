@@ -7,7 +7,7 @@ export function estimateTokens(text: string): number {
   return zhRatio > 0.3 ? Math.ceil(text.length / 2) : Math.ceil(text.length / 4);
 }
 
-function buildOutline(docContent: string): string {
+export function buildOutline(docContent: string): string {
   const lines = docContent.split("\n");
   const headings: { level: number; text: string; line: number }[] = [];
 
@@ -43,7 +43,7 @@ export interface SystemPromptResult {
   needsDocTools: boolean;
 }
 
-const isZh = navigator.language.startsWith("zh");
+import { isZh } from "./i18n";
 
 const webfetchInstructionZh = `你可以使用 webfetch(url, format?) 访问网页内容来获取外部信息或参考资料。format 参数可选：markdown（默认，HTML转Markdown结构化输出）、text（纯文本提取）、html（保留HTML结构）。图片 URL 自动返回 base64 数据。如果文档内容已足够回答，不需要使用此工具。`;
 const webfetchInstructionEn = `You can use webfetch(url, format?) to access web page content for external information or references. Optional format parameter: markdown (default, HTML to structured Markdown), text (plain text extraction), html (preserve HTML structure). Image URLs automatically return base64 data. If the document content is sufficient to answer, there is no need to use this tool.`;

@@ -7,8 +7,7 @@ const HamburgerMenu = lazy(() => import("../HamburgerMenu/HamburgerMenu"));
 import "./TitleBar.css";
 
 const appWindow = getCurrentWindow();
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
+import { t } from "../../lib/i18n";
 
 export default function TitleBar() {
   const showAISidebar = useThemeStore((s) => s.showAISidebar);

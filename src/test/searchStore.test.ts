@@ -17,7 +17,7 @@ describe("searchStore", () => {
       regexp: false,
       matchCount: -1,
       currentMatch: -1,
-      editorView: null,
+      editorViewMap: new Map(),
     });
   });
 
@@ -78,10 +78,11 @@ describe("searchStore", () => {
 
   it("setEditorView stores the view", () => {
     const mockView = {} as EditorView;
-    useSearchStore.getState().setEditorView(mockView);
-    expect(useSearchStore.getState().editorView).toBe(mockView);
-    useSearchStore.getState().setEditorView(null);
-    expect(useSearchStore.getState().editorView).toBeNull();
+    const tabId = "test-tab";
+    useSearchStore.getState().setEditorView(tabId, mockView);
+    expect(useSearchStore.getState().getEditorView(tabId)).toBe(mockView);
+    useSearchStore.getState().setEditorView(tabId, null);
+    expect(useSearchStore.getState().getEditorView(tabId)).toBeNull();
   });
 
   it("toggleCaseSensitive toggles the flag", () => {

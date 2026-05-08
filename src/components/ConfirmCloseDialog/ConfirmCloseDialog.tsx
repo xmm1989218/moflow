@@ -1,9 +1,7 @@
 import { useAppStore, type CloseDialogResult } from "../../stores/appStore";
 import { resolveDialog, resolveAlert } from "../../lib/closeDialog";
+import { t } from "../../lib/i18n";
 import "./ConfirmCloseDialog.css";
-
-const isZh = navigator.language.startsWith("zh");
-const t = (zh: string, en: string) => (isZh ? zh : en);
 
 export default function ConfirmCloseDialog() {
   const closeDialog = useAppStore((s) => s.closeDialog);

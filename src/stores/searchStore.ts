@@ -10,6 +10,7 @@ import {
   replaceAll as pmReplaceAll,
   replaceCurrent as pmReplaceCurrent,
 } from "prosemirror-search";
+import { useTabStore } from "./tabStore";
 
 interface SearchState {
   visible: boolean;
@@ -20,9 +21,10 @@ interface SearchState {
   regexp: boolean;
   matchCount: number;
   currentMatch: number;
-  editorView: EditorView | null;
+  editorViewMap: Map<string, EditorView>;
 
-  setEditorView: (view: EditorView | null) => void;
+  setEditorView: (tabId: string, view: EditorView | null) => void;
+  getEditorView: (tabId?: string) => EditorView | null;
   toggleSearch: (withReplace?: boolean) => void;
   closeSearch: () => void;
   setQuery: (q: string) => void;
@@ -62,6 +64,11 @@ function getCurrentMatchIndex(view: EditorView): number {
   return Math.min(idx, matches.length - 1);
 }
 
+function getActiveEditorView(): EditorView | null {
+  const activeFileId = useTabStore.getState().activeFileId;
+  return useSearchStore.getState().editorViewMap.get(activeFileId) ?? null;
+}
+
 export const useSearchStore = create<SearchState>((set, get) => ({
   visible: false,
   showReplace: false,
@@ -71,9 +78,22 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   regexp: false,
   matchCount: -1,
   currentMatch: -1,
-  editorView: null,
+  editorViewMap: new Map(),
 
-  setEditorView: (view) => set({ editorView: view }),
+  setEditorView: (tabId, view) => {
+    const map = new Map(get().editorViewMap);
+    if (view) {
+      map.set(tabId, view);
+    } else {
+      map.delete(tabId);
+    }
+    set({ editorViewMap: map });
+  },
+
+  getEditorView: (tabId) => {
+    const id = tabId ?? useTabStore.getState().activeFileId;
+    return get().editorViewMap.get(id) ?? null;
+  },
 
   toggleSearch: (withReplace = false) => {
     const state = get();
@@ -84,7 +104,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
 
   closeSearch: () => {
-    const { editorView } = get();
+    const editorView = getActiveEditorView();
     if (editorView) {
       const emptyQuery = buildSearchQuery("", false, false);
       const tr = editorView.state.tr;
@@ -105,7 +125,8 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
   setQuery: (q) => {
     set({ query: q });
-    const { editorView, caseSensitive, regexp, replaceText } = get();
+    const { caseSensitive, regexp, replaceText } = get();
+    const editorView = getActiveEditorView();
     if (!q) {
       if (editorView) {
         const emptyQuery = buildSearchQuery("", false, false);
@@ -136,7 +157,8 @@ export const useSearchStore = create<SearchState>((set, get) => ({
 
   setReplaceText: (t) => {
     set({ replaceText: t });
-    const { editorView, query, caseSensitive, regexp } = get();
+    const { query, caseSensitive, regexp } = get();
+    const editorView = getActiveEditorView();
     if (!editorView || !query) return;
 
     const sq = buildSearchQuery(query, caseSensitive, regexp, t);
@@ -150,7 +172,8 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   toggleCaseSensitive: () => {
     const next = !get().caseSensitive;
     set({ caseSensitive: next });
-    const { editorView, query, regexp, replaceText } = get();
+    const { query, regexp, replaceText } = get();
+    const editorView = getActiveEditorView();
     if (!editorView || !query) return;
 
     const sq = buildSearchQuery(query, next, regexp, replaceText);
@@ -168,7 +191,8 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   toggleRegexp: () => {
     const next = !get().regexp;
     set({ regexp: next });
-    const { editorView, query, caseSensitive, replaceText } = get();
+    const { query, caseSensitive, replaceText } = get();
+    const editorView = getActiveEditorView();
     if (!editorView || !query) return;
 
     const sq = buildSearchQuery(query, caseSensitive, next, replaceText);
@@ -184,7 +208,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
 
   findNext: () => {
-    const { editorView } = get();
+    const editorView = getActiveEditorView();
     if (!editorView) return;
     pmFindNext(editorView.state, editorView.dispatch);
     const { query, caseSensitive, regexp } = get();
@@ -197,7 +221,7 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
 
   findPrev: () => {
-    const { editorView } = get();
+    const editorView = getActiveEditorView();
     if (!editorView) return;
     pmFindPrev(editorView.state, editorView.dispatch);
     const { query, caseSensitive, regexp } = get();
@@ -210,13 +234,13 @@ export const useSearchStore = create<SearchState>((set, get) => ({
   },
 
   replaceCurrentMatch: () => {
-    const { editorView } = get();
+    const editorView = getActiveEditorView();
     if (!editorView) return;
     pmReplaceCurrent(editorView.state, editorView.dispatch);
   },
 
   replaceAllMatches: () => {
-    const { editorView } = get();
+    const editorView = getActiveEditorView();
     if (!editorView) return;
     pmReplaceAll(editorView.state, editorView.dispatch);
     set({ matchCount: 0, currentMatch: -1 });

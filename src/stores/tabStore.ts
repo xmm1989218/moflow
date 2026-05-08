@@ -71,7 +71,7 @@ interface TabState_Store {
   files: TabState[];
   activeFileId: string;
   sessionInitialized: boolean;
-  getEditorHTML: (() => string) | null;
+  getEditorHTMLMap: Map<string, () => string>;
 
   openTab: (overrides?: Partial<Omit<TabState, "id">>) => string;
   closeTab: (id: string) => void;
@@ -81,7 +81,8 @@ interface TabState_Store {
   getActiveFile: () => TabState;
   findTabByPath: (filePath: string) => TabState | undefined;
   newFile: () => string;
-  setGetEditorHTML: (fn: (() => string) | null) => void;
+  setGetEditorHTML: (tabId: string, fn: (() => string) | null) => void;
+  getEditorHTML: (tabId?: string) => (() => string) | null;
 }
 
 const initialTab = createTab();
@@ -90,7 +91,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
   files: [initialTab],
   activeFileId: initialTab.id,
   sessionInitialized: false,
-  getEditorHTML: null,
+  getEditorHTMLMap: new Map(),
 
   openTab: (overrides) => {
     const tab = createTab(overrides);
@@ -124,6 +125,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
 
     import("../lib/chatPersistence").then(({ removeChat }) => removeChat(id));
     useChatStore.getState().deleteChat(id);
+    state.getEditorHTMLMap.delete(id);
 
     const newFiles = state.files.filter((f) => f.id !== id);
 
@@ -243,8 +245,19 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     return get().openTab();
   },
 
-  setGetEditorHTML: (fn) => {
-    set({ getEditorHTML: fn });
+  setGetEditorHTML: (tabId, fn) => {
+    const map = new Map(get().getEditorHTMLMap);
+    if (fn) {
+      map.set(tabId, fn);
+    } else {
+      map.delete(tabId);
+    }
+    set({ getEditorHTMLMap: map });
+  },
+
+  getEditorHTML: (tabId) => {
+    const id = tabId ?? get().activeFileId;
+    return get().getEditorHTMLMap.get(id) ?? null;
   },
 }));
 
