@@ -300,6 +300,16 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [x] Rust: `get_cancel_token` 辅助函数减少重复代码
 - [x] Rust: `strip_patterns` 通用函数消除 `strip_*` 函数间重复
 
+### Tab 切换性能优化
+
+- [x] Lazy-tab 架构 — 每个 tab 持有独立 MilkdownWrapper 实例，切换 tab 用 CSS visibility 而非 replaceAll()
+- [x] 移除 ErrorBoundary `resetKeys={[activeFileId]}`，防止 tab 切换时完整编辑器重挂载
+- [x] 移除 App.tsx `activeContent` 选择器（每次按键触发 App 重渲染），auto-save 改用 `activeFileId` + `isModified` 触发
+- [x] Per-tab `getEditorHTMLMap`（Map<string, () => string>）替代单一 `getEditorHTML` 字段
+- [x] Per-tab `editorViewMap`（Map<string, EditorView>）替代单一 `editorView` 字段
+- [x] MilkdownWrapper 用 `memo` + `useShallow` 防止级联重渲染
+- [x] 切换 tab 时保留滚动位置、光标位置、undo 历史
+
 ---
 
 ## v0.5.0 — 增强功能 I

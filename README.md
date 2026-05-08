@@ -27,7 +27,7 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **Distraction-free editing** — Frameless window with custom title bar, clean UI
 - **Rich Markdown** — GFM (tables, strikethrough, task lists), math (KaTeX), code highlighting (Prism), highlight (`==text==`)
   See [Markdown syntax support](./tests/markdown-support.md) for full details
-- **Multi-tab** — Open and switch between multiple files in tabs with auto-save
+- **Multi-tab** — Open and switch between multiple files with instant tab switching, auto-save, and preserved scroll/cursor/undo per tab
 - **Dual theme** — Light and dark themes with smooth switching
 - **Export** — HTML and PDF export
 - **AI Sidebar** — Integrated AI chat with context management, auto-compact, and usage tracking

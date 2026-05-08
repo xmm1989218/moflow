@@ -56,26 +56,47 @@ bun run lint
 
 ```
 src/                    # Frontend (React + TypeScript)
-  components/           # UI components
-    Editor/             # Milkdown editor wrapper
-    TitleBar/           # Custom frameless title bar
-    TabBar/             # Tab management
-    Toolbar/            # Formatting toolbar
-    StatusBar/          # Bottom status bar
-    AISidebar/          # AI chat sidebar
-    HamburgerMenu/      # Hamburger menu
+  components/
+    AISidebar/          # AI chat sidebar (doCompact, auto-compact, UsageBadge)
     ConfirmCloseDialog/ # Unsaved changes dialog
-    AboutDialog/        # About dialog with update check
-    UpdateDialog/       # Update notification toast (bottom-right)
-  stores/               # Zustand state stores (app, chat, AI config, AI selection, update)
-  lib/                  # Utilities (chat persistence, LLM client, context builder, export, theme, updater)
+    Editor/             # Milkdown editor wrapper + SelectionAIPanel
+    HamburgerMenu/      # Hamburger menu
+    SettingsPanel/      # Settings tab (appearance, AI, proxy, about)
+    StatusBar/          # Bottom status bar
+    TabBar/             # Tab management (file tabs + settings tab)
+    TitleBar/           # Custom frameless title bar (gear button)
+    Toolbar/            # Formatting toolbar
+    UpdateDialog/       # Update notification toast
+  stores/
+    appStore.ts         # Re-exports from tabStore, themeStore, etc.
+    chatStore.ts        # AI chat state (streamingContentMap, contextMap, cleanupIncompleteToolCalls)
+    aiConfigStore.ts    # (deleted) — merged into themeStore
+    aiSelectionStore.ts # Selection AI panel state
+    searchStore.ts      # Find & replace state (per-tab editorViewMap)
+    tabStore.ts         # File tabs, activeFileId, per-tab getEditorHTMLMap
+    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab
+    updateStore.ts      # Auto-update state
+  lib/
+    chatPersistence.ts  # JSONL chat history (append, load, repair corrupted)
+    contextBuilder.ts   # System prompt builder (dynamic maxContext from model)
+    modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
+    llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming)
+    settings.ts         # App settings persistence (proxyUrl derived proxy state)
+    exportHtml.ts       # HTML/PDF export logic
+    fileOps.ts          # File read/write via Tauri FS plugin
+    i18n.ts             # Shared i18n helper (t() + isZh)
+    themeCSS.ts         # Dynamic theme CSS generation
+    tools.ts            # AI tool definitions (outline, grep, read_lines, read_section, webfetch)
+    updater.ts          # Auto-update with proxy support
   App.tsx               # Root component
   main.tsx              # Entry point
 
 src-tauri/              # Backend (Rust + Tauri)
-  src/lib.rs            # Commands, plugin setup, and window management
-  tauri.conf.json       # Tauri configuration (updater, bundle, security)
-  icons/                # App icons
+  src/lib.rs            # Commands (toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests)
+  src/main.rs           # Entry point
+  tauri.conf.json       # Tauri config (window: [] for manual creation, bundle, security)
+  Cargo.toml            # Rust dependencies (reqwest+socks, tokio, tokio-util, htmd, url)
+  icons/                # App icons (PNG, ICO, ICNS)
 ```
 
 ## Release

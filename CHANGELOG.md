@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.4.3 (2026-05-08)
+
+### New Features
+
+- **Instant tab switching** — Lazy-tab architecture: each tab gets its own persistent Milkdown editor instance; switching tabs toggles CSS visibility instead of destroying and recreating the editor (tab switch reduced from ~4s to near-instant)
+  - Per-tab `getEditorHTMLMap` and `editorViewMap` for multi-editor support
+  - Scroll position, cursor position, and undo history preserved per tab
+
+### Bug Fixes
+
+- Fixed `useState(() => sideEffect)` in AboutSection — replaced with `useEffect` to avoid running side effects during render
+- Fixed Prism CSS double-theme conflict — removed `prism.css`, kept only `prism-tomorrow.css` for consistent dark theme
+- Fixed compact failure saving partial content to `contextMap` — now discards incomplete results
+- Fixed unrecognized `/` slash commands silently discarded — now shows an error message
+- Fixed Rust UTF-8 slice panic — `text[..N]` replaced with `String::truncate` for safe truncation
+- Fixed `activeContent` selector causing App re-render on every keystroke — auto-save now triggered by `activeFileId` + `isModified` only
+- Fixed `ErrorBoundary resetKeys={[activeFileId]}` causing full editor remount on tab switch — removed `resetKeys`
+
+### Improvements
+
+- **Deleted redundant code**: `aiConfigStore` (5 files migrated to `themeStore`), `completionTokensMap`, `getMessages()`/`getStreamingContent()`/`clearContext()`, Vite boilerplate SVGs, 7 unused Milkdown dependencies + `@testing-library/react`, Rust deps `scraper`/`bytes`/`Win32_Graphics_Gdi`, `println!` → `log::` (13 places)
+- **Frontend performance**: AISidebar 13 selectors merged with `useShallow`, `scrollIntoView` throttled to 50ms, `remarkPlugins`/`rehypePlugins` hoisted to module constants, ContextView heavy computations wrapped in `useMemo`, Editor selectors use `useShallow`
+- **Rust performance**: 23 Regex compiled with `LazyLock`, `export_pdf` `mpsc::recv()` moved to `spawn_blocking`, `allow_paths` changed to sync fn
+- **Code refactoring**: extracted `src/lib/i18n.ts` (16 files updated), merged `buildOutline`/`toolOutline` duplication, Rust `read_proxy_from_settings` simplified with `let-else`, `get_cancel_token` helper, `strip_patterns` generic helper
+- Restored Vue feature flags in `vite.config.ts` — `@milkdown/crepe` depends on Vue at runtime
+
 ## v0.4.2 (2026-05-08)
 
 ### New Features
