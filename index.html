@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <script>
+      performance.mark('html-parse');
       (function(){
         var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         var theme = dark ? 'dark' : 'light';

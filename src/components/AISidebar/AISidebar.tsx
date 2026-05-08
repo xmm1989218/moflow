@@ -153,6 +153,7 @@ function ToolResultBlock({ msg, messages }: { msg: Message; messages: Message[] 
 
 export default function AISidebar() {
   const activeFileId = useTabStore((s) => s.activeFileId);
+  const chatLoaded = useChatStore((s) => s.chatLoadedMap[activeFileId] ?? true);
   const { messages, isStreaming, streamingContent, addMessage, appendStreamingContent, clearStreamingContent, clearMessages, setStreaming, stopGeneration } = useChatStore(
     useShallow((s) => ({
       messages: s.messagesMap[activeFileId] || emptyMessages,
@@ -644,13 +645,18 @@ export default function AISidebar() {
         <ContextView tabId={activeFileId} providerId={aiConfig.providerId} model={aiConfig.model} docContent={docContent} />
       ) : (
       <div className="moflow-ai-messages">
-        {messages.length === 0 && !streamingContent && (
+        {!chatLoaded ? (
+          <div className="moflow-ai-empty">
+            <div className="moflow-ai-loading-spinner" />
+            <p>{t("加载中…", "Loading…")}</p>
+          </div>
+        ) : messages.length === 0 && !streamingContent ? (
           <div className="moflow-ai-empty">
             <div className="moflow-ai-empty-icon">✨</div>
             <p>{t("有什么关于当前文档的问题？", "Questions about the current document?")}</p>
           </div>
-        )}
-        {messages.map((msg) => {
+        ) : null}
+        {chatLoaded && messages.map((msg) => {
           if (msg.content === "/compact" && msg.role === "user") {
             return (
               <div key={msg.id} className="moflow-ai-compact-divider">

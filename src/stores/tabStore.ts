@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, writeFile, mkdir, remove, exists } from "@tauri-apps/plugin-fs";
+import { invoke } from "@tauri-apps/api/core";
 import { useChatStore } from "./chatStore";
 import { persistSession } from "./sessionStore";
 import { useThemeStore } from "./themeStore";
@@ -174,6 +175,11 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
         loadTabContent(id);
       });
     }
+
+    const chatLoaded = useChatStore.getState().chatLoadedMap[id];
+    if (chatLoaded === undefined) {
+      useChatStore.getState().loadChatHistory(id);
+    }
   },
 
   updateTabContent: (id, content) => {
@@ -261,10 +267,125 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
   },
 }));
 
+interface StartupData {
+  settings: Record<string, unknown> | null;
+  session: Record<string, unknown> | null;
+  active_tab_content: string | null;
+  active_tab_id: string | null;
+  untitled_contents: Record<string, string>;
+}
+
+const defaultSettings = {
+  appTheme: "system",
+  editorTheme: "github",
+  autoSave: false,
+  showStatusBar: true,
+  sidebarWidth: 360,
+  aiConfig: { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" },
+  proxyUrl: "",
+};
+
+const defaultAIConfig = { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" };
+
+export async function initFromStartupData(): Promise<boolean> {
+  performance.mark("get-startup-data-start");
+  const data = await invoke<StartupData | null>("get_startup_data");
+  performance.mark("get-startup-data-end");
+  performance.measure("get-startup-data", "get-startup-data-start", "get-startup-data-end");
+
+  if (!data || !data.session) return false;
+
+  if (data.settings) {
+    performance.mark("apply-settings-start");
+    const settings = {
+      ...defaultSettings,
+      ...data.settings,
+      aiConfig: { ...defaultAIConfig, ...(data.settings.aiConfig as Record<string, unknown> || {}) },
+      proxyUrl: (data.settings.proxyUrl as string) ?? "",
+    };
+    useThemeStore.setState({
+      appTheme: settings.appTheme as "system" | "light" | "dark",
+      editorTheme: settings.editorTheme as "github" | "github-dark" | "nord" | "nord-dark" | "catppuccin-latte" | "catppuccin-mocha",
+      autoSave: settings.autoSave as boolean,
+      showStatusBar: settings.showStatusBar as boolean,
+      sidebarWidth: settings.sidebarWidth as number,
+      aiConfig: settings.aiConfig as import("../lib/settings").AIConfig,
+      proxyUrl: settings.proxyUrl,
+    });
+    await invoke("set_proxy", { proxyUrl: settings.proxyUrl || null });
+    performance.mark("apply-settings-end");
+    performance.measure("apply-settings", "apply-settings-start", "apply-settings-end");
+  }
+
+  performance.mark("restore-session-start");
+  const sessionTabs = (data.session.tabs as Array<Record<string, unknown>>) ?? [];
+  if (sessionTabs.length === 0) return false;
+
+  const tabs: TabState[] = [];
+  for (const st of sessionTabs) {
+    const tabId = (st.tabId || st.untitledId) as string | undefined;
+    if (!tabId) continue;
+
+    if (st.filePath) {
+      const isActive = tabId === data.active_tab_id;
+      tabs.push(
+        createTab({
+          id: tabId,
+          filePath: st.filePath as string,
+          fileName: st.fileName as string,
+          mode: (st.mode as EditorMode) || "wysiwyg",
+          content: isActive && data.active_tab_content ? data.active_tab_content : "",
+          lastSavedContent: isActive && data.active_tab_content ? data.active_tab_content : "",
+          isModified: false,
+          contentLoaded: isActive && !!data.active_tab_content,
+        })
+      );
+    } else {
+      const content = data.untitled_contents[tabId] ?? "";
+      tabs.push(
+        createTab({
+          id: tabId,
+          filePath: null,
+          fileName: st.fileName as string,
+          mode: (st.mode as EditorMode) || "wysiwyg",
+          content,
+          lastSavedContent: content,
+          isModified: false,
+          contentLoaded: true,
+        })
+      );
+    }
+  }
+
+  let activeFileId = tabs[0]?.id;
+  if (data.active_tab_id) {
+    const found = tabs.find((t) => t.id === data.active_tab_id);
+    if (found) activeFileId = found.id;
+  } else if (data.session?.activeFilePath) {
+    const found = tabs.find((t) => t.filePath === data.session!.activeFilePath);
+    if (found) activeFileId = found.id;
+  } else if (data.session?.activeUntitledId) {
+    const found = tabs.find((t) => t.id === data.session!.activeUntitledId);
+    if (found) activeFileId = found.id;
+  }
+
+  useTabStore.setState({ files: tabs, activeFileId, sessionInitialized: true });
+  persistSession(tabs, activeFileId);
+
+  performance.mark("restore-session-end");
+  performance.measure("restore-session", "restore-session-start", "restore-session-end");
+
+  return true;
+}
+
 export async function initSession() {
+  performance.mark("readSettings-start");
   const { readSettings } = await import("../lib/settings");
   const { useThemeStore } = await import("./themeStore");
   const settings = await readSettings();
+  performance.mark("readSettings-end");
+  performance.measure("readSettings", "readSettings-start", "readSettings-end");
+
   useThemeStore.setState({
     appTheme: settings.appTheme,
     editorTheme: settings.editorTheme,
@@ -278,7 +399,11 @@ export async function initSession() {
   const { invoke } = await import("@tauri-apps/api/core");
   await invoke("set_proxy", { proxyUrl: settings.proxyUrl || null });
 
+  performance.mark("restoreSession-start");
   const restored = await restoreSession();
+  performance.mark("restoreSession-end");
+  performance.measure("restoreSession", "restoreSession-start", "restoreSession-end");
+
   if (restored) {
     useTabStore.setState({
       files: restored.files,
@@ -289,14 +414,18 @@ export async function initSession() {
     const activeTab = restored.files.find((f) => f.id === restored.activeFileId);
     if (activeTab && !activeTab.contentLoaded && activeTab.filePath) {
       const { loadTabContent } = await import("../lib/fileOps");
-      loadTabContent(activeTab.id);
+      performance.mark("loadTabContent-start");
+      loadTabContent(activeTab.id).finally(() => {
+        performance.mark("loadTabContent-end");
+        performance.measure("loadTabContent", "loadTabContent-start", "loadTabContent-end");
+      });
     }
   } else {
     useTabStore.setState({ sessionInitialized: true });
   }
 
   const state = useTabStore.getState();
-  await persistSession(state.files, state.activeFileId);
+  persistSession(state.files, state.activeFileId);
 }
 
 async function restoreSession(): Promise<{ files: TabState[]; activeFileId: string } | null> {

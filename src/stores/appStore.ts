@@ -33,6 +33,6 @@ export const useAppStore = create<AppState>((set) => ({
   },
 }));
 
-export { useTabStore, type TabState, type EditorMode, createTab, deleteUntitledContent, flushAllUntitled, initSession } from "./tabStore";
+export { useTabStore, type TabState, type EditorMode, createTab, deleteUntitledContent, flushAllUntitled, initSession, initFromStartupData } from "./tabStore";
 export { useThemeStore, type AppTheme, type EditorTheme, EDITOR_THEMES, resolveAppTheme } from "./themeStore";
 export { persistSessionFromStore, deleteSession } from "./sessionStore";

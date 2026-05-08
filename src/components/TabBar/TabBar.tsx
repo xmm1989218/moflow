@@ -8,6 +8,7 @@ import "./TabBar.css";
 export default function TabBar() {
   const files = useTabStore((s) => s.files);
   const activeFileId = useTabStore((s) => s.activeFileId);
+  const sessionInitialized = useTabStore((s) => s.sessionInitialized);
   const switchTab = useTabStore((s) => s.switchTab);
   const closeTab = useTabStore((s) => s.closeTab);
   const openTab = useTabStore((s) => s.openTab);
@@ -66,6 +67,8 @@ export default function TabBar() {
   const handleNewTab = () => {
     openTab();
   };
+
+  if (!sessionInitialized) return <div className="moflow-tabbar" data-tauri-drag-region />;
 
   return (
     <div className="moflow-tabbar" data-tauri-drag-region>

@@ -1,8 +1,9 @@
 use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
+use std::collections::HashMap;
 use std::sync::{LazyLock, mpsc};
 use regex::Regex;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
 
 const WEBFETCH_MAX_BODY: usize = 5 * 1024 * 1024;
@@ -22,6 +23,124 @@ struct CancelState {
 struct SettingsJson {
     #[serde(rename = "proxyUrl")]
     proxy_url: Option<String>,
+}
+
+#[derive(Serialize, Clone)]
+struct StartupData {
+    settings: Option<serde_json::Value>,
+    session: Option<serde_json::Value>,
+    active_tab_content: Option<String>,
+    active_tab_id: Option<String>,
+    untitled_contents: HashMap<String, String>,
+}
+
+struct StartupState {
+    data: Option<StartupData>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SessionTabJson {
+    tab_id: Option<String>,
+    untitled_id: Option<String>,
+    file_path: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SessionJson {
+    tabs: Option<Vec<SessionTabJson>>,
+    active_tab_id: Option<String>,
+    active_file_path: Option<String>,
+    active_untitled_id: Option<String>,
+}
+
+fn preload_startup_data(app: &tauri::App) -> StartupData {
+    let dir = match app.path().app_data_dir() {
+        Ok(d) => d,
+        Err(_) => return StartupData {
+            settings: None,
+            session: None,
+            active_tab_content: None,
+            active_tab_id: None,
+            untitled_contents: HashMap::new(),
+        },
+    };
+
+    let t0 = std::time::Instant::now();
+    let settings: Option<serde_json::Value> = std::fs::read(dir.join("settings.json"))
+        .ok()
+        .and_then(|data| serde_json::from_slice(&data).ok());
+    log::info!("[startup] preload-settings: {}ms", t0.elapsed().as_millis());
+
+    let t1 = std::time::Instant::now();
+    let session: Option<serde_json::Value> = std::fs::read(dir.join("session.json"))
+        .ok()
+        .and_then(|data| serde_json::from_slice(&data).ok());
+    log::info!("[startup] preload-session: {}ms", t1.elapsed().as_millis());
+
+    let t2 = std::time::Instant::now();
+    let (active_tab_id, active_tab_content, untitled_contents) = match &session {
+        Some(session_val) => {
+            let parsed: Result<SessionJson, _> = serde_json::from_value(session_val.clone());
+            match parsed {
+                Ok(sess) => {
+                    let mut active_id: Option<String> = None;
+                    let mut active_path: Option<String> = None;
+                    let mut untitled = HashMap::new();
+
+                    if let Some(ref id) = sess.active_tab_id {
+                        active_id = Some(id.clone());
+                    } else if let Some(ref path) = sess.active_file_path {
+                        active_path = Some(path.clone());
+                    } else if let Some(ref id) = sess.active_untitled_id {
+                        active_id = Some(id.clone());
+                    }
+
+                    if let Some(ref tabs) = sess.tabs {
+                        for tab in tabs {
+                            let tab_id = tab.tab_id.as_deref().or(tab.untitled_id.as_deref());
+                            if let Some(tid) = tab_id {
+                                if tab.file_path.is_none() {
+                                    let untitled_path = dir.join("untitled").join(format!("{}.md", tid));
+                                    if let Ok(content) = std::fs::read_to_string(&untitled_path) {
+                                        untitled.insert(tid.to_string(), content);
+                                    }
+                                }
+                                if active_path.is_none() && active_id.as_deref() == Some(tid) && tab.file_path.is_some() {
+                                    active_path = tab.file_path.clone();
+                                }
+                                if active_id.is_none() && active_path.is_none() && tab.file_path.is_some() {
+                                    active_id = Some(tid.to_string());
+                                    active_path = tab.file_path.clone();
+                                }
+                            }
+                        }
+                    }
+
+                    let content = if let Some(ref path) = active_path {
+                        std::fs::read_to_string(path).ok()
+                    } else {
+                        None
+                    };
+
+                    (active_id, content, untitled)
+                }
+                Err(_) => (None, None, HashMap::new()),
+            }
+        }
+        None => (None, None, HashMap::new()),
+    };
+    log::info!("[startup] preload-tab-content: {}ms", t2.elapsed().as_millis());
+    log::info!("[startup] preload-total: {}ms", t0.elapsed().as_millis());
+
+    StartupData {
+        settings,
+        session,
+        active_tab_content,
+        active_tab_id,
+        untitled_contents,
+    }
 }
 
 fn validate_proxy_url(url: &str) -> Option<String> {
@@ -372,6 +491,11 @@ fn allow_paths(app: tauri::AppHandle, paths: Vec<String>) -> Result<(), String> 
     Ok(())
 }
 
+#[tauri::command]
+fn get_startup_data(state: tauri::State<StartupState>) -> Option<StartupData> {
+    state.data.clone()
+}
+
 #[cfg(target_os = "windows")]
 fn fix_taskbar_icon(hwnd: windows::Win32::Foundation::HWND) {
     use windows::Win32::UI::WindowsAndMessaging::*;
@@ -598,11 +722,15 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests])
+        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, get_startup_data])
         .setup(move |app| {
-            log::info!("[startup] rust-setup: {}ms", app_start.elapsed().as_millis());
+            log::info!("[startup] setup-enter: {}ms", app_start.elapsed().as_millis());
+
+            let startup_data = preload_startup_data(app);
+            log::info!("[startup] preload-done: {}ms", app_start.elapsed().as_millis());
 
             let proxy_url = read_proxy_from_settings(app);
+            log::info!("[startup] proxy-read: {}ms", app_start.elapsed().as_millis());
 
             let mut window_builder = tauri::WebviewWindowBuilder::new(
                 app,
@@ -626,7 +754,9 @@ pub fn run() {
             }
 
             window_builder.build().map_err(|e| format!("Failed to create main window: {}", e))?;
+            log::info!("[startup] window-built: {}ms", app_start.elapsed().as_millis());
 
+            app.manage(StartupState { data: Some(startup_data) });
             app.manage(ProxyState {
                 proxy_url: std::sync::Mutex::new(proxy_url),
             });
@@ -664,6 +794,8 @@ pub fn run() {
                     }
                 }
             }
+
+            log::info!("[startup] setup-done: {}ms", app_start.elapsed().as_millis());
 
             Ok(())
         })

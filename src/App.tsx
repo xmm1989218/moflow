@@ -8,7 +8,7 @@ import SettingsPanel from "./components/SettingsPanel/SettingsPanel";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 const AISidebar = lazy(() => import("./components/AISidebar/AISidebar"));
-import { initSession } from "./stores/appStore";
+import { initFromStartupData, initSession } from "./stores/appStore";
 import { useTabStore } from "./stores/tabStore";
 import { useThemeStore, resolveAppTheme } from "./stores/themeStore";
 import { useUpdateStore } from "./stores/updateStore";
@@ -19,6 +19,17 @@ import { t } from "./lib/i18n";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 
+function startupReport() {
+  const marks = performance.getEntriesByType("mark");
+  const measures = performance.getEntriesByType("measure");
+  console.group("[startup] Timeline");
+  console.log("Marks:");
+  marks.forEach((m) => console.log(`  ${m.name}: ${Math.round(m.startTime)}ms`));
+  console.log("Measures:");
+  measures.forEach((m) => console.log(`  ${m.name}: ${Math.round(m.duration)}ms`));
+  console.groupEnd();
+}
+
 function App() {
   const appTheme = useThemeStore((s) => s.appTheme);
   const editorTheme = useThemeStore((s) => s.editorTheme);
@@ -28,24 +39,31 @@ function App() {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    window.__startupMark?.("react-mount");
+    window.__startupMark?.("react-mount", "js-exec");
   }, []);
 
   useEffect(() => {
-    initSession().then(async () => {
+    initFromStartupData().then(async (ok) => {
+      if (!ok) {
+        await initSession();
+      }
+      window.__startupMark?.("session-loaded", "react-mount");
+      getCurrentWindow().show();
+      window.__startupMark?.("window-shown", "session-loaded");
+      startupReport();
+      const activeTabId = useTabStore.getState().activeFileId;
+      useChatStore.getState().loadChatHistory(activeTabId);
+      useUpdateStore.getState().checkUpdate();
       const tabs = useTabStore.getState().files;
       const paths = tabs.map((t) => t.filePath).filter(Boolean) as string[];
       if (paths.length > 0) {
         await invoke("allow_paths", { paths });
       }
-      window.__startupMark?.("session-loaded");
-      await Promise.all(tabs.map((tab) => useChatStore.getState().loadChatHistory(tab.id)));
-      window.__startupMark?.("chat-loaded");
-      useUpdateStore.getState().checkUpdate();
-      requestAnimationFrame(() => {
-        getCurrentWindow().show();
-        window.__startupMark?.("window-shown");
-      });
+      const activeTab = tabs.find((t) => t.id === activeTabId);
+      if (activeTab && !activeTab.contentLoaded && activeTab.filePath) {
+        const { loadTabContent } = await import("./lib/fileOps");
+        loadTabContent(activeTab.id);
+      }
     });
   }, []);
 

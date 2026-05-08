@@ -1,12 +1,12 @@
 import ReactMarkdown, { type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import rehypePrismPlus from "rehype-prism-plus";
+import { rehypePrismCommon } from "rehype-prism-plus";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import "prismjs/themes/prism-tomorrow.css";
 import "./MessageContent.css";
 
 const remarkPlugins: Options["remarkPlugins"] = [remarkGfm];
-const rehypePlugins: Options["rehypePlugins"] = [[rehypePrismPlus, { ignoreMissing: true }]];
+const rehypePlugins: Options["rehypePlugins"] = [[rehypePrismCommon, { ignoreMissing: true }]];
 
 interface MessageContentProps {
   content: string;

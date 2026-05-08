@@ -21,6 +21,7 @@ const emptyMessages: Message[] = [];
 
 interface ChatState {
   messagesMap: Record<string, Message[]>;
+  chatLoadedMap: Record<string, boolean>;
   contextMap: Record<string, Message[]>;
   contextTokensMap: Record<string, number>;
   totalTokensMap: Record<string, number>;
@@ -46,6 +47,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>((set, get) => ({
   messagesMap: {},
+  chatLoadedMap: {},
   contextMap: {},
   contextTokensMap: {},
   totalTokensMap: {},
@@ -246,6 +248,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   loadChatHistory: async (tabId) => {
+    set((state) => ({
+      chatLoadedMap: { ...state.chatLoadedMap, [tabId]: false },
+    }));
     const msgs = await loadChat(tabId);
     if (msgs.length > 0) {
       set((state) => ({
@@ -253,9 +258,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
           ...state.messagesMap,
           [tabId]: msgs,
         },
+        chatLoadedMap: { ...state.chatLoadedMap, [tabId]: true },
       }));
       get().getContext(tabId);
       get().cleanupIncompleteToolCalls(tabId);
+    } else {
+      set((state) => ({
+        chatLoadedMap: { ...state.chatLoadedMap, [tabId]: true },
+      }));
     }
   },
 
@@ -264,6 +274,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => {
       const newMessages = { ...state.messagesMap };
       delete newMessages[tabId];
+      const newChatLoaded = { ...state.chatLoadedMap };
+      delete newChatLoaded[tabId];
       const newContext = { ...state.contextMap };
       delete newContext[tabId];
       const newContextTokens = { ...state.contextTokensMap };
@@ -274,6 +286,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       delete newCost[tabId];
       return {
         messagesMap: newMessages,
+        chatLoadedMap: newChatLoaded,
         contextMap: newContext,
         contextTokensMap: newContextTokens,
         totalTokensMap: newTotalTokens,

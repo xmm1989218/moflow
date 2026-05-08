@@ -94,6 +94,7 @@ async function repairIfNeeded(tabId: string, path: string, lines: string[], msgs
 }
 
 export async function loadChat(tabId: string): Promise<Message[]> {
+  performance.mark(`loadChat-start-${tabId}`);
   try {
     const path = await chatFilePath(tabId);
     if (!(await exists(path))) {
@@ -108,9 +109,13 @@ export async function loadChat(tabId: string): Promise<Message[]> {
       if (msg) msgs.push(msg);
     }
     await repairIfNeeded(tabId, path, lines, msgs);
+    performance.mark(`loadChat-end-${tabId}`);
+    performance.measure(`loadChat-${tabId}`, `loadChat-start-${tabId}`, `loadChat-end-${tabId}`);
     return msgs;
   } catch (e) {
     console.error("[chatPersistence] loadChat error:", e);
+    performance.mark(`loadChat-end-${tabId}`);
+    performance.measure(`loadChat-${tabId}`, `loadChat-start-${tabId}`, `loadChat-end-${tabId}`);
     return [];
   }
 }

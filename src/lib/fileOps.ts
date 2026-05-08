@@ -21,18 +21,24 @@ export async function openFile() {
     return;
   }
 
-  await invoke("allow_paths", { paths: [selected] });
-  const data = await readFile(selected);
-  const content = new TextDecoder("utf-8").decode(data);
   const fileName = selected.split(/[/\\]/).pop() || "Untitled.md";
-
-  useTabStore.getState().openTab({
+  const tabId = useTabStore.getState().openTab({
     filePath: selected,
     fileName,
-    content,
-    lastSavedContent: content,
+    content: "",
+    lastSavedContent: "",
     isModified: false,
-    contentLoaded: true,
+    contentLoaded: false,
+  });
+
+  invoke("allow_paths", { paths: [selected] }).then(async () => {
+    const data = await readFile(selected);
+    const content = new TextDecoder("utf-8").decode(data);
+    useTabStore.getState().updateTabMeta(tabId, {
+      content,
+      lastSavedContent: content,
+      contentLoaded: true,
+    });
   });
 }
 
@@ -130,22 +136,27 @@ export async function loadFileByPath(filePath: string) {
     return;
   }
 
-  try {
-    await invoke("allow_paths", { paths: [filePath] });
+  const fileName = filePath.split(/[/\\]/).pop() || "Untitled.md";
+  const tabId = useTabStore.getState().openTab({
+    filePath,
+    fileName,
+    content: "",
+    lastSavedContent: "",
+    isModified: false,
+    contentLoaded: false,
+  });
+
+  invoke("allow_paths", { paths: [filePath] }).then(async () => {
     const data = await readFile(filePath);
     const content = new TextDecoder("utf-8").decode(data);
-    const fileName = filePath.split(/[/\\]/).pop() || "Untitled.md";
-    useTabStore.getState().openTab({
-      filePath,
-      fileName,
+    useTabStore.getState().updateTabMeta(tabId, {
       content,
       lastSavedContent: content,
-      isModified: false,
       contentLoaded: true,
     });
-  } catch {
+  }).catch(() => {
     console.error("Failed to open file:", filePath);
-  }
+  });
 }
 
 export async function loadTabContent(id: string) {
