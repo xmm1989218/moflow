@@ -528,7 +528,7 @@ export default function Editor() {
         <div
           key={tab.id}
           data-tab-id={tab.id}
-          className="absolute inset-0"
+          className="absolute inset-0 flex flex-col"
           style={{
             visibility: tab.id === activeFileId ? "visible" : "hidden",
             pointerEvents: tab.id === activeFileId ? "auto" : "none",
