@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type AIAction = "explain" | "translate" | "ask";
+export type AIAction = "explain" | "translate" | "ask" | "polish";
 
 export const LANGUAGES = [
   { code: "auto", label: "自动检测", labelEn: "Auto Detect" },
@@ -24,14 +24,17 @@ interface AISelectionState {
   sourceLang: LanguageCode;
   targetLang: LanguageCode;
   lastResult: string;
+  replaceSelection: ((newText: string) => void) | null;
 
   triggerExplain: (text: string, coords: { x: number; y: number }) => void;
   triggerTranslate: (text: string, coords: { x: number; y: number }) => void;
   triggerAsk: (text: string, coords: { x: number; y: number }) => void;
+  triggerPolish: (text: string, coords: { x: number; y: number }) => void;
   setTargetLang: (lang: LanguageCode) => void;
   setSourceLang: (lang: LanguageCode) => void;
   swapLanguages: () => void;
   setLastResult: (r: string) => void;
+  setReplaceSelection: (fn: ((newText: string) => void) | null) => void;
   dismiss: () => void;
 }
 
@@ -55,6 +58,7 @@ export const useAISelectionStore = create<AISelectionState>((set, get) => ({
   sourceLang: "auto",
   targetLang: getDefaultTargetLang(),
   lastResult: "",
+  replaceSelection: null,
 
   triggerExplain: (text, coords) => {
     set({ selectedText: text, selectionCoords: coords, activeAction: "explain", lastResult: "" });
@@ -66,6 +70,10 @@ export const useAISelectionStore = create<AISelectionState>((set, get) => ({
 
   triggerAsk: (text, coords) => {
     set({ selectedText: text, selectionCoords: coords, activeAction: "ask", lastResult: "" });
+  },
+
+  triggerPolish: (text, coords) => {
+    set({ selectedText: text, selectionCoords: coords, activeAction: "polish", lastResult: "" });
   },
 
   setTargetLang: (lang) => {
@@ -85,6 +93,8 @@ export const useAISelectionStore = create<AISelectionState>((set, get) => ({
   },
 
   setLastResult: (r) => set({ lastResult: r }),
+
+  setReplaceSelection: (fn) => set({ replaceSelection: fn }),
 
   dismiss: () => {
     set({ activeAction: null, selectedText: "", selectionCoords: null, lastResult: "" });

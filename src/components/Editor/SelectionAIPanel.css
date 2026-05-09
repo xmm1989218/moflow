@@ -96,10 +96,8 @@
 .moflow-selection-ai-result {
   padding: 10px 12px;
   font-size: 13px;
-  font-weight: 600;
   color: var(--moflow-text);
   line-height: 1.6;
-  white-space: pre-wrap;
   word-break: break-word;
   max-height: 300px;
   overflow-y: auto;
@@ -224,4 +222,78 @@
 .moflow-selection-ai-followup-send:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.moflow-selection-ai-polish-instruction-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--moflow-border);
+}
+
+.moflow-selection-ai-polish-instruction-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--moflow-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  background-color: var(--moflow-bg);
+  color: var(--moflow-text);
+  outline: none;
+}
+
+.moflow-selection-ai-polish-instruction-input:focus {
+  border-color: var(--moflow-accent);
+}
+
+.moflow-selection-ai-polish-instruction-input::placeholder {
+  color: var(--moflow-text-secondary);
+}
+
+.moflow-selection-ai-polish-instruction-send {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--moflow-accent);
+  color: #ffffff;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s;
+}
+
+.moflow-selection-ai-polish-instruction-send:hover:not(:disabled) {
+  opacity: 0.85;
+}
+
+.moflow-selection-ai-polish-instruction-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.moflow-selection-ai-polish-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 10px 8px;
+}
+
+.moflow-selection-ai-polish-apply {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--moflow-accent);
+  color: #ffffff;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.moflow-selection-ai-polish-apply:hover {
+  background-color: var(--moflow-accent-hover);
 }

@@ -9,6 +9,7 @@ import { buildSystemPrompt } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
 import { t, isZh } from "../../lib/i18n";
+import MessageContent from "../AISidebar/MessageContent";
 import "./SelectionAIPanel.css";
 
 function getLangLabel(code: LanguageCode): string {
@@ -28,6 +29,7 @@ export default function SelectionAIPanel() {
   const lastResult = useAISelectionStore((s) => s.lastResult);
   const setLastResult = useAISelectionStore((s) => s.setLastResult);
   const dismiss = useAISelectionStore((s) => s.dismiss);
+  const replaceSelection = useAISelectionStore((s) => s.replaceSelection);
 
   const aiConfig = useThemeStore((s) => s.aiConfig);
   const addMessage = useChatStore((s) => s.addMessage);
@@ -48,6 +50,7 @@ export default function SelectionAIPanel() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [followUpValue, setFollowUpValue] = useState("");
+  const [polishInstruction, setPolishInstruction] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -102,17 +105,23 @@ export default function SelectionAIPanel() {
 
   useEffect(() => {
     if (activeAction === "explain" && selectedText) {
-      const prompt = t(`请用简洁的语言解释以下内容：\n\n${selectedText}`, `Briefly explain the following:\n\n${selectedText}`);
+      const prompt = t(`请用简洁的语言解释以下内容。这是一款 Markdown 编辑器的解释功能，请合理使用 Markdown 格式（如列表、加粗、标题等）使解释更清晰：\n\n${selectedText}`, `Briefly explain the following. This is a Markdown editor's explain feature, use Markdown formatting (lists, bold, headings, etc.) to make the explanation clearer:\n\n${selectedText}`);
       doLLMRequest(prompt);
     } else if (activeAction === "translate" && selectedText) {
       const targetLabel = getLangLabel(targetLang);
       const prompt = t(`请将以下内容翻译为${targetLabel}，只输出翻译结果，不要添加任何解释：\n\n${selectedText}`, `Translate the following to ${targetLabel}, output only the translation:\n\n${selectedText}`);
       doLLMRequest(prompt);
+    } else if (activeAction === "polish" && selectedText) {
+      const prompt = t(
+        `请润色以下文字，使其更加流畅自然。这是一款 Markdown 编辑器的润色功能，请根据内容性质合理使用 Markdown 格式（如列表、加粗、标题等），只输出润色后的结果：\n\n${selectedText}`,
+        `Polish the following text to make it more fluent and natural. This is a Markdown editor's polish feature, use Markdown formatting (lists, bold, headings, etc.) where appropriate, output only the result:\n\n${selectedText}`
+      );
+      doLLMRequest(prompt);
     }
   }, [activeAction, targetLang, selectedText, doLLMRequest]);
 
   useEffect(() => {
-    if (!isStreaming && result && (activeAction === "explain" || activeAction === "translate")) {
+    if (!isStreaming && result && (activeAction === "explain" || activeAction === "translate" || activeAction === "polish")) {
       setLastResult(result);
     }
   }, [isStreaming, result, activeAction, setLastResult]);
@@ -247,19 +256,33 @@ export default function SelectionAIPanel() {
 
     const actionLabel = activeAction === "translate"
       ? t("翻译", "Translation")
-      : t("解释", "Explanation");
+      : activeAction === "polish"
+        ? t("润色", "Polish")
+        : t("解释", "Explanation");
 
-    const userContent = activeAction === "translate"
-      ? t(
-          `选中文本：\n${selectedText}\n\n${actionLabel}结果：\n${lastResult}\n\n追问：${question}`,
-          `Selected text:\n${selectedText}\n\n${actionLabel}:\n${lastResult}\n\nFollow-up: ${question}`
-        )
-      : t(
-          `选中文本：\n${selectedText}\n\n${actionLabel}结果：\n${lastResult}\n\n追问：${question}`,
-          `Selected text:\n${selectedText}\n\n${actionLabel}:\n${lastResult}\n\nFollow-up: ${question}`
-        );
+    const userContent = t(
+      `选中文本：\n${selectedText}\n\n${actionLabel}结果：\n${lastResult}\n\n追问：${question}`,
+      `Selected text:\n${selectedText}\n\n${actionLabel}:\n${lastResult}\n\nFollow-up: ${question}`
+    );
 
     sendToSidebar(userContent);
+    dismiss();
+  };
+
+  const handlePolishWithInstruction = () => {
+    if (!polishInstruction.trim()) return;
+    const instruction = polishInstruction.trim();
+    setPolishInstruction("");
+    const prompt = t(
+      `请润色以下文字，${instruction}。这是一款 Markdown 编辑器的润色功能，请根据内容性质合理使用 Markdown 格式（如列表、加粗、标题等），只输出润色后的结果：\n\n${selectedText}`,
+      `Polish the following text, ${instruction}. This is a Markdown editor's polish feature, use Markdown formatting (lists, bold, headings, etc.) where appropriate, output only the result:\n\n${selectedText}`
+    );
+    doLLMRequest(prompt);
+  };
+
+  const handleApplyPolish = () => {
+    if (!result.trim() || !replaceSelection) return;
+    replaceSelection(result.trim());
     dismiss();
   };
 
@@ -283,6 +306,16 @@ export default function SelectionAIPanel() {
     }
   };
 
+  const handlePolishInstructionKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handlePolishWithInstruction();
+    }
+    if (e.key === "Escape") {
+      dismiss();
+    }
+  };
+
   if (!activeAction || !selectionCoords) return null;
 
   const panelStyle: React.CSSProperties = {
@@ -293,7 +326,7 @@ export default function SelectionAIPanel() {
   };
 
   return (
-    <div ref={panelRef} className="moflow-selection-ai-panel" style={panelStyle}>
+    <div ref={panelRef} className="moflow-selection-ai-panel" style={panelStyle} onMouseDown={(e) => e.stopPropagation()}>
       {activeAction === "translate" && (
         <>
           <div className="moflow-selection-ai-lang-row">
@@ -339,15 +372,59 @@ export default function SelectionAIPanel() {
         </>
       )}
 
-      {(activeAction === "explain" || activeAction === "translate") && (
+      {activeAction === "polish" && (
+        <div className="moflow-selection-ai-source-text">
+          <span className="moflow-selection-ai-source-bar" />
+          <span className="moflow-selection-ai-source-content">
+            {selectedText.length > 200 ? selectedText.slice(0, 200) + "..." : selectedText}
+          </span>
+        </div>
+      )}
+
+      {(activeAction === "explain" || activeAction === "translate" || activeAction === "polish") && (
         <div className="moflow-selection-ai-result">
-          {result || (
+          {result ? (
+            <MessageContent content={result} />
+          ) : (
             <span className="moflow-selection-ai-placeholder">
               {isStreaming ? t("思考中...", "Thinking...") : ""}
             </span>
           )}
           {isStreaming && <span className="moflow-selection-ai-cursor">▌</span>}
         </div>
+      )}
+
+      {activeAction === "polish" && !isStreaming && result && (
+        <>
+          <div className="moflow-selection-ai-polish-instruction-row">
+            <input
+              className="moflow-selection-ai-polish-instruction-input"
+              type="text"
+              value={polishInstruction}
+              onChange={(e) => setPolishInstruction(e.target.value)}
+              onKeyDown={handlePolishInstructionKeyDown}
+              placeholder={t("补充要求（如：更正式、更简洁）…", "Additional instruction (e.g. more formal, more concise)…")}
+            />
+            <button
+              className="moflow-selection-ai-polish-instruction-send"
+              onClick={handlePolishWithInstruction}
+              disabled={!polishInstruction.trim()}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </div>
+          <div className="moflow-selection-ai-polish-actions">
+            <button
+              className="moflow-selection-ai-polish-apply"
+              onClick={handleApplyPolish}
+            >
+              {t("应用替换", "Apply")}
+            </button>
+          </div>
+        </>
       )}
 
       {(activeAction === "explain" || activeAction === "translate") && !isStreaming && lastResult && (

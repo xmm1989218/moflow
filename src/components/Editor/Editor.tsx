@@ -1,7 +1,8 @@
 import { Crepe } from "@milkdown/crepe";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { replaceAll, getHTML } from "@milkdown/utils";
-import { EditorStatus, editorViewCtx } from "@milkdown/core";
+import { EditorStatus, editorViewCtx, parserCtx } from "@milkdown/core";
+import { Slice } from "prosemirror-model";
 import type { Ctx } from "@milkdown/kit/ctx";
 import { LanguageDescription, LanguageSupport, StreamLanguage } from "@codemirror/language";
 import type { StreamParser } from "@codemirror/language";
@@ -105,6 +106,12 @@ const askIcon = `
   </svg>
 `;
 
+const polishIcon = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" data-toolbar-key="polish">
+    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+  </svg>
+`;
+
 const highlightIcon = `
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" style="background-color:#fff3b0;border-radius:4px" data-toolbar-key="highlight">
     <path d="M12 4L7 17h2.4l1-3h5.2l1 3H19L14 4h-2zm-1 8l1.5-4.5h.1L14.1 12H11z" style="fill:#000"/>
@@ -137,6 +144,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
   const editorReadyRef = useRef(false);
   const syncedContentRef = useRef(content);
   const justLoadedRef = useRef(true);
+  const crepeRef = useRef<Crepe | null>(null);
 
   useEffect(() => {
     let tooltipEl: HTMLElement | null = null;
@@ -326,6 +334,21 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
                     y: coords.bottom,
                   });
                 },
+              })
+              .addItem("polish", {
+                icon: polishIcon,
+                active: () => false,
+                onRun: (ctx: Ctx) => {
+                  const view = ctx.get(editorViewCtx);
+                  const { from, to } = view.state.selection;
+                  const text = view.state.doc.textBetween(from, to);
+                  if (!text) return;
+                  const coords = view.coordsAtPos(from);
+                  useAISelectionStore.getState().triggerPolish(text, {
+                    x: coords.left,
+                    y: coords.bottom,
+                  });
+                },
               });
           },
         },
@@ -339,6 +362,28 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
       listener.mounted((ctx) => {
         const view = ctx.get(editorViewCtx);
         useSearchStore.getState().setEditorView(tabId, view);
+        useAISelectionStore.getState().setReplaceSelection((newText: string) => {
+          const crepe = crepeRef.current;
+          if (!crepe) return;
+          const editor = crepe.editor;
+          if (!editor || editor.status !== EditorStatus.Created) return;
+          editor.action((ctx) => {
+            const view = ctx.get(editorViewCtx);
+            const parser = ctx.get(parserCtx);
+            const { from, to } = view.state.selection;
+            if (from === to) return;
+            const trimmed = newText.trim();
+            try {
+              const doc = parser(trimmed);
+              if (doc && doc.content.size > 0) {
+                view.dispatch(view.state.tr.replace(from, to, Slice.maxOpen(doc.content)));
+                return;
+              }
+            } catch {
+              view.dispatch(view.state.tr.insertText(trimmed, from, to));
+            }
+          });
+        });
         const existing = view.props.nodeViews ?? {};
         view.setProps({
           nodeViews: {
@@ -362,6 +407,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
     });
 
     editorReadyRef.current = true;
+    crepeRef.current = crepe;
     performance.mark(`editor-ready-${tabId}`);
     performance.measure(`editor-init-${tabId}`, `editor-init-start-${tabId}`, `editor-ready-${tabId}`);
     if (tabId === useTabStore.getState().activeFileId) {

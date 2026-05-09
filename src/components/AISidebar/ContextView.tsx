@@ -82,33 +82,70 @@ function computeBreakdown(
 
 type ContextMessage = Message;
 
+function ToolCallChip({ name, args }: { name: string; args: string }) {
+  let label = name;
+  try {
+    const parsed = JSON.parse(args || "{}");
+    const vals = Object.values(parsed).join(", ");
+    if (vals) {
+      label += `(${vals.length > 30 ? vals.slice(0, 30) + "…" : vals})`;
+    } else {
+      label += "()";
+    }
+  } catch {
+    label += "()";
+  }
+
+  return <span className="moflow-ctx-msg-tc-chip">{label}</span>;
+}
+
 function MessageRow({ msg }: { msg: ContextMessage }) {
   const idShort = msg.id.slice(0, 8);
-  const color = ROLE_COLORS[msg.role] || "#9ca3af";
-  let label = `${ROLE_LABELS[msg.role] || msg.role}  ${idShort}`;
+  const role = msg.role;
+  const isCompactSummary = msg.role === "assistant" && msg.isCompactSummary;
 
+  let extra = "";
   if (msg.role === "assistant" && msg.toolCalls?.length) {
-    const toolNames = msg.toolCalls.map((tc) => tc.name).join(", ");
-    label += `  [${toolNames}]`;
+    extra = msg.toolCalls.map((tc) => tc.name).join(", ");
   }
   if (msg.role === "tool" && msg.toolName) {
-    label += `  ${msg.toolName}`;
-  }
-
-  const defaultOpen = false;
-
-  let expandedContent = msg.content;
-  if (msg.role === "assistant" && msg.toolCalls?.length) {
-    expandedContent += `\n\n--- toolCalls ---\n${JSON.stringify(msg.toolCalls, null, 2)}`;
+    extra = msg.toolName;
   }
 
   return (
-    <details className="moflow-ctx-msg" open={defaultOpen}>
-      <summary className="moflow-ctx-msg-summary" style={{ color }}>
-        <span className="moflow-ctx-msg-arrow">▶</span>
-        <span className="moflow-ctx-msg-label">{label}</span>
+    <details className={`moflow-ctx-msg moflow-ctx-msg-${role}${isCompactSummary ? " moflow-ctx-msg-summary" : ""}`}>
+      <summary className="moflow-ctx-msg-header">
+        <span className="moflow-ctx-msg-arrow">▸</span>
+        <span
+          className={`moflow-ctx-msg-badge${isCompactSummary ? " moflow-ctx-badge-summary" : ` moflow-ctx-badge-${role}`}`}
+        >
+          {isCompactSummary ? "summary" : ROLE_LABELS[role] || role}
+        </span>
+        <span className="moflow-ctx-msg-id">{idShort}</span>
+        {extra && <span className="moflow-ctx-msg-extra">{extra}</span>}
       </summary>
-      <pre className="moflow-ctx-msg-content">{expandedContent}</pre>
+      <div className="moflow-ctx-msg-body">
+        {msg.reasoningContent && (
+          <details className="moflow-ctx-msg-reasoning">
+            <summary className="moflow-ctx-msg-reasoning-header">reasoning</summary>
+            <pre className="moflow-ctx-msg-code">{msg.reasoningContent}</pre>
+          </details>
+        )}
+        {msg.role === "tool" ? (
+          <pre className="moflow-ctx-msg-code">{msg.content}</pre>
+        ) : msg.role === "assistant" && msg.toolCalls?.length ? (
+          <>
+            {msg.content && <div className="moflow-ctx-msg-text">{msg.content}</div>}
+            <div className="moflow-ctx-msg-tc-list">
+              {msg.toolCalls.map((tc) => (
+                <ToolCallChip key={tc.id} name={tc.name} args={tc.arguments} />
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="moflow-ctx-msg-text">{msg.content}</div>
+        )}
+      </div>
     </details>
   );
 }
@@ -199,9 +236,11 @@ export default function ContextView({ tabId, providerId, model, docContent }: Co
         {contextMsgs.length === 0 ? (
           <div className="moflow-ctx-empty">{t("暂无消息", "No messages")}</div>
         ) : (
-            contextMsgs.map((msg) => (
+          <div className="moflow-ctx-msg-list">
+            {contextMsgs.map((msg) => (
               <MessageRow key={msg.id} msg={msg} />
-            ))
+            ))}
+          </div>
         )}
       </div>
     </div>

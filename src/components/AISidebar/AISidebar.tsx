@@ -176,11 +176,14 @@ export default function AISidebar() {
   const sidebarWidth = useThemeStore((s) => s.sidebarWidth);
   const setSidebarWidth = useThemeStore((s) => s.setSidebarWidth);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const slashMenuRef = useRef<SlashCommandMenuHandle>(null);
   const [input, setInput] = useState("");
   const [showContext, setShowContext] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [toolCallStatus, setToolCallStatus] = useState<{ name: string; args: Record<string, unknown> } | null>(null);
 
   useEffect(() => {
@@ -192,14 +195,70 @@ export default function AISidebar() {
   const slashMenuVisible = input.startsWith("/") && !input.includes(" ");
 
   const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevFileIdRef = useRef<string>(activeFileId);
+  const scrollPosMap = useRef<Record<string, number>>({});
+  const skipAutoScrollRef = useRef(false);
 
   useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+        isAtBottomRef.current = atBottom;
+        setShowScrollBottom(!atBottom);
+        scrollPosMap.current[activeFileId] = el.scrollTop;
+      }, 100);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => { el.removeEventListener("scroll", onScroll); if (timer) clearTimeout(timer); };
+  }, [activeFileId]);
+
+  useEffect(() => {
+    if (prevFileIdRef.current !== activeFileId) {
+      const prevEl = messagesContainerRef.current;
+      if (prevEl) {
+        scrollPosMap.current[prevFileIdRef.current] = prevEl.scrollTop;
+      }
+      prevFileIdRef.current = activeFileId;
+      skipAutoScrollRef.current = true;
+      requestAnimationFrame(() => {
+        const el = messagesContainerRef.current;
+        if (el) {
+          const saved = scrollPosMap.current[activeFileId] ?? -1;
+          if (saved >= 0) {
+            el.scrollTop = saved;
+            const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+            isAtBottomRef.current = atBottom;
+            setShowScrollBottom(!atBottom);
+          } else {
+            el.scrollTop = el.scrollHeight;
+            isAtBottomRef.current = true;
+            setShowScrollBottom(false);
+          }
+        }
+        skipAutoScrollRef.current = false;
+      });
+    }
+  }, [activeFileId]);
+
+  useEffect(() => {
+    if (!isAtBottomRef.current || skipAutoScrollRef.current) return;
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     scrollTimerRef.current = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      messagesEndRef.current?.scrollIntoView({ behavior: isStreaming ? "instant" : "smooth" });
     }, 50);
     return () => { if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current); };
-  }, [messages, streamingContent]);
+  }, [messages, streamingContent, isStreaming]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
+    isAtBottomRef.current = true;
+    setShowScrollBottom(false);
+  };
 
   useEffect(() => {
     const el = inputRef.current;
@@ -376,6 +435,9 @@ export default function AISidebar() {
   const handleSend = async () => {
     const text = input.trim();
     if (!text || isStreaming) return;
+
+    isAtBottomRef.current = true;
+    setShowScrollBottom(false);
 
     if (text.startsWith("/")) {
       const errMsg = addMessage(activeFileId, { role: "assistant", content: `❌ ${t("未知命令。可用命令: /new, /compact, /models", "Unknown command. Available: /new, /compact, /models")}` });
@@ -644,7 +706,7 @@ export default function AISidebar() {
       {showContext ? (
         <ContextView tabId={activeFileId} providerId={aiConfig.providerId} model={aiConfig.model} docContent={docContent} />
       ) : (
-      <div className="moflow-ai-messages">
+      <div className="moflow-ai-messages" ref={messagesContainerRef}>
         {!chatLoaded ? (
           <div className="moflow-ai-empty">
             <div className="moflow-ai-loading-spinner" />
@@ -695,6 +757,14 @@ export default function AISidebar() {
         )}
         {toolCallStatus && <ToolCallStatus name={toolCallStatus.name} args={toolCallStatus.args} />}
         <div ref={messagesEndRef} />
+        {showScrollBottom && (
+          <button className="moflow-ai-scroll-bottom-btn" onClick={scrollToBottom}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 13l5 5 5-5" />
+              <path d="M7 6l5 5 5-5" />
+            </svg>
+          </button>
+        )}
       </div>
       )}
 

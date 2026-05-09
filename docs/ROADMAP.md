@@ -312,33 +312,42 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.5.0 — 增强功能 I
+## v0.5.0 — 增强功能 I ✅
 
 ### 启动速度优化
 
-- [ ] 分析启动瓶颈（基于 `__startupMark` 数据），优化慢路径
-- [ ] 延迟加载非关键模块（AI 侧栏、聊天历史等）
-- [ ] 减少首屏渲染阻塞
+- [x] 分析启动瓶颈（基于 `__startupMark` 数据），优化慢路径
+  → Rust preload（`setup()` 阶段读取 settings/session/文件内容，`get_startup_data` 8ms vs 旧路径 ~130ms 串行 IPC）
+  → persistSession fire-and-forget（移除 `await`，-522ms）
+  → 移除 `requestAnimationFrame` 延迟（rAF 在隐藏 WebView2 窗口上延迟 -398ms）
+  → `active_path` 修复：`preload_startup_data` 正确匹配 `activeTabId` 对应的文件路径
+- [x] 延迟加载非关键模块（AI 侧栏、聊天历史等）
+  → Chat 懒加载（仅加载活跃 tab 的聊天，其他 tab 切换时加载；`chatLoadedMap` 追踪加载状态）
+  → AISidebar 已是 `React.lazy()` 动态导入
+  → `sessionInitialized` 守卫防止 TabBar/Editor 在 session 加载前渲染空状态闪烁
+  → 未加载 chat 时 AISidebar 显示加载 spinner
+  → `contentLoaded: false` fallback：Rust preload 读取文件失败时调 `loadTabContent`
+- [x] 减少首屏渲染阻塞
+  → CodeMirror 语言 144→22（自定义 `cmLanguages` + Vite alias stub `@codemirror/language-data`）
+  → Prism 语言 106→37（`rehypePrismCommon` 替代 `rehypePrismPlus` 默认导出）
+  → KaTeX 字体只保留 woff2（Vite 插件 `dropKatexRedundantFonts` 删除 ttf/woff，-798KB）
+  → `openFile`/`loadFileByPath` 先建 tab 再异步加载内容（消除打开文件时的等待）
+  → 生产构建：746ms → 266ms（-65%），JS bundle -543KB（3523KB → 2979KB），字体 -798KB
 
 ### Context Panel 原始消息展示美化
 
-- [ ] 原始消息渲染优化（区分 role 样式、代码块高亮、tool 消息格式化）
-- [ ] 长消息折叠/展开交互改进
+- [x] 原始消息渲染优化（区分 role 样式：左侧色条 + badge 标签 + role 背景色；tool 消息等宽代码区；assistant toolCalls 改为 ToolCallChip 列表替代 JSON；reasoningContent 子折叠区；compact summary 独立色标）
+- [x] 长消息折叠/展开交互改进（箭头 hover 显示、展开时旋转；tool 代码区 max-height: 240px + 隐藏滚动条；不同 role 间 6px 间距）
 
 ### 聊天框滚动优化
 
-- [ ] 快速输出时按住滚动条无法拉上去（auto-scroll 与用户滚动冲突）
-- [ ] 手动上拉后出现抖动（scroll 事件竞争）
+- [x] 快速输出时按住滚动条无法拉上去（auto-scroll 与用户滚动冲突）— `isAtBottomRef` 追踪贴底状态，仅贴底时 auto-scroll
+- [x] 手动上拉后出现抖动（scroll 事件竞争）— 流式输出用 `behavior: "instant"` 替代 `"smooth"`；用户上拉后显示半透明「回到底部」浮动按钮
 
 ### Selector Toolbar 文字美化
 
-- [ ] 浮动工具栏增加「美化/润色」按钮，一键润色选中文字
-- [ ] 支持补充指令输入（如「更正式」「更简洁」），结果替换选中文字
-
-### AI 回复插入文档
-
-- [ ] 聊天消息增加「插入」按钮
-- [ ] 将回复内容插入编辑器当前光标处
+- [x] 浮动工具栏增加「润色」按钮，一键润色选中文字（自动触发默认润色请求）
+- [x] 支持补充指令输入（如「更正式」「更简洁」），输入后重新发送带指令的请求；「应用替换」按钮将结果写回编辑器选区
 
 ---
 
@@ -417,6 +426,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] 图片上传和管理
 - [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边）
 - [ ] 打开目录（文件夹树浏览，快速打开目录下的文件）
+- [ ] AI 回复插入文档（聊天消息「插入」按钮，回复内容插入编辑器光标处）
 
 ### webfetch 增强（已移至 v0.4.1）
 
