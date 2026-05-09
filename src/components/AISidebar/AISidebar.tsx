@@ -194,7 +194,6 @@ export default function AISidebar() {
 
   const slashMenuVisible = input.startsWith("/") && !input.includes(" ");
 
-  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevFileIdRef = useRef<string>(activeFileId);
   const scrollPosMap = useRef<Record<string, number>>({});
   const skipAutoScrollRef = useRef(false);
@@ -247,11 +246,14 @@ export default function AISidebar() {
 
   useEffect(() => {
     if (!isAtBottomRef.current || skipAutoScrollRef.current) return;
-    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
-    scrollTimerRef.current = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: isStreaming ? "instant" : "smooth" });
-    }, 50);
-    return () => { if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current); };
+    if (isStreaming) {
+      requestAnimationFrame(() => {
+        const el = messagesContainerRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages, streamingContent, isStreaming]);
 
   const scrollToBottom = () => {
@@ -266,7 +268,7 @@ export default function AISidebar() {
       el.style.height = "auto";
       el.style.height = Math.min(el.scrollHeight, 120) + "px";
     }
-  }, [input]);
+  }, [input, isStreaming]);
 
   const doCompact = async () => {
     const contextMsgs = useChatStore.getState().getContext(activeFileId);
@@ -770,37 +772,36 @@ export default function AISidebar() {
 
       {!showContext && (
       <div className="moflow-ai-input-area">
-        {isStreaming ? (
-          <button className="moflow-ai-stop-btn" onClick={handleStop}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <rect x="6" y="6" width="12" height="12" rx="2" />
-            </svg>
-            <span>{t("停止", "Stop")}</span>
-          </button>
-        ) : (
-          <>
-            <textarea
-              ref={inputRef}
-              className="moflow-ai-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={t("输入消息...", "Type a message...")}
-              rows={1}
-              disabled={isStreaming}
-            />
+        <div className="moflow-ai-input-wrap">
+          <textarea
+            ref={inputRef}
+            className="moflow-ai-input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t("输入消息...", "Type a message...")}
+            rows={2}
+            disabled={isStreaming}
+          />
+          {isStreaming ? (
+            <button className="moflow-ai-action-btn moflow-ai-action-stop" onClick={handleStop}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            </button>
+          ) : (
             <button
-              className="moflow-ai-send-btn"
+              className="moflow-ai-action-btn moflow-ai-action-send"
               onClick={handleSend}
-              disabled={!input.trim() || isStreaming}
+              disabled={!input.trim()}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13" />
                 <polygon points="22 2 15 22 11 13 2 9 22 2" />
               </svg>
             </button>
-          </>
-        )}
+          )}
+        </div>
       </div>
       )}
 

@@ -10,7 +10,7 @@ export const toolbarTooltipMap: Record<string, string> = {
   highlight: isZh ? "高亮" : "Highlight",
   explain: isZh ? "AI 解释" : "AI Explain",
   translate: isZh ? "AI 翻译" : "AI Translate",
-  polish: isZh ? "AI 润色" : "AI Polish",
+  polish: isZh ? "AI 改写" : "AI Rewrite",
   ask: isZh ? "AI 提问" : "AI Ask",
 };
 

@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.5.0 (2026-05-10)
+
+### New Features
+
+- **AI Rewrite (Doubao-style interaction)** — Toolbar button renamed to "AI 改写" / "AI Rewrite"
+  - No original text display or result preview in panel — AI result auto-replaces selection and closes panel (Ctrl+Z to undo)
+  - Multi-line auto-growing input (min 2 rows) with send button in bottom-right corner
+  - Preset buttons: Polish / Expand / Shorten / Change Tone
+  - Tone submenu: More professional / More academic / More formal / More casual / More literary / More internet-savvy
+  - Preset buttons hidden when input has content; error state shows retry presets
+  - `RewritePanel` as independent sub-component + `rewriteKey` in store for forced remount on each trigger, eliminating state leakage
+
+- **AI Sidebar input redesign**
+  - Input area minimum 2 rows, auto-growing, no scrollbar
+  - Send button moved inside input (position: absolute, bottom-right)
+  - During streaming: send icon transforms to stop icon (same position, click to stop)
+
+- **Startup optimization** — Rust preload (`get_startup_data` 8ms vs ~130ms serial IPC), persistSession fire-and-forget (-522ms), remove rAF delay (-398ms), lazy chat loading per tab
+- **Context Panel beautification** — Role-differentiated message rows with left color bar + role badge; tool messages as code blocks; ToolCallChip list for assistant; reasoning sub-details; compact summary highlight
+- **Chat scroll optimization** — `isAtBottomRef` for sticky auto-scroll; scroll-to-bottom floating button; instant scroll during streaming, smooth for new messages; per-tab scroll position preservation
+
+### Bug Fixes
+
+- Fixed streaming auto-scroll never executing — `setTimeout(50ms)` was constantly cancelled by rapid `streamingContent` updates; replaced with `requestAnimationFrame` + `scrollTop = scrollHeight`
+- Fixed tone menu clipped by panel — changed `overflow: hidden` to `overflow: visible` on panel; tone menu opens downward
+- Fixed tone menu not closing after dismiss-and-reopen — `rewriteKey` increment forces `RewritePanel` remount, resetting all local state
+- Fixed rewrite input persisting after dismiss — `RewritePanel` sub-component with `key={rewriteKey}` ensures clean state on each trigger
+
 ## v0.4.3 (2026-05-08)
 
 ### New Features

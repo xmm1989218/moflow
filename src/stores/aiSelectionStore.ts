@@ -25,6 +25,7 @@ interface AISelectionState {
   targetLang: LanguageCode;
   lastResult: string;
   replaceSelection: ((newText: string) => void) | null;
+  rewriteKey: number;
 
   triggerExplain: (text: string, coords: { x: number; y: number }) => void;
   triggerTranslate: (text: string, coords: { x: number; y: number }) => void;
@@ -59,6 +60,7 @@ export const useAISelectionStore = create<AISelectionState>((set, get) => ({
   targetLang: getDefaultTargetLang(),
   lastResult: "",
   replaceSelection: null,
+  rewriteKey: 0,
 
   triggerExplain: (text, coords) => {
     set({ selectedText: text, selectionCoords: coords, activeAction: "explain", lastResult: "" });
@@ -73,7 +75,7 @@ export const useAISelectionStore = create<AISelectionState>((set, get) => ({
   },
 
   triggerPolish: (text, coords) => {
-    set({ selectedText: text, selectionCoords: coords, activeAction: "polish", lastResult: "" });
+    set((s) => ({ selectedText: text, selectionCoords: coords, activeAction: "polish", lastResult: "", rewriteKey: s.rewriteKey + 1 }));
   },
 
   setTargetLang: (lang) => {

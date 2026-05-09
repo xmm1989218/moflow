@@ -349,6 +349,25 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [x] 浮动工具栏增加「润色」按钮，一键润色选中文字（自动触发默认润色请求）
 - [x] 支持补充指令输入（如「更正式」「更简洁」），输入后重新发送带指令的请求；「应用替换」按钮将结果写回编辑器选区
 
+### AI 改写交互重构（Doubao-style）
+
+- [x] 工具栏按钮更名「AI 改写」/「AI Rewrite」
+- [x] 去掉面板中原文展示和结果预览，AI 完成后自动替换并关闭面板（Ctrl+Z 可撤销）
+- [x] 输入框（多行自动增高，最少 2 行）+ 发送按钮在右下角
+- [x] 预设按钮行：润色 / 扩写 / 缩写 / 更改语气
+- [x] 更改语气子菜单：更专业 / 更学术 / 更正式 / 更轻松 / 更有文采 / 更有网感
+- [x] 输入框有内容时隐藏预设按钮
+- [x] RewritePanel 独立子组件 + rewriteKey 强制重新挂载，解决状态残留问题
+- [x] 面板 overflow: visible，语气菜单向下展开不被裁切
+- [x] 错误态显示错误信息 + 预设按钮可重试
+
+### AI Sidebar 输入框优化
+
+- [x] 输入框至少 2 行，多行自动增高，无滚动条
+- [x] 发送按钮移至输入框右下角（position: absolute）
+- [x] 流式输出时发送图标变停止图标（同一位置切换），点击停止生成
+- [x] 流式输出自动滚动修复：`requestAnimationFrame` + `scrollTop = scrollHeight` 替代被反复取消的 setTimeout
+
 ---
 
 ## v0.6.0 — 增强功能 II
@@ -427,6 +446,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边）
 - [ ] 打开目录（文件夹树浏览，快速打开目录下的文件）
 - [ ] AI 回复插入文档（聊天消息「插入」按钮，回复内容插入编辑器光标处）
+- [ ] 代码模式与所见即所得模式共享 undo history（当前切代码模式时 Milkdown 实例被销毁，undo history 丢失；需改为 CSS 隐藏 + 实时 `replaceAll(content, false)` 同步）
 
 ### webfetch 增强（已移至 v0.4.1）
 

@@ -17,6 +17,294 @@ function getLangLabel(code: LanguageCode): string {
   return lang ? (isZh ? lang.label : lang.labelEn) : code;
 }
 
+const REWRITE_PRESETS = [
+  { key: "polish", zh: "润色", en: "Polish" },
+  { key: "expand", zh: "扩写", en: "Expand" },
+  { key: "shorten", zh: "缩写", en: "Shorten" },
+] as const;
+
+const TONE_OPTIONS = [
+  { key: "professional", zh: "更专业", en: "More professional" },
+  { key: "academic", zh: "更学术", en: "More academic" },
+  { key: "formal", zh: "更正式", en: "More formal" },
+  { key: "casual", zh: "更轻松", en: "More casual" },
+  { key: "literary", zh: "更有文采", en: "More literary" },
+  { key: "internet", zh: "更有网感", en: "More internet-savvy" },
+] as const;
+
+function getRewritePrompt(key: string, selectedText: string): string {
+  const prompts: Record<string, [string, string]> = {
+    polish: [
+      `请润色以下文字，使其更加流畅自然。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式（如列表、加粗、标题等），只输出润色后的结果：\n\n${selectedText}`,
+      `Polish the following text to make it more fluent and natural. This is a Markdown editor, use Markdown formatting where appropriate, output only the result:\n\n${selectedText}`,
+    ],
+    expand: [
+      `请扩写以下文字，增加更多细节和丰富内容。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式（如列表、加粗、标题等），只输出扩写后的结果：\n\n${selectedText}`,
+      `Expand the following text with more details and richer content. This is a Markdown editor, use Markdown formatting where appropriate, output only the result:\n\n${selectedText}`,
+    ],
+    shorten: [
+      `请缩写以下文字，使其更加简洁精炼，保留核心要点。只输出缩写后的结果：\n\n${selectedText}`,
+      `Shorten the following text to be more concise while keeping the key points. Output only the result:\n\n${selectedText}`,
+    ],
+    professional: [
+      `请将以下文字改写为更专业的表达，使用行业术语和规范用语。只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite in a more professional tone using industry terminology. Output only the result:\n\n${selectedText}`,
+    ],
+    academic: [
+      `请将以下文字改写为更学术化的表达，使用学术语言和严谨论述。只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite in a more academic tone with scholarly language. Output only the result:\n\n${selectedText}`,
+    ],
+    formal: [
+      `请将以下文字改写为更正式的表达，适合商务或公文场景。只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite in a more formal tone suitable for business contexts. Output only the result:\n\n${selectedText}`,
+    ],
+    casual: [
+      `请将以下文字改写为更轻松活泼的表达，口语化、亲切自然。只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite in a more casual and friendly tone. Output only the result:\n\n${selectedText}`,
+    ],
+    literary: [
+      `请将以下文字改写得更有文采，修辞优美、意境深远。只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite with more literary flair and elegant rhetoric. Output only the result:\n\n${selectedText}`,
+    ],
+    internet: [
+      `请将以下文字改写得更有网感，适合社交媒体传播，简洁有力、有梗有趣。只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite with an internet-savvy style for social media, concise and engaging. Output only the result:\n\n${selectedText}`,
+    ],
+  };
+  const pair = prompts[key];
+  if (!pair) return selectedText;
+  return t(pair[0], pair[1]);
+}
+
+function getCustomRewritePrompt(instruction: string, selectedText: string): string {
+  return t(
+    `请根据以下要求改写文字：${instruction}。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式（如列表、加粗、标题等），只输出改写后的结果：\n\n${selectedText}`,
+    `Rewrite the following text according to this instruction: ${instruction}. This is a Markdown editor, use Markdown formatting where appropriate, output only the result:\n\n${selectedText}`
+  );
+}
+
+function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDismiss: () => void }) {
+  const aiConfig = useThemeStore((s) => s.aiConfig);
+  const activeFileId = useTabStore((s) => s.activeFileId);
+  const docContent = useTabStore((s) => {
+    const tab = s.files.find((f) => f.id === s.activeFileId);
+    return tab?.content ?? "";
+  });
+  const replaceSelection = useAISelectionStore((s) => s.replaceSelection);
+  const recordStandaloneUsage = useChatStore((s) => s.recordStandaloneUsage);
+
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [rewriteError, setRewriteError] = useState("");
+  const [rewriteInput, setRewriteInput] = useState("");
+  const [showToneMenu, setShowToneMenu] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const toneMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+      invoke("cancel_requests");
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showToneMenu) return;
+    function handleToneOutside(e: MouseEvent) {
+      if (toneMenuRef.current && !toneMenuRef.current.contains(e.target as Node)) {
+        setShowToneMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleToneOutside);
+    return () => document.removeEventListener("mousedown", handleToneOutside);
+  }, [showToneMenu]);
+
+  const doLLMRequest = useCallback(
+    async (prompt: string) => {
+      setRewriteError("");
+      setIsStreaming(true);
+      const controller = new AbortController();
+      abortRef.current = controller;
+      let accumulated = "";
+
+      try {
+        const client = getLLMClient(aiConfig);
+        const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext).prompt;
+
+        const res = await client.chat(
+          [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt },
+          ],
+          (chunk) => {
+            accumulated += chunk;
+          },
+          controller.signal
+        );
+
+        const { cost: costVal } = calculateCost(
+          res.usage.promptTokens,
+          res.usage.completionTokens,
+          aiConfig.providerId,
+          aiConfig.model
+        );
+        recordStandaloneUsage(activeFileId, res.usage.promptTokens, res.usage.completionTokens, costVal);
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") {
+          return;
+        }
+        const msg = e instanceof TimeoutError
+          ? t("请求超时", "Request timed out")
+          : `${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`;
+        setRewriteError(msg);
+        setIsStreaming(false);
+        abortRef.current = null;
+        return;
+      }
+
+      setIsStreaming(false);
+      abortRef.current = null;
+
+      if (replaceSelection) {
+        const trimmed = accumulated.trim();
+        if (trimmed) {
+          replaceSelection(trimmed);
+          onDismiss();
+        }
+      }
+    },
+    [aiConfig, docContent, activeFileId, recordStandaloneUsage, replaceSelection, onDismiss]
+  );
+
+  const handleRewriteSend = () => {
+    const instruction = rewriteInput.trim();
+    if (!instruction) return;
+    setRewriteInput("");
+    setShowToneMenu(false);
+    const prompt = getCustomRewritePrompt(instruction, selectedText);
+    doLLMRequest(prompt);
+  };
+
+  const handleRewriteInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleRewriteSend();
+    }
+    if (e.key === "Escape") {
+      onDismiss();
+    }
+  };
+
+  const handleRewriteInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setRewriteInput(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+  };
+
+  const handlePresetClick = (key: string) => {
+    setShowToneMenu(false);
+    const prompt = getRewritePrompt(key, selectedText);
+    doLLMRequest(prompt);
+  };
+
+  const handleToneClick = (key: string) => {
+    setShowToneMenu(false);
+    const prompt = getRewritePrompt(key, selectedText);
+    doLLMRequest(prompt);
+  };
+
+  return (
+    <>
+      {isStreaming ? (
+        <div className="moflow-selection-ai-rewrite-loading">
+          <span className="moflow-selection-ai-rewrite-loading-dot" />
+          {t("AI 正在改写...", "AI rewriting...")}
+        </div>
+      ) : rewriteError ? (
+        <div className="moflow-selection-ai-rewrite-error">
+          ❌ {rewriteError}
+        </div>
+      ) : null}
+      {!isStreaming && !rewriteError && (
+        <>
+          <div className="moflow-selection-ai-rewrite-input-row">
+            <div className="moflow-selection-ai-rewrite-input-wrap">
+              <textarea
+                className="moflow-selection-ai-rewrite-input"
+                value={rewriteInput}
+                onChange={handleRewriteInputChange}
+                onKeyDown={handleRewriteInputKeyDown}
+                placeholder={t("输入改写要求…", "Enter rewrite instruction…")}
+                autoFocus
+                rows={1}
+              />
+              <button
+                className="moflow-selection-ai-rewrite-send"
+                onClick={handleRewriteSend}
+                disabled={!rewriteInput.trim()}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          {!rewriteInput.trim() && (
+          <div className="moflow-selection-ai-rewrite-presets">
+            {REWRITE_PRESETS.map((p) => (
+              <button
+                key={p.key}
+                className="moflow-selection-ai-rewrite-preset-btn"
+                onClick={() => handlePresetClick(p.key)}
+              >
+                {isZh ? p.zh : p.en}
+              </button>
+            ))}
+            <div className="moflow-selection-ai-tone-wrapper" ref={toneMenuRef}>
+              <button
+                className="moflow-selection-ai-rewrite-preset-btn moflow-selection-ai-tone-trigger"
+                onClick={() => setShowToneMenu(!showToneMenu)}
+              >
+                {t("更改语气", "Change tone")}
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+              {showToneMenu && (
+                <div className="moflow-selection-ai-tone-menu">
+                  {TONE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.key}
+                      className="moflow-selection-ai-tone-item"
+                      onClick={() => handleToneClick(opt.key)}
+                    >
+                      {isZh ? opt.zh : opt.en}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          )}
+        </>
+      )}
+      {rewriteError && !isStreaming && (
+        <div className="moflow-selection-ai-rewrite-presets">
+          {REWRITE_PRESETS.map((p) => (
+            <button
+              key={p.key}
+              className="moflow-selection-ai-rewrite-preset-btn"
+              onClick={() => handlePresetClick(p.key)}
+            >
+              {isZh ? p.zh : p.en}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function SelectionAIPanel() {
   const activeAction = useAISelectionStore((s) => s.activeAction);
   const selectedText = useAISelectionStore((s) => s.selectedText);
@@ -28,8 +316,8 @@ export default function SelectionAIPanel() {
   const swapLanguages = useAISelectionStore((s) => s.swapLanguages);
   const lastResult = useAISelectionStore((s) => s.lastResult);
   const setLastResult = useAISelectionStore((s) => s.setLastResult);
-  const dismiss = useAISelectionStore((s) => s.dismiss);
-  const replaceSelection = useAISelectionStore((s) => s.replaceSelection);
+  const _dismiss = useAISelectionStore((s) => s.dismiss);
+  const rewriteKey = useAISelectionStore((s) => s.rewriteKey);
 
   const aiConfig = useThemeStore((s) => s.aiConfig);
   const addMessage = useChatStore((s) => s.addMessage);
@@ -50,16 +338,18 @@ export default function SelectionAIPanel() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [followUpValue, setFollowUpValue] = useState("");
-  const [polishInstruction, setPolishInstruction] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const recordStandaloneUsage = useChatStore((s) => s.recordStandaloneUsage);
 
+  const dismissPanel = useCallback(() => {
+    _dismiss();
+  }, [_dismiss]);
+
   const doLLMRequest = useCallback(
     async (prompt: string) => {
       setResult("");
-      setLastResult("");
       setIsStreaming(true);
       const controller = new AbortController();
       abortRef.current = controller;
@@ -68,7 +358,7 @@ export default function SelectionAIPanel() {
         const client = getLLMClient(aiConfig);
         const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext).prompt;
 
-        const result = await client.chat(
+        const res = await client.chat(
           [
             { role: "system", content: systemPrompt },
             { role: "user", content: prompt },
@@ -80,18 +370,19 @@ export default function SelectionAIPanel() {
         );
 
         const { cost: costVal } = calculateCost(
-          result.usage.promptTokens,
-          result.usage.completionTokens,
+          res.usage.promptTokens,
+          res.usage.completionTokens,
           aiConfig.providerId,
           aiConfig.model
         );
-        recordStandaloneUsage(activeFileId, result.usage.promptTokens, result.usage.completionTokens, costVal);
+        recordStandaloneUsage(activeFileId, res.usage.promptTokens, res.usage.completionTokens, costVal);
       } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") {
+          return;
+        }
         if (e instanceof TimeoutError) {
           console.error(`[SelectionAIPanel] Request timeout: ${e.message}`);
           setResult((prev) => prev + `\n\n❌ ${t("请求超时", "Request timed out")}`);
-        } else if (e instanceof DOMException && e.name === "AbortError") {
-          return;
         } else {
           setResult((prev) => prev + `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`);
         }
@@ -100,28 +391,23 @@ export default function SelectionAIPanel() {
         abortRef.current = null;
       }
     },
-    [aiConfig, docContent, activeFileId, recordStandaloneUsage, setLastResult]
+    [aiConfig, docContent, activeFileId, recordStandaloneUsage]
   );
 
   useEffect(() => {
+    if (activeAction === "polish") return;
     if (activeAction === "explain" && selectedText) {
       const prompt = t(`请用简洁的语言解释以下内容。这是一款 Markdown 编辑器的解释功能，请合理使用 Markdown 格式（如列表、加粗、标题等）使解释更清晰：\n\n${selectedText}`, `Briefly explain the following. This is a Markdown editor's explain feature, use Markdown formatting (lists, bold, headings, etc.) to make the explanation clearer:\n\n${selectedText}`);
-      doLLMRequest(prompt);
+      queueMicrotask(() => doLLMRequest(prompt));
     } else if (activeAction === "translate" && selectedText) {
       const targetLabel = getLangLabel(targetLang);
       const prompt = t(`请将以下内容翻译为${targetLabel}，只输出翻译结果，不要添加任何解释：\n\n${selectedText}`, `Translate the following to ${targetLabel}, output only the translation:\n\n${selectedText}`);
-      doLLMRequest(prompt);
-    } else if (activeAction === "polish" && selectedText) {
-      const prompt = t(
-        `请润色以下文字，使其更加流畅自然。这是一款 Markdown 编辑器的润色功能，请根据内容性质合理使用 Markdown 格式（如列表、加粗、标题等），只输出润色后的结果：\n\n${selectedText}`,
-        `Polish the following text to make it more fluent and natural. This is a Markdown editor's polish feature, use Markdown formatting (lists, bold, headings, etc.) where appropriate, output only the result:\n\n${selectedText}`
-      );
-      doLLMRequest(prompt);
+      queueMicrotask(() => doLLMRequest(prompt));
     }
   }, [activeAction, targetLang, selectedText, doLLMRequest]);
 
   useEffect(() => {
-    if (!isStreaming && result && (activeAction === "explain" || activeAction === "translate" || activeAction === "polish")) {
+    if (!isStreaming && result && (activeAction === "explain" || activeAction === "translate")) {
       setLastResult(result);
     }
   }, [isStreaming, result, activeAction, setLastResult]);
@@ -140,7 +426,7 @@ export default function SelectionAIPanel() {
         if (target.closest(".milkdown-toolbar")) return;
         abortRef.current?.abort();
         invoke("cancel_requests");
-        dismiss();
+        dismissPanel();
       }
     }
 
@@ -148,7 +434,7 @@ export default function SelectionAIPanel() {
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
     }
-  }, [activeAction, dismiss]);
+  }, [activeAction, dismissPanel]);
 
   const sendToSidebar = async (userContent: string) => {
     const userMsg = addMessage(activeFileId, { role: "user", content: userContent });
@@ -245,7 +531,7 @@ export default function SelectionAIPanel() {
     );
 
     sendToSidebar(userContent);
-    dismiss();
+    dismissPanel();
   };
 
   const handleFollowUp = () => {
@@ -256,9 +542,7 @@ export default function SelectionAIPanel() {
 
     const actionLabel = activeAction === "translate"
       ? t("翻译", "Translation")
-      : activeAction === "polish"
-        ? t("润色", "Polish")
-        : t("解释", "Explanation");
+      : t("解释", "Explanation");
 
     const userContent = t(
       `选中文本：\n${selectedText}\n\n${actionLabel}结果：\n${lastResult}\n\n追问：${question}`,
@@ -266,24 +550,7 @@ export default function SelectionAIPanel() {
     );
 
     sendToSidebar(userContent);
-    dismiss();
-  };
-
-  const handlePolishWithInstruction = () => {
-    if (!polishInstruction.trim()) return;
-    const instruction = polishInstruction.trim();
-    setPolishInstruction("");
-    const prompt = t(
-      `请润色以下文字，${instruction}。这是一款 Markdown 编辑器的润色功能，请根据内容性质合理使用 Markdown 格式（如列表、加粗、标题等），只输出润色后的结果：\n\n${selectedText}`,
-      `Polish the following text, ${instruction}. This is a Markdown editor's polish feature, use Markdown formatting (lists, bold, headings, etc.) where appropriate, output only the result:\n\n${selectedText}`
-    );
-    doLLMRequest(prompt);
-  };
-
-  const handleApplyPolish = () => {
-    if (!result.trim() || !replaceSelection) return;
-    replaceSelection(result.trim());
-    dismiss();
+    dismissPanel();
   };
 
   const handleAskKeyDown = (e: React.KeyboardEvent) => {
@@ -292,7 +559,7 @@ export default function SelectionAIPanel() {
       handleAsk();
     }
     if (e.key === "Escape") {
-      dismiss();
+      dismissPanel();
     }
   };
 
@@ -302,17 +569,7 @@ export default function SelectionAIPanel() {
       handleFollowUp();
     }
     if (e.key === "Escape") {
-      dismiss();
-    }
-  };
-
-  const handlePolishInstructionKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handlePolishWithInstruction();
-    }
-    if (e.key === "Escape") {
-      dismiss();
+      dismissPanel();
     }
   };
 
@@ -321,7 +578,7 @@ export default function SelectionAIPanel() {
   const panelStyle: React.CSSProperties = {
     position: "fixed",
     left: Math.min(selectionCoords.x, window.innerWidth - 380),
-    top: Math.min(selectionCoords.y + 8, window.innerHeight - 300),
+    top: Math.min(selectionCoords.y + 8, window.innerHeight - (activeAction === "polish" ? 200 : 400)),
     zIndex: 50,
   };
 
@@ -373,15 +630,10 @@ export default function SelectionAIPanel() {
       )}
 
       {activeAction === "polish" && (
-        <div className="moflow-selection-ai-source-text">
-          <span className="moflow-selection-ai-source-bar" />
-          <span className="moflow-selection-ai-source-content">
-            {selectedText.length > 200 ? selectedText.slice(0, 200) + "..." : selectedText}
-          </span>
-        </div>
+        <RewritePanel key={rewriteKey} selectedText={selectedText} onDismiss={dismissPanel} />
       )}
 
-      {(activeAction === "explain" || activeAction === "translate" || activeAction === "polish") && (
+      {(activeAction === "explain" || activeAction === "translate") && (
         <div className="moflow-selection-ai-result">
           {result ? (
             <MessageContent content={result} />
@@ -392,39 +644,6 @@ export default function SelectionAIPanel() {
           )}
           {isStreaming && <span className="moflow-selection-ai-cursor">▌</span>}
         </div>
-      )}
-
-      {activeAction === "polish" && !isStreaming && result && (
-        <>
-          <div className="moflow-selection-ai-polish-instruction-row">
-            <input
-              className="moflow-selection-ai-polish-instruction-input"
-              type="text"
-              value={polishInstruction}
-              onChange={(e) => setPolishInstruction(e.target.value)}
-              onKeyDown={handlePolishInstructionKeyDown}
-              placeholder={t("补充要求（如：更正式、更简洁）…", "Additional instruction (e.g. more formal, more concise)…")}
-            />
-            <button
-              className="moflow-selection-ai-polish-instruction-send"
-              onClick={handlePolishWithInstruction}
-              disabled={!polishInstruction.trim()}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </div>
-          <div className="moflow-selection-ai-polish-actions">
-            <button
-              className="moflow-selection-ai-polish-apply"
-              onClick={handleApplyPolish}
-            >
-              {t("应用替换", "Apply")}
-            </button>
-          </div>
-        </>
       )}
 
       {(activeAction === "explain" || activeAction === "translate") && !isStreaming && lastResult && (
