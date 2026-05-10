@@ -146,12 +146,24 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
 
     set({ files: newFiles, activeFileId: newActiveId });
 
-    if (newActiveId !== state.activeFileId || id === state.activeFileId) {
-      const active = newFiles.find((f) => f.id === newActiveId);
-      if (active) {
-        document.title = `${active.fileName}${active.isModified ? "*" : ""} - MoFlow`;
+    if (id === state.activeFileId) {
+      const newActive = newFiles.find((f) => f.id === newActiveId);
+      if (newActive) {
+        document.title = `${newActive.fileName}${newActive.isModified ? "*" : ""} - MoFlow`;
+
+        if (!newActive.contentLoaded && newActive.filePath) {
+          import("../lib/fileOps").then(({ loadTabContent }) => {
+            loadTabContent(newActiveId);
+          });
+        }
+
+        const chatLoaded = useChatStore.getState().chatLoadedMap[newActiveId];
+        if (chatLoaded === undefined) {
+          useChatStore.getState().loadChatHistory(newActiveId);
+        }
       }
     }
+
     persistSession(newFiles, newActiveId);
   },
 
@@ -281,6 +293,7 @@ const defaultSettings = {
   autoSave: false,
   showStatusBar: true,
   sidebarWidth: 360,
+  outlineWidth: 240,
   aiConfig: { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" },
   proxyUrl: "",
 };
@@ -309,6 +322,7 @@ export async function initFromStartupData(): Promise<boolean> {
       autoSave: settings.autoSave as boolean,
       showStatusBar: settings.showStatusBar as boolean,
       sidebarWidth: settings.sidebarWidth as number,
+      outlineWidth: (settings.outlineWidth as number) ?? 240,
       aiConfig: settings.aiConfig as import("../lib/settings").AIConfig,
       proxyUrl: settings.proxyUrl,
     });
@@ -392,6 +406,7 @@ export async function initSession() {
     autoSave: settings.autoSave,
     showStatusBar: settings.showStatusBar,
     sidebarWidth: settings.sidebarWidth,
+    outlineWidth: settings.outlineWidth ?? 240,
     aiConfig: settings.aiConfig,
     proxyUrl: settings.proxyUrl ?? "",
   });

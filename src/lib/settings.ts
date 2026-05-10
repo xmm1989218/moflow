@@ -27,6 +27,7 @@ export interface AppSettings {
   autoSave: boolean;
   showStatusBar: boolean;
   sidebarWidth: number;
+  outlineWidth: number;
   aiConfig: AIConfig;
   proxyUrl: string;
 }
@@ -37,6 +38,7 @@ export const defaultSettings: AppSettings = {
   autoSave: false,
   showStatusBar: true,
   sidebarWidth: 360,
+  outlineWidth: 240,
   aiConfig: { ...defaultAIConfig },
   proxyUrl: "",
 };
@@ -57,6 +59,7 @@ export async function readSettings(): Promise<AppSettings> {
       ...parsed,
       aiConfig: { ...defaultAIConfig, ...(parsed.aiConfig || {}) },
       proxyUrl: parsed.proxyUrl ?? "",
+      outlineWidth: parsed.outlineWidth ?? 240,
     };
     return settings;
   } catch {

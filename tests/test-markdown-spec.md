@@ -221,7 +221,9 @@ def hello():
     print("world")
 ```
 
-~~~tilde fence also works~~~
+~~~
+tilde fence also works
+~~~
 
 ````nested fences - four backticks
 ```code inside
@@ -594,3 +596,121 @@ Ellipsis…
 This **should** be parsed as Markdown inside HTML.
 
 </div>
+
+---
+
+## 6. Mermaid Diagrams
+
+> Mermaid code blocks should render an SVG preview below the code editor.
+> Click the preview toggle to switch between source editing and rendered view.
+> Dark/light theme should match the editor theme.
+
+### 6.1 Flowchart
+
+Should render a top-down flowchart with diamond decision node and rectangular action nodes:
+
+```mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+    C --> E[End]
+    D --> E
+```
+
+### 6.2 Sequence Diagram
+
+Should render a sequence diagram with 4 participant lifelines and message arrows:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Client
+    participant Server
+    participant DB
+
+    User->>Client: Open document
+    Client->>Server: GET /document
+    Server->>DB: Query document
+    DB-->>Server: Document data
+    Server-->>Client: 200 OK + JSON
+    Client-->>User: Render document
+```
+
+### 6.3 Class Diagram
+
+Should render a UML class diagram with inheritance arrows:
+
+```mermaid
+classDiagram
+    class Animal {
+        +String name
+        +int age
+        +makeSound()
+    }
+    class Dog {
+        +String breed
+        +fetch()
+    }
+    class Cat {
+        +String color
+        +purr()
+    }
+    Animal <|-- Dog
+    Animal <|-- Cat
+```
+
+### 6.4 Gantt Chart
+
+Should render a Gantt chart with colored task bars and section labels:
+
+```mermaid
+gantt
+    title Project Timeline
+    dateFormat  YYYY-MM-DD
+    section Planning
+    Requirements    :done, req, 2024-01-01, 10d
+    Design          :active, des, after req, 15d
+    section Development
+    Frontend        :dev1, after des, 20d
+    Backend         :dev2, after des, 25d
+    section Testing
+    QA              :test, after dev1, 10d
+```
+
+### 6.5 Pie Chart
+
+Should render a circular pie chart with labeled slices and percentages:
+
+```mermaid
+pie title Technology Stack Usage
+    "TypeScript" : 40
+    "Rust" : 25
+    "CSS" : 15
+    "HTML" : 10
+    "Other" : 10
+```
+
+### 6.6 State Diagram
+
+Should render a state machine with transitions and start/end nodes:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Review : Submit
+    Review --> Approved : Approve
+    Review --> Draft : Reject
+    Approved --> Published : Publish
+    Published --> Draft : Edit
+    Published --> [*]
+```
+
+### 6.7 Mermaid with Error (Invalid Syntax)
+
+Should display an error message instead of a rendered diagram:
+
+```mermaid
+graph BROKEN
+    A ->>
+```

@@ -53,6 +53,7 @@ MoFlow uses [Milkdown](https://milkdown.dev/) (with [Crepe](https://github.com/M
 | Highlight | `==text==` | ✅ | Custom mark → `<mark>`; toolbar button (Ctrl+Shift+H); input rule `==text==` |
 | Inline Math | `$formula$` | ✅ | KaTeX rendering; popup editor on click |
 | Block Math | `$$formula$$` | ✅ | KaTeX rendering; code editor with live preview |
+| Mermaid Diagrams | ` ```mermaid ` | ✅ | Flowchart, sequence, class, gantt, pie, state diagrams; rendered SVG preview; edit via CodeMirror; dark/light theme |
 
 ## Editor Enhancements
 

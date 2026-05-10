@@ -12,6 +12,7 @@ import { useAISelectionStore } from "../../stores/aiSelectionStore";
 import { highlightPlugin, highlightSchema, toggleHighlightCommand } from "../../lib/highlightMark";
 import { searchPlugin } from "../../lib/searchPlugin";
 import { createHtmlNodeView } from "../../lib/htmlBlock";
+import { mermaidPlugin, resetMermaidTheme } from "../../lib/mermaidPlugin";
 import { useSearchStore } from "../../stores/searchStore";
 import SearchBar from "./SearchBar";
 import { commandsCtx } from "@milkdown/kit/core";
@@ -52,16 +53,11 @@ import SelectionAIPanel from "./SelectionAIPanel";
 import { useEffect, useRef, useCallback, memo } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-const HANDLE_WIDTH = 36;
-const HANDLE_MIN_GAP = 2;
-const HANDLE_IDEAL_OFFSET = 16;
-
 function getBlockHandleMetrics() {
-  const milkdown = document.querySelector(".milkdown");
-  const milkdownLeft = milkdown ? milkdown.getBoundingClientRect().left : 0;
-  const maxOffset = milkdownLeft - HANDLE_MIN_GAP - HANDLE_WIDTH;
-  const offset = Math.max(0, Math.min(HANDLE_IDEAL_OFFSET, maxOffset));
-  return { milkdownLeft, offset };
+  const proseMirror = document.querySelector(".milkdown .ProseMirror");
+  const proseMirrorLeft = proseMirror ? proseMirror.getBoundingClientRect().left : 0;
+  const paddingX = proseMirror ? parseFloat(getComputedStyle(proseMirror).paddingLeft) || 48 : 48;
+  return { proseMirrorLeft, paddingX };
 }
 
 import { isZh } from "../../lib/i18n";
@@ -145,6 +141,10 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
   const syncedContentRef = useRef(content);
   const justLoadedRef = useRef(true);
   const crepeRef = useRef<Crepe | null>(null);
+
+  useEffect(() => {
+    resetMermaidTheme();
+  }, [editorTheme]);
 
   useEffect(() => {
     let tooltipEl: HTMLElement | null = null;
@@ -244,8 +244,8 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
           blockHandle: {
             getPosition: (deriveContext) => {
               const domRect = deriveContext.active.el.getBoundingClientRect();
-              const { milkdownLeft, offset } = getBlockHandleMetrics();
-              const x = Math.max(milkdownLeft, HANDLE_MIN_GAP + HANDLE_WIDTH + offset);
+              const { proseMirrorLeft, paddingX } = getBlockHandleMetrics();
+              const x = proseMirrorLeft + paddingX;
               return {
                 x,
                 y: domRect.y,
@@ -257,10 +257,21 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
                 right: x,
               };
             },
-            getOffset: () => {
-              const { offset } = getBlockHandleMetrics();
-              return offset;
-            },
+            getOffset: () => 4,
+            middleware: [
+              {
+                name: "clampToEditor",
+                fn: ({ x, y }: { x: number; y: number }) => {
+                  const wrapper = document.querySelector(`[data-tab-id="${tabId}"] .moflow-editor-wrapper`);
+                  if (!wrapper) return { x, y };
+                  const rect = wrapper.getBoundingClientRect();
+                  if (y < rect.top || y > rect.bottom - 24) {
+                    return { x: -9999, y: -9999 };
+                  }
+                  return { x, y };
+                },
+              },
+            ],
           },
         },
         [Crepe.Feature.Placeholder]: {
@@ -357,6 +368,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
 
     crepe.editor.use(highlightPlugin);
     crepe.editor.use(searchPlugin);
+    crepe.editor.use(mermaidPlugin);
 
     crepe.on((listener) => {
       listener.mounted((ctx) => {
@@ -552,6 +564,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
           }
         }
       }) as EventListener);
+
     };
 
     const observer = new MutationObserver((mutations) => {
@@ -572,7 +585,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
     document.querySelectorAll(".milkdown-block-handle").forEach(patchHandle);
 
     return () => observer.disconnect();
-  }, []);
+  }, [tabId]);
 
   return (
     <div className="moflow-editor-wrapper" data-editor-theme={editorTheme}>

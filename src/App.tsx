@@ -5,6 +5,7 @@ import TitleBar from "./components/TitleBar/TitleBar";
 import ConfirmCloseDialog from "./components/ConfirmCloseDialog/ConfirmCloseDialog";
 import UpdateDialog from "./components/UpdateDialog/UpdateDialog";
 import SettingsPanel from "./components/SettingsPanel/SettingsPanel";
+import OutlineSidebar from "./components/OutlineSidebar/OutlineSidebar";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 const AISidebar = lazy(() => import("./components/AISidebar/AISidebar"));
@@ -34,6 +35,7 @@ function App() {
   const appTheme = useThemeStore((s) => s.appTheme);
   const editorTheme = useThemeStore((s) => s.editorTheme);
   const showAISidebar = useThemeStore((s) => s.showAISidebar);
+  const showOutline = useThemeStore((s) => s.showOutline);
   const showSettingsTab = useThemeStore((s) => s.showSettingsTab);
   const settingsTabActive = useThemeStore((s) => s.settingsTabActive);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -215,6 +217,10 @@ function App() {
       } else if (mod && e.key === "h") {
         e.preventDefault();
         useSearchStore.getState().toggleSearch(true);
+      } else if (e.key === "F7") {
+        e.preventDefault();
+        e.stopPropagation();
+        useThemeStore.getState().toggleOutline();
       } else if (e.key === "F8") {
         e.preventDefault();
         e.stopPropagation();
@@ -248,6 +254,7 @@ function App() {
     >
       <TitleBar />
       <div className="flex flex-1 min-h-0 overflow-hidden">
+        {showOutline && !(showSettingsTab && settingsTabActive) && <OutlineSidebar />}
         <div
           className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden"
           style={{ display: showSettingsTab && settingsTabActive ? "none" : undefined }}

@@ -32,6 +32,7 @@ function persistSettings(get: () => ThemeState) {
     autoSave: s.autoSave,
     showStatusBar: s.showStatusBar,
     sidebarWidth: s.sidebarWidth,
+    outlineWidth: s.outlineWidth,
     aiConfig: s.aiConfig,
     proxyUrl: s.proxyUrl,
   });
@@ -48,12 +49,16 @@ interface ThemeState {
   proxyUrl: string;
   showSettingsTab: boolean;
   settingsTabActive: boolean;
+  showOutline: boolean;
+  outlineWidth: number;
 
   setAppTheme: (theme: AppTheme) => void;
   setEditorTheme: (theme: EditorTheme) => void;
   toggleStatusBar: () => void;
   toggleAISidebar: () => void;
   setSidebarWidth: (w: number) => void;
+  toggleOutline: () => void;
+  setOutlineWidth: (w: number) => void;
   toggleAutoSave: () => void;
   setAIConfig: (config: AIConfig) => void;
   setProxyUrl: (v: string) => void;
@@ -74,6 +79,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   proxyUrl: "",
   showSettingsTab: false,
   settingsTabActive: false,
+  showOutline: false,
+  outlineWidth: 240,
 
   setAppTheme: (appTheme) => {
     set({ appTheme });
@@ -92,6 +99,14 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   toggleAISidebar: () =>
     set((state) => ({ showAISidebar: !state.showAISidebar })),
+
+  toggleOutline: () =>
+    set((state) => ({ showOutline: !state.showOutline })),
+
+  setOutlineWidth: (w) => {
+    set({ outlineWidth: Math.max(180, Math.min(360, w)) });
+    persistSettings(get);
+  },
 
   setSidebarWidth: (w) => {
     set({ sidebarWidth: w });

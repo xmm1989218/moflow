@@ -374,13 +374,20 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ### Mermaid 图表渲染
 
-- [ ] Milkdown 插件支持 Mermaid 语法
-- [ ] 实时预览流程图、时序图等
+- [x] Milkdown 插件支持 Mermaid 语法（基于 codeBlockConfig.renderPreview hook，复用 CodeMirror 编辑 + 预览切换）
+- [x] 实时预览流程图、时序图等（mermaid v11，懒加载 + 异步渲染 + 错误回退）
+- [x] 深色/浅色主题适配（根据 data-editor-theme 自动选择 mermaid theme）
+- [x] 导出 HTML 包含 Mermaid SVG 渲染结果
 
 ### 大纲侧栏
 
-- [ ] 基于标题层级的 TOC 树
-- [ ] 点击跳转到对应位置
+- [x] 基于标题层级的 TOC 树（`buildOutlineTree` 返回嵌套结构，递归渲染）
+- [x] 点击跳转到对应位置（ProseMirror `Selection.near` + `scrollIntoView`）
+- [x] 活跃标题高亮追踪（scroll 监听 + `coordsAtPos` 比对）
+- [x] 可折叠/展开子树
+- [x] 左侧面板布局（`[OutlineSidebar | Editor | AISidebar]` 三栏）
+- [x] 可拖拽调整宽度（180–360px，默认 240px）
+- [x] F7 快捷键切换 + TitleBar 大纲按钮
 
 ---
 

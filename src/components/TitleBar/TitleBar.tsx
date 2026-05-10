@@ -12,6 +12,8 @@ import { t } from "../../lib/i18n";
 export default function TitleBar() {
   const showAISidebar = useThemeStore((s) => s.showAISidebar);
   const toggleAISidebar = useThemeStore((s) => s.toggleAISidebar);
+  const showOutline = useThemeStore((s) => s.showOutline);
+  const toggleOutline = useThemeStore((s) => s.toggleOutline);
   const openSettingsTab = useThemeStore((s) => s.openSettingsTab);
   const [isMaximized, setIsMaximized] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -55,6 +57,20 @@ export default function TitleBar() {
           title={t("AI 助手 (F8)", "AI Assistant (F8)")}
         >
           <span className="moflow-titlebar-ai-label">AI</span>
+        </button>
+        <button
+          className={`moflow-titlebar-btn moflow-titlebar-outline-btn${showOutline ? " active" : ""}`}
+          onClick={toggleOutline}
+          title={t("大纲 (F7)", "Outline (F7)")}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="8" y1="6" x2="21" y2="6" />
+            <line x1="8" y1="12" x2="21" y2="12" />
+            <line x1="8" y1="18" x2="21" y2="18" />
+            <line x1="3" y1="6" x2="5" y2="6" />
+            <line x1="3" y1="12" x2="5" y2="12" />
+            <line x1="3" y1="18" x2="5" y2="18" />
+          </svg>
         </button>
       </div>
 

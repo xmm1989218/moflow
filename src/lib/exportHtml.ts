@@ -40,6 +40,9 @@ export function exportAsHtml(bodyHtml: string, themeName: EditorTheme): string {
     a { color: var(--moflow-accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
     img { max-width: 100%; border-radius: 8px; }
+    .moflow-mermaid-preview { display: flex; justify-content: center; padding: 16px; }
+    .moflow-mermaid-preview svg { max-width: 100%; height: auto; }
+    .moflow-mermaid-error { color: #d32f2f; font-size: 13px; padding: 8px 12px; }
   </style>
 </head>
 <body>

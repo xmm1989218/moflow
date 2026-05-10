@@ -66,6 +66,17 @@
   background-color: var(--ui-menu-hover);
 }
 
+.moflow-titlebar-outline-btn {
+  min-width: auto;
+  padding: 0 10px;
+  border-radius: 4px;
+}
+
+.moflow-titlebar-outline-btn.active {
+  color: var(--ui-accent);
+  background-color: var(--ui-menu-hover);
+}
+
 .moflow-titlebar-ai-label {
   line-height: 1;
 }
