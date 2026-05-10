@@ -370,7 +370,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.6.0 — 增强功能 II
+## v0.6.0 — 增强功能 II ✅
 
 ### Mermaid 图表渲染
 
@@ -382,8 +382,8 @@ Enable the AI to actively explore the document instead of relying on truncated c
 ### 大纲侧栏
 
 - [x] 基于标题层级的 TOC 树（`buildOutlineTree` 返回嵌套结构，递归渲染）
-- [x] 点击跳转到对应位置（ProseMirror `Selection.near` + `scrollIntoView`）
-- [x] 活跃标题高亮追踪（scroll 监听 + `coordsAtPos` 比对）
+- [x] 点击跳转到对应位置（`wrapper.scrollTo()` 手动滚动 + `coordsAtPos` 定位）
+- [x] 活跃标题高亮追踪（scroll 监听 + `coordsAtPos` 比对，监听 `.moflow-editor-wrapper` 滚动）
 - [x] 可折叠/展开子树
 - [x] 左侧面板布局（`[OutlineSidebar | Editor | AISidebar]` 三栏）
 - [x] 可拖拽调整宽度（180–360px，默认 240px）

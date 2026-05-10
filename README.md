@@ -25,7 +25,7 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 ## Features
 
 - **Distraction-free editing** — Frameless window with custom title bar, clean UI
-- **Rich Markdown** — GFM (tables, strikethrough, task lists), math (KaTeX), code highlighting (Prism), highlight (`==text==`)
+- **Rich Markdown** — GFM (tables, strikethrough, task lists), math (KaTeX), Mermaid diagrams, code highlighting (Prism), highlight (`==text==`)
   See [Markdown syntax support](./tests/markdown-support.md) for full details
 - **Multi-tab** — Open and switch between multiple files with instant tab switching, auto-save, and preserved scroll/cursor/undo per tab
 - **Dual theme** — Light and dark themes with smooth switching
@@ -37,6 +37,8 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **Settings Tab** — Unified settings panel with appearance, AI config, proxy, and about sections
 - **Proxy Support** — HTTP/HTTPS/SOCKS5 proxy for AI requests and web content fetching
 - **Find & Replace** — Regex support, case-sensitive search, replace all
+- **Outline Sidebar** — Document heading tree with click-to-navigate and active heading tracking
+- **Mermaid Diagrams** — Inline SVG rendering for flowcharts, sequence diagrams, class diagrams, etc.
 - **Auto Update** — Silent check on startup, background download, non-intrusive notification with one-click install & restart
 - **Status bar** — Word count, cursor position, file info at a glance
 

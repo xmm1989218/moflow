@@ -1,5 +1,33 @@
 # Changelog
 
+## v0.6.0 (2026-05-10)
+
+### New Features
+
+- **Outline Sidebar** — Left-side panel showing document heading tree
+  - Recursive tree rendering with collapsible/expandable children
+  - Click heading to scroll to position in editor
+  - Active heading tracking — highlights current heading based on scroll position
+  - Resizable width (180–360px, default 240px) with drag handle
+  - F7 keyboard shortcut + TitleBar toggle button
+  - Empty state when no headings found
+
+- **Mermaid Diagram Rendering** — Inline rendering of Mermaid diagrams in code blocks
+  - Flowcharts, sequence diagrams, class diagrams, Gantt charts, pie charts, state diagrams, etc.
+  - Renders as SVG preview below code editor (using `codeBlockConfig.renderPreview` hook, same pattern as LaTeX)
+  - Lazy-loaded mermaid v11 with async rendering and error fallback
+  - Dark/light theme auto-detection based on editor theme
+  - HTML export includes Mermaid SVG
+
+### Bug Fixes
+
+- Fixed closing active tab not loading content for the new active tab — `closeTab` now triggers `loadTabContent` and `loadChatHistory` for the replacement tab
+- Fixed block handle (add/drag button) overlapping with Outline sidebar — repositioned handle inside ProseMirror left padding area, right-aligned next to content
+- Fixed block handle appearing above TitleBar for blocks scrolled out of editor viewport — Floating UI middleware `clampToEditor` hides handle when outside visible area
+- Fixed outline jump not working — scroll container corrected from `.milkdown` to `.moflow-editor-wrapper`, manual `wrapper.scrollTo()` replaces ProseMirror `scrollIntoView()`
+- Fixed outline heading match failure — fuzzy matching with `startsWith` for headings containing inline marks
+- Fixed test-markdown-spec.md rendering broken from section 2.6 onward — `~~~tilde fence also works~~~` parsed as unclosed tilde fence, reformatted to proper fenced code block
+
 ## v0.5.0 (2026-05-10)
 
 ### New Features
