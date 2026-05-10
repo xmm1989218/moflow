@@ -4,7 +4,6 @@ import { useThemeStore } from "../../stores/themeStore";
 import { useSearchStore } from "../../stores/searchStore";
 import { buildOutlineTree, type OutlineItem } from "../../lib/outlineTree";
 import { t } from "../../lib/i18n";
-import "./OutlineSidebar.css";
 
 function OutlineNode({
   item,
@@ -24,15 +23,15 @@ function OutlineNode({
   const isActive = activeId === item.id;
 
   return (
-    <li className="moflow-outline-item">
+    <li className="m-0 p-0 list-none">
       <div
-        className={`moflow-outline-row ${isActive ? "moflow-outline-active" : ""}`}
+        className={`flex items-center h-7 pr-2 cursor-pointer text-[13px] transition-[background-color,color] duration-100 gap-0.5 relative ${isActive ? "text-moflow-accent font-medium before:content-[''] before:absolute before:left-0 before:top-0.5 before:bottom-0.5 before:w-0.5 before:bg-moflow-accent before:rounded-sm" : "text-moflow-text-secondary hover:bg-moflow-bg-secondary hover:text-moflow-text"}`}
         style={{ paddingLeft: 8 + (item.level - 1) * 16 }}
         onClick={() => onJump(item)}
       >
         {hasChildren ? (
           <button
-            className="moflow-outline-toggle"
+            className="inline-flex items-center justify-center w-4 h-4 p-0 border-none bg-none text-moflow-text-secondary cursor-pointer shrink-0 rounded-sm hover:text-moflow-text hover:bg-moflow-bg-secondary"
             onClick={(e) => {
               e.stopPropagation();
               onToggle(item.id);
@@ -51,14 +50,14 @@ function OutlineNode({
             </svg>
           </button>
         ) : (
-          <span className="moflow-outline-toggle moflow-outline-toggle-placeholder" />
+          <span className="inline-flex items-center justify-center w-4 h-4 p-0 shrink-0 cursor-default" />
         )}
-        <span className="moflow-outline-text" title={item.text}>
+        <span className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0 leading-7" title={item.text}>
           {item.text}
         </span>
       </div>
       {hasChildren && isExpanded && (
-        <ul className="moflow-outline-children">
+        <ul className="list-none m-0 p-0">
           {item.children.map((child) => (
             <OutlineNode
               key={child.id}
@@ -204,16 +203,16 @@ export default function OutlineSidebar() {
   );
 
   return (
-    <div className="moflow-outline-sidebar" style={{ width: outlineWidth, minWidth: outlineWidth }}>
-      <div className="moflow-outline-resize-handle" onMouseDown={handleResizeStart} />
-      <div className="moflow-outline-header">
-        <span className="moflow-outline-header-title">{t("大纲", "Outline")}</span>
+    <div className="flex flex-col border-r border-moflow-border bg-moflow-bg relative animate-outline-slide shrink-0" style={{ width: outlineWidth, minWidth: outlineWidth }}>
+      <div className="absolute -right-0.5 top-0 w-1 h-full cursor-col-resize z-10 transition-[background-color] duration-150 hover:bg-moflow-accent/40" onMouseDown={handleResizeStart} />
+      <div className="h-9 flex items-center px-3 border-b border-moflow-border bg-moflow-bg-secondary shrink-0">
+        <span className="text-[13px] font-semibold text-moflow-text">{t("大纲", "Outline")}</span>
       </div>
-      <div className="moflow-outline-body">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden py-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm [&::-webkit-scrollbar-thumb]:bg-moflow-scrollbar-thumb [&::-webkit-scrollbar-track]:bg-moflow-scrollbar-track">
         {flatList.length === 0 ? (
-          <div className="moflow-outline-empty">{t("无标题", "No headings")}</div>
+          <div className="flex items-center justify-center h-full text-moflow-text-secondary text-[13px] opacity-60 p-5 text-center">{t("无标题", "No headings")}</div>
         ) : (
-          <ul className="moflow-outline-root">
+          <ul className="list-none m-0 p-0">
             {tree.map((item) => (
               <OutlineNode
                 key={item.id}

@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.6.5 (2026-05-11)
+
+### Improvements
+
+- **CSS → Tailwind migration** — Migrated 11 component CSS files to Tailwind utility classes, reducing CSS from ~3751 lines (14 files) to ~1858 lines (4 files, -51%)
+  - Added `@theme` block in `index.css` mapping 71 CSS custom properties to Tailwind namespace (`bg-ui-bg`, `text-moflow-text`, etc.)
+  - Deleted 11 CSS files: ConfirmCloseDialog, TitleBar, HamburgerMenu, UpdateDialog, TabBar, SearchBar, OutlineSidebar, StatusBar, SlashCommandMenu, SelectionAIPanel, SettingsPanel
+  - Trimmed AISidebar.css from 1037 → 591 lines (removed config modal dead code, duplicate rules, ctx variable definitions)
+  - Consolidated 15 `@keyframes` + 4 `shadow-*` tokens into `index.css` `@theme` registration
+  - Global cleanup: removed duplicate Preflight reset, moved `--moflow-ctx-*` to `index.css`, added `--ui-font-body` definition
+  - Retained `Editor.css` (ProseMirror/Crepe/CodeMirror DOM overrides) and `MessageContent.css` (Markdown element selectors) — these cannot be replaced by Tailwind
+
+### Bug Fixes
+
+- Fixed ContextView infinite re-render — `?? []` in selector created new array reference every call; replaced with module-level `EMPTY_MESSAGES` constant
+
 ## v0.6.0 (2026-05-10)
 
 ### New Features

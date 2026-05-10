@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from "re
 import { useThemeStore } from "../../stores/themeStore";
 import { getProviderModels } from "../../lib/modelInfo";
 import { t, isZh } from "../../lib/i18n";
-import "./SlashCommandMenu.css";
 
 const COMMANDS = [
   { id: "new", label: "/new", descZh: "清空对话", descEn: "Clear chat" },
@@ -165,14 +164,14 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
     }
 
     return (
-      <div ref={menuRef} className="moflow-slash-menu" style={menuStyle}>
+      <div ref={menuRef} className="w-[280px] max-h-60 bg-moflow-bg border border-moflow-border rounded-lg overflow-y-auto animate-search-appear" style={{ ...menuStyle, boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)" }}>
         {phase === "commands" && filteredCommands.map((c) => {
           const idx = items.findIndex((i) => i.id === c.id);
           const disabled = c.id === "models" && !hasModels;
           return (
             <div
               key={c.id}
-              className={`moflow-slash-item${idx === highlightIndex ? " highlight" : ""}${disabled ? " disabled" : ""}`}
+              className={`flex items-center justify-between py-[7px] px-2.5 cursor-pointer transition-[background-color] duration-100 gap-2 ${idx === highlightIndex && !disabled ? "bg-moflow-bg-secondary" : ""} ${disabled ? "opacity-40 cursor-default" : ""}`}
               onMouseEnter={() => { if (!disabled) setHighlightIndex(idx); }}
               onClick={() => {
                 if (disabled) return;
@@ -183,17 +182,17 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
                 }
               }}
             >
-              <span className="moflow-slash-item-label">{c.label}</span>
-              <span className="moflow-slash-item-desc">{isZh ? c.descZh : c.descEn}</span>
+              <span className="text-[13px] font-medium text-moflow-text whitespace-nowrap">{c.label}</span>
+              <span className="text-[11px] text-moflow-text-secondary whitespace-nowrap">{isZh ? c.descZh : c.descEn}</span>
             </div>
           );
         })}
         {phase === "models" && (
           <>
-            <div className="moflow-slash-menu-header">
+            <div className="flex items-center justify-between py-1.5 px-2.5 text-[11px] font-semibold text-moflow-text-secondary border-b border-moflow-border sticky top-0 bg-moflow-bg z-1">
               <span>{t("选择模型", "Select Model")}</span>
               <button
-                className="moflow-slash-back-btn"
+                className="flex items-center justify-center w-5 h-5 rounded border-none bg-transparent text-moflow-text-secondary cursor-pointer hover:bg-moflow-bg-secondary hover:text-moflow-text"
                 onClick={() => setPhase("commands")}
                 type="button"
               >
@@ -206,13 +205,13 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
             {models.map((m, idx) => (
               <div
                 key={m.id}
-                className={`moflow-slash-item${idx === highlightIndex ? " highlight" : ""}${m.id === config.model ? " current" : ""}`}
+                className={`flex items-center justify-between py-[7px] px-2.5 cursor-pointer transition-[background-color] duration-100 gap-2 ${idx === highlightIndex ? "bg-moflow-bg-secondary" : ""} ${m.id === config.model ? "pl-[7px] border-l-[3px] border-moflow-accent" : ""}`}
                 onMouseEnter={() => setHighlightIndex(idx)}
                 onClick={() => onSelectModel(m.id)}
               >
-                <span className="moflow-slash-item-label">{m.id}</span>
+                <span className="text-[13px] font-medium text-moflow-text whitespace-nowrap">{m.id}</span>
                 {m.id === config.model && (
-                  <span className="moflow-slash-item-check">
+                  <span className="flex items-center text-moflow-accent shrink-0">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>

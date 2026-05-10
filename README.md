@@ -41,6 +41,7 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **Mermaid Diagrams** — Inline SVG rendering for flowcharts, sequence diagrams, class diagrams, etc.
 - **Auto Update** — Silent check on startup, background download, non-intrusive notification with one-click install & restart
 - **Status bar** — Word count, cursor position, file info at a glance
+- **Tailwind-first styling** — Component styles use Tailwind CSS utility classes with CSS custom properties for theming; only editor DOM overrides remain in CSS files
 
 ## Contributing
 

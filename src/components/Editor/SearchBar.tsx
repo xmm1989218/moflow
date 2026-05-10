@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useSearchStore } from "../../stores/searchStore";
 import { t } from "../../lib/i18n";
-import "./SearchBar.css";
 
 export default function SearchBar() {
   const visible = useSearchStore((s) => s.visible);
@@ -80,11 +79,11 @@ export default function SearchBar() {
   const hasInvalidRegex = regexp && query && matchCount === 0;
 
   return (
-    <div className="moflow-search-bar">
-      <div className="moflow-search-row">
+    <div className="absolute top-2 right-3 z-40 flex flex-col gap-1 bg-moflow-bg border border-moflow-border rounded-lg shadow-search p-1.5 animate-search-appear">
+      <div className="flex items-center gap-[3px]">
         <input
           ref={searchInputRef}
-          className={`moflow-search-input${hasInvalidRegex ? " moflow-search-input-invalid" : ""}`}
+          className={`w-[200px] py-1 px-2 border rounded text-[13px] font-inherit bg-moflow-bg text-moflow-text outline-none focus:border-moflow-accent placeholder:text-moflow-text-secondary${hasInvalidRegex ? " border-[#ef4444]" : " border-moflow-border"}`}
           type="text"
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
@@ -92,9 +91,9 @@ export default function SearchBar() {
           placeholder={t("搜索...", "Find...")}
           spellCheck={false}
         />
-        <span className="moflow-search-match-count">{matchLabel}</span>
+        <span className="min-w-[48px] text-center text-[11px] text-moflow-text-secondary whitespace-nowrap shrink-0">{matchLabel}</span>
         <button
-          className="moflow-search-btn"
+          className="flex items-center justify-center min-w-6 h-6 px-1 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text disabled:opacity-35 disabled:cursor-not-allowed"
           onClick={findPrev}
           title={t("上一个 (Shift+Enter)", "Previous (Shift+Enter)")}
           disabled={matchCount <= 0}
@@ -104,7 +103,7 @@ export default function SearchBar() {
           </svg>
         </button>
         <button
-          className="moflow-search-btn"
+          className="flex items-center justify-center min-w-6 h-6 px-1 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text disabled:opacity-35 disabled:cursor-not-allowed"
           onClick={findNext}
           title={t("下一个 (Enter)", "Next (Enter)")}
           disabled={matchCount <= 0}
@@ -114,21 +113,21 @@ export default function SearchBar() {
           </svg>
         </button>
         <button
-          className={`moflow-search-btn${caseSensitive ? " moflow-search-btn-active" : ""}`}
+          className={`flex items-center justify-center min-w-6 h-6 px-1 border-none rounded cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 ${caseSensitive ? "bg-moflow-accent text-white hover:not-disabled:opacity-85" : "bg-transparent text-moflow-text-secondary hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text"}`}
           onClick={toggleCaseSensitive}
           title={t("区分大小写", "Match Case")}
         >
           Aa
         </button>
         <button
-          className={`moflow-search-btn${regexp ? " moflow-search-btn-active" : ""}`}
+          className={`flex items-center justify-center min-w-6 h-6 px-1 border-none rounded cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 ${regexp ? "bg-moflow-accent text-white hover:not-disabled:opacity-85" : "bg-transparent text-moflow-text-secondary hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text"}`}
           onClick={toggleRegexp}
           title={t("正则表达式", "Use Regular Expression")}
         >
           .*
         </button>
         <button
-          className="moflow-search-btn moflow-search-close-btn"
+          className="flex items-center justify-center min-w-6 h-6 px-1 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 hover:bg-moflow-bg-secondary hover:text-moflow-text ml-0.5"
           onClick={closeSearch}
           title={t("关闭 (Escape)", "Close (Escape)")}
         >
@@ -139,9 +138,9 @@ export default function SearchBar() {
         </button>
       </div>
       {showReplace && (
-        <div className="moflow-search-row">
+        <div className="flex items-center gap-[3px]">
           <input
-            className="moflow-search-input"
+            className="w-[200px] py-1 px-2 border border-moflow-border rounded text-[13px] font-inherit bg-moflow-bg text-moflow-text outline-none focus:border-moflow-accent placeholder:text-moflow-text-secondary"
             type="text"
             value={replaceText}
             onChange={(e) => setReplaceText(e.target.value)}
@@ -149,9 +148,9 @@ export default function SearchBar() {
             placeholder={t("替换...", "Replace...")}
             spellCheck={false}
           />
-          <span className="moflow-search-match-count" />
+          <span className="min-w-[48px]" />
           <button
-            className="moflow-search-btn moflow-search-replace-btn"
+            className="flex items-center justify-center h-6 px-1.5 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-medium font-inherit shrink-0 transition-[background-color,color] duration-100 hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text disabled:opacity-35 disabled:cursor-not-allowed"
             onClick={replaceCurrentMatch}
             disabled={matchCount <= 0}
             title={t("替换当前", "Replace Current")}
@@ -159,7 +158,7 @@ export default function SearchBar() {
             {t("替换", "Replace")}
           </button>
           <button
-            className="moflow-search-btn moflow-search-replace-btn"
+            className="flex items-center justify-center h-6 px-1.5 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-medium font-inherit shrink-0 transition-[background-color,color] duration-100 hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text disabled:opacity-35 disabled:cursor-not-allowed"
             onClick={replaceAllMatches}
             disabled={matchCount <= 0}
             title={t("全部替换", "Replace All")}

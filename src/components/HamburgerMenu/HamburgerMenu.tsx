@@ -6,7 +6,6 @@ import { openFile, saveFile, saveFileAs, exportHtml, exportPdf } from "../../lib
 import { t } from "../../lib/i18n";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import "./HamburgerMenu.css";
 
 const appWindow = getCurrentWindow();
 
@@ -119,24 +118,24 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="moflow-hamburger-menu" ref={ref}>
+    <div className="absolute top-9 left-1 min-w-[220px] bg-ui-menu-bg border border-ui-border rounded-lg shadow-menu p-1 z-[1000] animate-menu-fadein" ref={ref}>
       {menuItems.map((entry, i) =>
         isSeparator(entry) ? (
-          <div key={`sep-${i}`} className="moflow-menu-separator" />
+          <div key={`sep-${i}`} className="h-px bg-ui-border mx-2 my-1" />
         ) : entry.submenu ? (
           <SubmenuItem key={entry.id} item={entry} onAction={handleAction} />
         ) : (
           <button
             key={entry.id}
-            className={`moflow-menu-item${entry.checked ? " checked" : ""}`}
+            className={`flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left gap-2 whitespace-nowrap hover:bg-ui-menu-hover${entry.checked ? " font-semibold" : ""}`}
             onClick={() => handleAction(entry.id)}
           >
-            <span className="moflow-menu-item-check">
+            <span className="w-4 shrink-0 text-center text-xs text-ui-accent">
               {entry.checked ? "✓" : ""}
             </span>
-            <span className="moflow-menu-item-label">{entry.label}</span>
+            <span className="flex-1">{entry.label}</span>
             {entry.shortcut && (
-              <span className="moflow-menu-item-shortcut">{entry.shortcut}</span>
+              <span className="text-[11px] text-ui-text-secondary ml-6">{entry.shortcut}</span>
             )}
           </button>
         ),
@@ -150,36 +149,36 @@ function SubmenuItem({ item: menuItem, onAction }: { item: MenuItem; onAction: (
 
   return (
     <div
-      className="moflow-menu-submenu-wrapper"
+      className="relative"
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
     >
-      <button className={`moflow-menu-item${menuItem.checked ? " checked" : ""}`}>
-        <span className="moflow-menu-item-check">
+      <button className={`flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left gap-2 whitespace-nowrap hover:bg-ui-menu-hover${menuItem.checked ? " font-semibold" : ""}`}>
+        <span className="w-4 shrink-0 text-center text-xs text-ui-accent">
           {menuItem.checked ? "✓" : ""}
         </span>
-        <span className="moflow-menu-item-label">{menuItem.label}</span>
-        <span className="moflow-menu-item-arrow">›</span>
+        <span className="flex-1">{menuItem.label}</span>
+        <span className="text-sm text-ui-text-secondary ml-2">›</span>
       </button>
       {open && menuItem.submenu && (
-        <div className="moflow-menu-submenu">
+        <div className="absolute left-full top-0 min-w-[200px] bg-ui-menu-bg border border-ui-border rounded-lg shadow-menu p-1 z-[1001] animate-menu-fadein">
           {menuItem.submenu.map((entry, i) =>
             isSeparator(entry) ? (
-              <div key={`sep-${i}`} className="moflow-menu-separator" />
+              <div key={`sep-${i}`} className="h-px bg-ui-border mx-2 my-1" />
             ) : entry.submenu ? (
               <SubmenuItem key={entry.id} item={entry} onAction={onAction} />
             ) : (
               <button
                 key={entry.id}
-                className={`moflow-menu-item${entry.checked ? " checked" : ""}`}
+                className={`flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left gap-2 whitespace-nowrap hover:bg-ui-menu-hover${entry.checked ? " font-semibold" : ""}`}
                 onClick={() => {
                   onAction(entry.id);
                 }}
               >
-                <span className="moflow-menu-item-check">
+                <span className="w-4 shrink-0 text-center text-xs text-ui-accent">
                   {entry.checked ? "✓" : ""}
                 </span>
-                <span className="moflow-menu-item-label">{entry.label}</span>
+                <span className="flex-1">{entry.label}</span>
               </button>
             ),
           )}

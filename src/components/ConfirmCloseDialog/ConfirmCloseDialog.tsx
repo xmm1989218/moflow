@@ -1,7 +1,8 @@
 import { useAppStore, type CloseDialogResult } from "../../stores/appStore";
 import { resolveDialog, resolveAlert } from "../../lib/closeDialog";
 import { t } from "../../lib/i18n";
-import "./ConfirmCloseDialog.css";
+
+const btnBase = "px-4 py-1.5 rounded-md text-[13px] font-medium cursor-pointer border transition-[background,border-color] duration-150";
 
 export default function ConfirmCloseDialog() {
   const closeDialog = useAppStore((s) => s.closeDialog);
@@ -40,26 +41,26 @@ export default function ConfirmCloseDialog() {
   };
 
   return (
-    <div className="moflow-dialog-overlay" onClick={handleOverlayClick} onKeyDown={handleKeyDown}>
-      <div className="moflow-dialog">
-        <div className="moflow-dialog-message">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/40" onClick={handleOverlayClick} onKeyDown={handleKeyDown}>
+      <div className="bg-ui-bg border border-ui-border rounded-xl p-6 min-w-[320px] max-w-[420px] shadow-dialog animate-dialog-in">
+        <div className="text-sm leading-relaxed text-ui-text mb-5">
           {closeDialog.message}
         </div>
-        <div className="moflow-dialog-buttons">
+        <div className="flex justify-end gap-2">
           {closeDialog.mode === "confirm-close" ? (
             <>
-              <button className="moflow-dialog-btn moflow-dialog-btn-secondary" onClick={() => handleResult("discard")}>
+              <button className={`${btnBase} border-ui-border bg-transparent text-ui-text-secondary hover:bg-ui-bg-secondary`} onClick={() => handleResult("discard")}>
                 {t("不保存", "Discard")}
               </button>
-              <button className="moflow-dialog-btn moflow-dialog-btn-tertiary" onClick={() => handleResult("cancel")}>
+              <button className={`${btnBase} border-transparent bg-transparent text-ui-text-secondary hover:bg-ui-bg-secondary`} onClick={() => handleResult("cancel")}>
                 {t("取消", "Cancel")}
               </button>
-              <button className="moflow-dialog-btn moflow-dialog-btn-primary" onClick={() => handleResult("save")}>
+              <button className={`${btnBase} border-ui-accent bg-ui-accent text-white hover:opacity-90`} onClick={() => handleResult("save")}>
                 {t("保存", "Save")}
               </button>
             </>
           ) : (
-            <button className="moflow-dialog-btn moflow-dialog-btn-primary" onClick={handleAlertOk}>
+            <button className={`${btnBase} border-ui-accent bg-ui-accent text-white hover:opacity-90`} onClick={handleAlertOk}>
               {t("确认", "OK")}
             </button>
           )}

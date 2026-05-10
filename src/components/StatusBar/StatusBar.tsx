@@ -31,32 +31,11 @@ export default function StatusBar() {
   if (!showStatusBar) return null;
 
   return (
-    <div
-      className="h-6 shrink-0 border-t flex items-center text-xs justify-between"
-      style={{
-        backgroundColor: "var(--ui-bg-secondary)",
-        borderColor: "var(--ui-border)",
-        color: "var(--ui-text-secondary)",
-        paddingLeft: 16,
-        paddingRight: 16,
-      }}
-    >
+    <div className="h-6 shrink-0 border-t border-ui-border flex items-center text-xs justify-between bg-ui-bg-secondary text-ui-text-secondary px-4">
       <div className="flex items-center gap-3">
         <button
           onClick={() => setMode(mode === "wysiwyg" ? "source" : "wysiwyg")}
-          style={{
-            background: "none",
-            border: "1px solid var(--ui-border)",
-            borderRadius: 4,
-            color: "var(--ui-text-secondary)",
-            padding: "0 5px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            height: 18,
-            lineHeight: 1,
-          }}
+          className="bg-none border border-ui-border rounded text-ui-text-secondary px-[5px] cursor-pointer flex items-center justify-center h-[18px] leading-none"
           title={mode === "wysiwyg" ? "Switch to Source Mode" : "Switch to WYSIWYG Mode"}
         >
           {mode === "wysiwyg" ? <CodeIcon /> : <EyeIcon />}

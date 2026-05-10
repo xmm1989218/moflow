@@ -4,7 +4,6 @@ import { useThemeStore } from "../../stores/themeStore";
 import TabBar from "../TabBar/TabBar";
 
 const HamburgerMenu = lazy(() => import("../HamburgerMenu/HamburgerMenu"));
-import "./TitleBar.css";
 
 const appWindow = getCurrentWindow();
 import { t } from "../../lib/i18n";
@@ -37,10 +36,10 @@ export default function TitleBar() {
   };
 
   return (
-    <div className="moflow-titlebar">
-      <div className="moflow-titlebar-left">
+    <div className="h-10 flex items-center bg-ui-titlebar-bg text-ui-titlebar-text border-b border-ui-border select-none shrink-0">
+      <div className="flex items-center gap-0.5 pl-1 relative z-[100]">
         <button
-          className="moflow-titlebar-btn moflow-titlebar-menu-btn"
+          className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-10 px-2 transition-[background-color] duration-150"
           onClick={() => setMenuOpen((v) => !v)}
           title="Menu"
         >
@@ -52,14 +51,14 @@ export default function TitleBar() {
         </button>
         {menuOpen && <Suspense fallback={null}><HamburgerMenu onClose={() => setMenuOpen(false)} /></Suspense>}
         <button
-          className={`moflow-titlebar-btn moflow-titlebar-ai-btn${showAISidebar ? " active" : ""}`}
+          className={`flex items-center justify-center border-none bg-none cursor-pointer h-10 px-2.5 rounded transition-[background-color] duration-150 gap-1 text-[11px] font-bold tracking-wide leading-none ${showAISidebar ? "text-ui-accent bg-ui-menu-hover" : "text-ui-titlebar-text hover:bg-ui-hover"}`}
           onClick={toggleAISidebar}
           title={t("AI 助手 (F8)", "AI Assistant (F8)")}
         >
-          <span className="moflow-titlebar-ai-label">AI</span>
+          <span>AI</span>
         </button>
         <button
-          className={`moflow-titlebar-btn moflow-titlebar-outline-btn${showOutline ? " active" : ""}`}
+          className={`flex items-center justify-center border-none bg-none cursor-pointer h-10 px-2.5 rounded transition-[background-color] duration-150 ${showOutline ? "text-ui-accent bg-ui-menu-hover" : "text-ui-titlebar-text hover:bg-ui-hover"}`}
           onClick={toggleOutline}
           title={t("大纲 (F7)", "Outline (F7)")}
         >
@@ -75,15 +74,15 @@ export default function TitleBar() {
       </div>
 
       <div
-        className="moflow-titlebar-center"
+        className="flex-1 min-w-0 h-full flex items-center"
         onDoubleClick={handleDoubleClick}
       >
         <TabBar />
       </div>
 
-      <div className="moflow-titlebar-right">
+      <div className="flex items-center h-full">
         <button
-          className="moflow-titlebar-btn moflow-titlebar-settings-btn"
+          className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-10 px-2 transition-[background-color] duration-150 hover:bg-ui-hover px-2.5"
           onClick={openSettingsTab}
           title={t("设置", "Settings")}
         >
@@ -93,7 +92,7 @@ export default function TitleBar() {
           </svg>
         </button>
         <button
-          className="moflow-titlebar-btn moflow-titlebar-control"
+          className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-[46px] px-0 transition-[background-color] duration-150 hover:bg-ui-hover"
           onClick={() => appWindow.minimize()}
           title="Minimize"
         >
@@ -102,7 +101,7 @@ export default function TitleBar() {
           </svg>
         </button>
         <button
-          className="moflow-titlebar-btn moflow-titlebar-control"
+          className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-[46px] px-0 transition-[background-color] duration-150 hover:bg-ui-hover"
           onClick={handleToggleMaximize}
           title={isMaximized ? "Restore" : "Maximize"}
         >
@@ -118,7 +117,7 @@ export default function TitleBar() {
           )}
         </button>
         <button
-          className="moflow-titlebar-btn moflow-titlebar-control moflow-titlebar-close"
+          className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-[46px] px-0 transition-[background-color] duration-150 hover:bg-[#e81123]! hover:text-white!"
           onClick={() => appWindow.close()}
           title="Close"
         >

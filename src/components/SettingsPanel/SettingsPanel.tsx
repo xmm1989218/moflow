@@ -7,7 +7,6 @@ import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import type { AIConfig } from "../../lib/settings";
 import { t, isZh } from "../../lib/i18n";
-import "./SettingsPanel.css";
 
 type Section = "appearance" | "ai" | "proxy" | "about";
 
@@ -52,26 +51,26 @@ function AppearanceSection() {
   const toggleStatusBar = useThemeStore((s) => s.toggleStatusBar);
 
   return (
-    <div className="moflow-settings-section">
-      <h3 className="moflow-settings-section-title">{t("外观", "Appearance")}</h3>
+    <div className="max-w-[720px] w-full">
+      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">{t("外观", "Appearance")}</h3>
 
-      <div className="moflow-settings-field">
-        <label className="moflow-settings-label">{t("应用主题", "App Theme")}</label>
-        <div className="moflow-settings-mode-switch">
+      <div className="flex flex-col mb-5">
+        <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("应用主题", "App Theme")}</label>
+        <div className="flex border border-ui-border rounded overflow-hidden max-w-[460px]">
           <button
-            className={`moflow-settings-mode-btn${appTheme === "system" ? " active" : ""}`}
+            className={`flex-1 py-1.5 px-3 text-[13px] font-inherit border-none bg-ui-bg text-ui-text-secondary cursor-pointer transition-all duration-150 not-last:border-r not-last:border-ui-border${appTheme === "system" ? " bg-ui-bg-secondary text-ui-text font-semibold" : " hover:bg-ui-bg-secondary"}`}
             onClick={() => setAppTheme("system")}
           >
             {t("跟随系统", "System")}
           </button>
           <button
-            className={`moflow-settings-mode-btn${appTheme === "light" ? " active" : ""}`}
+            className={`flex-1 py-1.5 px-3 text-[13px] font-inherit border-none bg-ui-bg text-ui-text-secondary cursor-pointer transition-all duration-150 not-last:border-r not-last:border-ui-border${appTheme === "light" ? " bg-ui-bg-secondary text-ui-text font-semibold" : " hover:bg-ui-bg-secondary"}`}
             onClick={() => setAppTheme("light")}
           >
             {t("浅色", "Light")}
           </button>
           <button
-            className={`moflow-settings-mode-btn${appTheme === "dark" ? " active" : ""}`}
+            className={`flex-1 py-1.5 px-3 text-[13px] font-inherit border-none bg-ui-bg text-ui-text-secondary cursor-pointer transition-all duration-150${appTheme === "dark" ? " bg-ui-bg-secondary text-ui-text font-semibold" : " hover:bg-ui-bg-secondary"}`}
             onClick={() => setAppTheme("dark")}
           >
             {t("深色", "Dark")}
@@ -79,10 +78,10 @@ function AppearanceSection() {
         </div>
       </div>
 
-      <div className="moflow-settings-field">
-        <label className="moflow-settings-label">{t("编辑器主题", "Editor Theme")}</label>
+      <div className="flex flex-col mb-5">
+        <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("编辑器主题", "Editor Theme")}</label>
         <select
-          className="moflow-settings-select"
+          className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none cursor-pointer focus:border-ui-accent"
           value={editorTheme}
           onChange={(e) => setEditorTheme(e.target.value as EditorTheme)}
         >
@@ -92,23 +91,23 @@ function AppearanceSection() {
         </select>
       </div>
 
-      <div className="moflow-settings-field moflow-settings-toggle-field">
-        <label className="moflow-settings-label">{t("自动保存", "Auto Save")}</label>
+      <div className="flex flex-row items-center justify-between mb-5">
+        <label className="block text-[13px] font-medium text-ui-text-secondary mb-0">{t("自动保存", "Auto Save")}</label>
         <button
-          className={`moflow-settings-toggle${autoSave ? " active" : ""}`}
+          className={`w-9 h-5 rounded-full border border-ui-border bg-ui-input-bg cursor-pointer relative transition-[background-color,border-color] duration-200 shrink-0${autoSave ? " bg-ui-accent border-ui-accent" : ""}`}
           onClick={toggleAutoSave}
         >
-          <span className="moflow-settings-toggle-thumb" />
+          <span className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200${autoSave ? " translate-x-4" : ""}`} />
         </button>
       </div>
 
-      <div className="moflow-settings-field moflow-settings-toggle-field">
-        <label className="moflow-settings-label">{t("显示状态栏", "Show Status Bar")}</label>
+      <div className="flex flex-row items-center justify-between mb-5">
+        <label className="block text-[13px] font-medium text-ui-text-secondary mb-0">{t("显示状态栏", "Show Status Bar")}</label>
         <button
-          className={`moflow-settings-toggle${showStatusBar ? " active" : ""}`}
+          className={`w-9 h-5 rounded-full border border-ui-border bg-ui-input-bg cursor-pointer relative transition-[background-color,border-color] duration-200 shrink-0${showStatusBar ? " bg-ui-accent border-ui-accent" : ""}`}
           onClick={toggleStatusBar}
         >
-          <span className="moflow-settings-toggle-thumb" />
+          <span className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200${showStatusBar ? " translate-x-4" : ""}`} />
         </button>
       </div>
     </div>
@@ -196,20 +195,20 @@ function AISection() {
   };
 
   return (
-    <div className="moflow-settings-section">
-      <h3 className="moflow-settings-section-title">AI</h3>
+    <div className="max-w-[720px] w-full">
+      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">AI</h3>
 
-      <div className="moflow-settings-field">
-        <label className="moflow-settings-label">{t("模式", "Mode")}</label>
-        <div className="moflow-settings-mode-switch">
+      <div className="flex flex-col mb-5">
+        <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("模式", "Mode")}</label>
+        <div className="flex border border-ui-border rounded overflow-hidden max-w-[460px]">
           <button
-            className={`moflow-settings-mode-btn${draft.mode === "mock" ? " active" : ""}`}
+            className={`flex-1 py-1.5 px-3 text-[13px] font-inherit border-none bg-ui-bg text-ui-text-secondary cursor-pointer transition-all duration-150 not-last:border-r not-last:border-ui-border${draft.mode === "mock" ? " bg-ui-bg-secondary text-ui-text font-semibold" : " hover:bg-ui-bg-secondary"}`}
             onClick={() => handleModeChange("mock")}
           >
             Mock
           </button>
           <button
-            className={`moflow-settings-mode-btn${draft.mode === "real" ? " active" : ""}`}
+            className={`flex-1 py-1.5 px-3 text-[13px] font-inherit border-none bg-ui-bg text-ui-text-secondary cursor-pointer transition-all duration-150${draft.mode === "real" ? " bg-ui-bg-secondary text-ui-text font-semibold" : " hover:bg-ui-bg-secondary"}`}
             onClick={() => handleModeChange("real")}
           >
             {t("真实 API", "Real API")}
@@ -219,10 +218,10 @@ function AISection() {
 
       {draft.mode === "real" && (
         <>
-          <div className="moflow-settings-field">
-            <label className="moflow-settings-label">{t("服务商", "Provider")}</label>
+          <div className="flex flex-col mb-5">
+            <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("服务商", "Provider")}</label>
             <select
-              className="moflow-settings-select"
+              className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none cursor-pointer focus:border-ui-accent"
               value={draft.providerId}
               onChange={(e) => handleProviderChange(e.target.value)}
             >
@@ -234,10 +233,10 @@ function AISection() {
             </select>
           </div>
 
-          <div className="moflow-settings-field">
-            <label className="moflow-settings-label">API Endpoint</label>
+          <div className="flex flex-col mb-5">
+            <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">API Endpoint</label>
             <input
-              className="moflow-settings-input"
+              className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary"
               type="text"
               value={draft.apiEndpoint}
               onChange={(e) => handleFieldChange("apiEndpoint", e.target.value)}
@@ -245,18 +244,18 @@ function AISection() {
             />
           </div>
 
-          <div className="moflow-settings-field">
-            <label className="moflow-settings-label">API Token</label>
-            <div className="moflow-settings-token-row">
+          <div className="flex flex-col mb-5">
+            <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">API Token</label>
+            <div className="flex gap-1.5 max-w-[460px]">
               <input
-                className="moflow-settings-input moflow-settings-token-input"
+                className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary flex-1"
                 type={showToken ? "text" : "password"}
                 value={draft.apiToken}
                 onChange={(e) => handleFieldChange("apiToken", e.target.value)}
                 placeholder="sk-..."
               />
               <button
-                className="moflow-settings-token-toggle"
+                className="flex items-center justify-center w-[30px] h-[30px] rounded border border-ui-border bg-ui-bg text-ui-text-secondary cursor-pointer shrink-0 hover:bg-ui-bg-secondary hover:text-ui-text"
                 onClick={() => setShowToken(!showToken)}
                 type="button"
               >
@@ -277,12 +276,12 @@ function AISection() {
             </div>
           </div>
 
-          <div className="moflow-settings-field">
-            <label className="moflow-settings-label">Model</label>
+          <div className="flex flex-col mb-5">
+            <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">Model</label>
             {modelInputMode === "select" && currentModels.length > 0 ? (
-              <div className="moflow-settings-model-row">
+              <div className="flex gap-1.5 max-w-[460px]">
                 <select
-                  className="moflow-settings-select moflow-settings-model-select"
+                  className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none cursor-pointer focus:border-ui-accent flex-1"
                   value={currentModels.some((m) => m.id === draft.model) ? draft.model : ""}
                   onChange={(e) => handleModelSelect(e.target.value)}
                 >
@@ -294,9 +293,9 @@ function AISection() {
                 </select>
               </div>
             ) : (
-              <div className="moflow-settings-model-row">
+              <div className="flex gap-1.5 max-w-[460px]">
                 <input
-                  className="moflow-settings-input moflow-settings-model-input"
+                  className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary flex-1"
                   type="text"
                   value={draft.model}
                   onChange={(e) => handleFieldChange("model", e.target.value)}
@@ -304,7 +303,7 @@ function AISection() {
                 />
                 {currentModels.length > 0 && (
                   <button
-                    className="moflow-settings-model-back"
+                    className="flex items-center justify-center w-[30px] h-[30px] rounded border border-ui-border bg-ui-bg text-ui-text-secondary cursor-pointer shrink-0 hover:bg-ui-bg-secondary hover:text-ui-text"
                     onClick={() => setModelInputMode("select")}
                     type="button"
                     title={t("返回选择", "Back to select")}
@@ -319,19 +318,19 @@ function AISection() {
             )}
           </div>
 
-          <div className="moflow-settings-test-row">
+          <div className="flex items-center gap-2.5 mt-1">
             <button
-              className="moflow-settings-test-btn"
+              className="py-1.5 px-3.5 rounded border border-ui-border bg-ui-bg text-ui-text text-[13px] font-inherit cursor-pointer transition-all duration-150 hover:not-disabled:bg-ui-bg-secondary hover:not-disabled:border-ui-accent disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={handleTest}
               disabled={testing || !draft.apiEndpoint || !draft.apiToken || !draft.model}
             >
               {testing ? t("测试中...", "Testing...") : t("测试连接", "Test Connection")}
             </button>
             {testResult === "success" && (
-              <span className="moflow-settings-test-success">{t("连接成功", "Connected")}</span>
+              <span className="text-[13px] text-[#22c55e]">{t("连接成功", "Connected")}</span>
             )}
             {testResult === "error" && (
-              <span className="moflow-settings-test-error">{t("连接失败", "Connection Failed")}</span>
+              <span className="text-[13px] text-[#ef4444]">{t("连接失败", "Connection Failed")}</span>
             )}
           </div>
         </>
@@ -409,14 +408,14 @@ function ProxySection() {
   };
 
   return (
-    <div className="moflow-settings-section">
-      <h3 className="moflow-settings-section-title">{t("代理", "Proxy")}</h3>
+    <div className="max-w-[720px] w-full">
+      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">{t("代理", "Proxy")}</h3>
 
-      <div className="moflow-settings-field">
-        <label className="moflow-settings-label">{t("代理地址", "Proxy Address")}</label>
-        <div className="moflow-settings-proxy-row">
+      <div className="flex flex-col mb-5">
+        <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("代理地址", "Proxy Address")}</label>
+        <div className="flex gap-1.5 items-center max-w-[460px]">
           <select
-            className="moflow-settings-proxy-type-select"
+            className="py-1.5 px-2 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none cursor-pointer shrink-0 min-w-[80px] focus:border-ui-accent"
             value={draftType}
             onChange={(e) => setDraftType(e.target.value as ProxyType)}
           >
@@ -426,7 +425,7 @@ function ProxySection() {
             <option value="socks5">SOCKS5</option>
           </select>
           <input
-            className="moflow-settings-input moflow-settings-proxy-host-input"
+            className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary flex-1 max-w-none disabled:opacity-40 disabled:cursor-not-allowed"
             type="text"
             value={draftHost}
             onChange={(e) => setDraftHost(e.target.value)}
@@ -434,7 +433,7 @@ function ProxySection() {
             disabled={draftType === "none"}
           />
           <button
-            className="moflow-settings-save-btn moflow-settings-proxy-save-btn"
+            className="py-1.5 px-5 rounded border-none bg-ui-accent text-white text-[13px] font-inherit cursor-pointer transition-[background-color] duration-150 shrink-0 mt-0 hover:bg-ui-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleSave}
             disabled={saving}
           >
@@ -443,8 +442,8 @@ function ProxySection() {
         </div>
       </div>
 
-      {error && <div className="moflow-settings-error">{error}</div>}
-      {toast && <div className="moflow-settings-toast">{toast}</div>}
+      {error && <div className="text-[13px] text-[#ef4444] mb-3">{error}</div>}
+      {toast && <div className="mt-3 py-2 px-3 rounded bg-ui-bg-secondary border border-ui-border text-ui-text text-[13px] animate-menu-fadein">{toast}</div>}
     </div>
   );
 }
@@ -458,16 +457,16 @@ function AboutSection() {
   }, []);
 
   return (
-    <div className="moflow-settings-section">
-      <h3 className="moflow-settings-section-title">{t("关于", "About")}</h3>
+    <div className="max-w-[720px] w-full">
+      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">{t("关于", "About")}</h3>
 
-      <div className="moflow-settings-about">
-        <img className="moflow-settings-about-icon" src="/icon.png" alt="MoFlow" />
-        <div className="moflow-settings-about-name">MoFlow</div>
-        <div className="moflow-settings-about-version">v{version}</div>
-        <div className="moflow-settings-about-copyright">&copy; 2026 MoFlow</div>
+      <div className="flex flex-col items-center gap-1 pt-8">
+        <img className="w-20 h-20 rounded-2xl mb-3" src="/icon.png" alt="MoFlow" />
+        <div className="text-lg font-semibold text-ui-text">MoFlow</div>
+        <div className="text-[13px] text-ui-text-secondary">v{version}</div>
+        <div className="text-xs text-ui-text-secondary mb-4">&copy; 2026 MoFlow</div>
         <button
-          className="moflow-settings-about-update-btn"
+          className="py-1.5 px-5 rounded border border-ui-border bg-ui-bg text-ui-text text-[13px] font-inherit cursor-pointer transition-all duration-150 hover:bg-ui-bg-secondary hover:border-ui-accent"
           onClick={() => checkUpdate(true)}
         >
           {t("检查更新", "Check for Updates")}
@@ -481,20 +480,20 @@ export default function SettingsPanel() {
   const [activeSection, setActiveSection] = useState<Section>("appearance");
 
   return (
-    <div className="moflow-settings-panel">
-      <nav className="moflow-settings-nav">
+    <div className="flex h-full bg-ui-bg flex-1 min-w-0">
+      <nav className="w-40 shrink-0 p-3 px-1.5 border-r border-ui-border flex flex-col gap-px">
         {sections.map((s) => (
           <button
             key={s.id}
-            className={`moflow-settings-nav-item${activeSection === s.id ? " active" : ""}`}
+            className={`flex items-center gap-2 w-full py-2 px-3 border-none bg-none text-ui-text-secondary text-sm font-inherit cursor-pointer rounded text-left transition-[background-color,color] duration-100 hover:bg-ui-bg-secondary hover:text-ui-text${activeSection === s.id ? " bg-ui-bg-secondary text-ui-text font-semibold" : ""}`}
             onClick={() => setActiveSection(s.id)}
           >
-            <span className="moflow-settings-nav-icon">{sectionIcons[s.id]}</span>
-            <span className="moflow-settings-nav-label">{s.label}</span>
+            <span className="w-4 h-4 shrink-0 flex items-center justify-center [&>svg]:w-4 [&>svg]:h-4">{sectionIcons[s.id]}</span>
+            <span className="flex-1">{s.label}</span>
           </button>
         ))}
       </nav>
-      <div className="moflow-settings-content">
+      <div className="flex-1 overflow-y-auto p-6 px-12 flex justify-center">
         {activeSection === "appearance" && <AppearanceSection />}
         {activeSection === "ai" && <AISection />}
         {activeSection === "proxy" && <ProxySection />}

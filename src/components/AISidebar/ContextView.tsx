@@ -12,6 +12,8 @@ interface ContextViewProps {
   docContent: string;
 }
 
+const EMPTY_MESSAGES: Message[] = [];
+
 const ROLE_COLORS: Record<string, string> = {
   system: "var(--moflow-ctx-system)",
   user: "var(--moflow-ctx-user)",
@@ -153,7 +155,7 @@ function MessageRow({ msg }: { msg: ContextMessage }) {
 export default function ContextView({ tabId, providerId, model, docContent }: ContextViewProps) {
   const contextTokens = useChatStore((s) => s.contextTokensMap[tabId] ?? 0);
   const cost = useChatStore((s) => s.costMap[tabId] ?? 0);
-  const contextMsgs = useChatStore((s) => s.contextMap[tabId] ?? []);
+  const contextMsgs = useChatStore((s) => s.contextMap[tabId] ?? EMPTY_MESSAGES);
 
   const modelInfo = useMemo(() => getModelInfo(providerId, model), [providerId, model]);
   const maxContext = modelInfo.maxContext || 0;

@@ -1,5 +1,86 @@
 @import "tailwindcss";
 
+@theme {
+  --color-ui-bg: var(--ui-bg);
+  --color-ui-bg-secondary: var(--ui-bg-secondary);
+  --color-ui-text: var(--ui-text);
+  --color-ui-text-secondary: var(--ui-text-secondary);
+  --color-ui-border: var(--ui-border);
+  --color-ui-accent: var(--ui-accent);
+  --color-ui-accent-hover: var(--ui-accent-hover);
+  --color-ui-titlebar-bg: var(--ui-titlebar-bg);
+  --color-ui-titlebar-text: var(--ui-titlebar-text);
+  --color-ui-titlebar-inactive: var(--ui-titlebar-inactive);
+  --color-ui-hover: var(--ui-hover);
+  --color-ui-menu-bg: var(--ui-menu-bg);
+  --color-ui-menu-hover: var(--ui-menu-hover);
+  --color-ui-scrollbar-thumb: var(--ui-scrollbar-thumb);
+  --color-ui-scrollbar-track: var(--ui-scrollbar-track);
+  --color-ui-input-bg: var(--ui-input-bg);
+  --color-ui-bubble-user: var(--ui-bubble-user);
+  --color-ui-bubble-user-text: var(--ui-bubble-user-text);
+  --color-ui-bubble-ai: var(--ui-bubble-ai);
+  --color-ui-bubble-ai-text: var(--ui-bubble-ai-text);
+
+  --color-moflow-bg: var(--moflow-bg);
+  --color-moflow-bg-secondary: var(--moflow-bg-secondary);
+  --color-moflow-text: var(--moflow-text);
+  --color-moflow-text-secondary: var(--moflow-text-secondary);
+  --color-moflow-border: var(--moflow-border);
+  --color-moflow-accent: var(--moflow-accent);
+  --color-moflow-accent-hover: var(--moflow-accent-hover);
+  --color-moflow-sidebar-bg: var(--moflow-sidebar-bg);
+  --color-moflow-toolbar-bg: var(--moflow-toolbar-bg);
+  --color-moflow-code-bg: var(--moflow-code-bg);
+  --color-moflow-bubble-user: var(--moflow-bubble-user);
+  --color-moflow-bubble-user-text: var(--moflow-bubble-user-text);
+  --color-moflow-bubble-ai: var(--moflow-bubble-ai);
+  --color-moflow-bubble-ai-text: var(--moflow-bubble-ai-text);
+  --color-moflow-scrollbar-thumb: var(--moflow-scrollbar-thumb);
+  --color-moflow-scrollbar-track: var(--moflow-scrollbar-track);
+  --color-moflow-highlight-bg: var(--moflow-highlight-bg);
+
+  --color-moflow-crepe-bg: var(--moflow-crepe-bg);
+  --color-moflow-crepe-on-bg: var(--moflow-crepe-on-bg);
+  --color-moflow-crepe-primary: var(--moflow-crepe-primary);
+  --color-moflow-crepe-selected: var(--moflow-crepe-selected);
+  --color-moflow-crepe-outline: var(--moflow-crepe-outline);
+  --color-moflow-crepe-inline-area: var(--moflow-crepe-inline-area);
+  --color-moflow-crepe-inline-code: var(--moflow-crepe-inline-code);
+
+  --color-moflow-ctx-system: var(--moflow-ctx-system);
+  --color-moflow-ctx-user: var(--moflow-ctx-user);
+  --color-moflow-ctx-assistant: var(--moflow-ctx-assistant);
+  --color-moflow-ctx-tool: var(--moflow-ctx-tool);
+  --color-moflow-ctx-summary: var(--moflow-ctx-summary);
+
+  --shadow-ui: var(--ui-shadow);
+  --shadow-moflow: var(--moflow-shadow);
+
+  --font-moflow-body: var(--moflow-font-body);
+  --font-moflow-title: var(--moflow-font-title);
+  --font-moflow-mono: var(--moflow-font-mono);
+
+  --text-moflow-h1: var(--moflow-h1-size);
+  --text-moflow-h2: var(--moflow-h2-size);
+  --text-moflow-h3: var(--moflow-h3-size);
+  --text-moflow-body: var(--moflow-body-size);
+
+  --animate-dialog-in: moflow-dialog-in 0.15s ease-out;
+  --animate-menu-fadein: moflow-menu-fadein 0.1s ease-out;
+  --animate-toast-in: moflow-toast-in 0.2s ease-out;
+  --animate-search-appear: moflow-search-appear 0.12s ease-out;
+  --animate-outline-slide: moflow-outline-slide 0.2s ease-out;
+  --animate-sidebar-slide: moflow-sidebar-slide 0.2s ease-out;
+  --animate-selection-ai-appear: moflow-selection-ai-appear 0.15s ease-out;
+  --animate-rewrite-pulse: moflow-selection-ai-rewrite-pulse 1s ease-in-out infinite;
+
+  --shadow-dialog: 0 8px 32px rgba(0, 0, 0, 0.18);
+  --shadow-menu: var(--ui-shadow), 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-toast: 0 4px 20px rgba(0, 0, 0, 0.15);
+  --shadow-search: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
 /* ── App UI theme variables ── */
 
 [data-app-theme="light"] {
@@ -24,6 +105,13 @@
   --ui-bubble-user-text: #ffffff;
   --ui-bubble-ai: #f6f8fa;
   --ui-bubble-ai-text: #1f2328;
+  --ui-font-body: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+
+  --moflow-ctx-system: #9ca3af;
+  --moflow-ctx-user: #3b82f6;
+  --moflow-ctx-assistant: #22c55e;
+  --moflow-ctx-tool: #a855f7;
+  --moflow-ctx-summary: #f59e0b;
 }
 
 [data-app-theme="dark"] {
@@ -48,6 +136,13 @@
   --ui-bubble-user-text: #1e1e2e;
   --ui-bubble-ai: #313244;
   --ui-bubble-ai-text: #cdd6f4;
+  --ui-font-body: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+
+  --moflow-ctx-system: #6b7280;
+  --moflow-ctx-user: #60a5fa;
+  --moflow-ctx-assistant: #4ade80;
+  --moflow-ctx-tool: #c084fc;
+  --moflow-ctx-summary: #fbbf24;
 }
 
 /* ── Editor theme variables ── */
@@ -267,28 +362,20 @@
   --moflow-highlight-bg: #f5e0a040;
 }
 
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: var(--ui-font-body);
+  background-color: var(--ui-bg);
+  color: var(--ui-text);
+}
+
 .milkdown mark {
   background-color: var(--moflow-highlight-bg);
   padding: 1px 2px;
   border-radius: 2px;
   color: inherit;
-}
-
-/* ── Global reset ── */
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-html, body, #root {
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  font-family: var(--ui-font-body, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif);
-  background-color: var(--ui-bg);
-  color: var(--ui-text);
 }
 
 ::-webkit-scrollbar {
@@ -307,4 +394,54 @@ html, body, #root {
 
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--ui-text-secondary);
+}
+
+@keyframes moflow-dialog-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes moflow-menu-fadein {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes moflow-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes moflow-search-appear {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes moflow-outline-slide {
+  from { margin-left: -220px; opacity: 0; }
+  to { margin-left: 0; opacity: 1; }
+}
+
+@keyframes moflow-sidebar-slide {
+  from { margin-right: -320px; opacity: 0; }
+  to { margin-right: 0; opacity: 1; }
+}
+
+@keyframes moflow-selection-ai-appear {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes moflow-selection-ai-rewrite-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes moflow-selection-ai-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+@keyframes moflow-selection-ai-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }

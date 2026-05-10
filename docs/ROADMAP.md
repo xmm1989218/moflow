@@ -391,13 +391,20 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.6.5 — 样式统一
+## v0.6.5 — 样式统一 ✅
 
 ### CSS → Tailwind 迁移
 
-- [ ] Editor.css 中的自定义样式迁移到 Tailwind 类
-- [ ] 主题变量整理（CSS custom properties → Tailwind theme config）
-- [ ] 全局样式审计，消除重复/冗余规则
+- [x] @theme 注册（71 个 CSS 变量映射到 Tailwind 命名空间，支持 `bg-ui-bg`/`text-moflow-text` 等工具类）
+- [x] 主题变量整理（CSS custom properties → Tailwind @theme，`--ui-*`/`--moflow-*`/`--moflow-ctx-*` 全部注册）
+- [x] 全局样式审计，消除重复/冗余规则（删除与 Preflight 重复的全局 reset、--moflow-ctx-* 移入 index.css、--ui-font-body 补充定义）
+- [x] 简单组件 CSS → Tailwind（ConfirmCloseDialog、TitleBar、HamburgerMenu、UpdateDialog、TabBar、SearchBar、OutlineSidebar、StatusBar — 8 个 CSS 文件删除）
+- [x] 中等复杂组件迁移（SlashCommandMenu、SelectionAIPanel、SettingsPanel — 3 个 CSS 文件删除）
+- [x] 复杂组件部分迁移（AISidebar 移除 ~446 行冗余 CSS：config modal 死代码、重复规则、ctx 变量定义）
+- [x] Editor.css 保留（ProseMirror/Crepe/CodeMirror DOM 覆盖，无法用 Tailwind 替代）
+- [x] MessageContent.css 保留（Markdown 元素选择器，无法用 Tailwind 替代）
+- [x] 动画统一管理（15 个 @keyframes 移入 index.css，注册 @theme animate-* 工具类）
+- [x] 自定义 shadow 注册（shadow-dialog/shadow-menu/shadow-toast/shadow-search）
 
 ---
 

@@ -10,7 +10,6 @@ import { getModelInfo, calculateCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
 import { t, isZh } from "../../lib/i18n";
 import MessageContent from "../AISidebar/MessageContent";
-import "./SelectionAIPanel.css";
 
 function getLangLabel(code: LanguageCode): string {
   const lang = LANGUAGES.find((l) => l.code === code);
@@ -215,21 +214,21 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
   return (
     <>
       {isStreaming ? (
-        <div className="moflow-selection-ai-rewrite-loading">
-          <span className="moflow-selection-ai-rewrite-loading-dot" />
+        <div className="flex items-center gap-2 px-3 py-4 text-moflow-text-secondary text-[13px] justify-center">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-moflow-accent animate-rewrite-pulse" />
           {t("AI 正在改写...", "AI rewriting...")}
         </div>
       ) : rewriteError ? (
-        <div className="moflow-selection-ai-rewrite-error">
+        <div className="px-3 py-2.5 text-red-500 text-xs leading-normal">
           ❌ {rewriteError}
         </div>
       ) : null}
       {!isStreaming && !rewriteError && (
         <>
-          <div className="moflow-selection-ai-rewrite-input-row">
-            <div className="moflow-selection-ai-rewrite-input-wrap">
+          <div className="px-2.5 py-2">
+            <div className="relative flex items-end">
               <textarea
-                className="moflow-selection-ai-rewrite-input"
+                className="flex-1 py-1.5 pr-9 pl-2.5 border border-moflow-border rounded-md text-[13px] font-[inherit] bg-moflow-bg text-moflow-text outline-none resize-none leading-normal min-h-12 max-h-[120px] overflow-y-hidden focus:border-moflow-accent placeholder:text-moflow-text-secondary"
                 value={rewriteInput}
                 onChange={handleRewriteInputChange}
                 onKeyDown={handleRewriteInputKeyDown}
@@ -238,7 +237,7 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
                 rows={1}
               />
               <button
-                className="moflow-selection-ai-rewrite-send"
+                className="absolute right-1 bottom-1 flex items-center justify-center w-6 h-6 rounded border-none bg-moflow-accent text-white cursor-pointer transition-colors duration-150 hover:not-disabled:opacity-85 disabled:opacity-40 disabled:cursor-not-allowed"
                 onClick={handleRewriteSend}
                 disabled={!rewriteInput.trim()}
               >
@@ -250,19 +249,19 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
             </div>
           </div>
           {!rewriteInput.trim() && (
-          <div className="moflow-selection-ai-rewrite-presets">
+          <div className="flex flex-wrap gap-1 px-2.5 pb-2 pt-1">
             {REWRITE_PRESETS.map((p) => (
               <button
                 key={p.key}
-                className="moflow-selection-ai-rewrite-preset-btn"
+                className="px-2.5 py-1 rounded-xl border border-moflow-border bg-moflow-bg-secondary text-moflow-text-secondary text-xs font-[inherit] cursor-pointer transition-all duration-150 whitespace-nowrap hover:border-moflow-accent hover:text-moflow-accent hover:bg-moflow-bg"
                 onClick={() => handlePresetClick(p.key)}
               >
                 {isZh ? p.zh : p.en}
               </button>
             ))}
-            <div className="moflow-selection-ai-tone-wrapper" ref={toneMenuRef}>
+            <div className="relative" ref={toneMenuRef}>
               <button
-                className="moflow-selection-ai-rewrite-preset-btn moflow-selection-ai-tone-trigger"
+                className="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-xl border border-moflow-border bg-moflow-bg-secondary text-moflow-text-secondary text-xs font-[inherit] cursor-pointer transition-all duration-150 whitespace-nowrap hover:border-moflow-accent hover:text-moflow-accent hover:bg-moflow-bg"
                 onClick={() => setShowToneMenu(!showToneMenu)}
               >
                 {t("更改语气", "Change tone")}
@@ -271,11 +270,11 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
                 </svg>
               </button>
               {showToneMenu && (
-                <div className="moflow-selection-ai-tone-menu">
+                <div className="absolute top-full left-0 mt-1 min-w-[120px] bg-moflow-bg border border-moflow-border rounded-lg p-1 z-60 animate-selection-ai-appear" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
                   {TONE_OPTIONS.map((opt) => (
                     <button
                       key={opt.key}
-                      className="moflow-selection-ai-tone-item"
+                      className="block w-full py-1.5 px-3 border-none rounded-[5px] bg-transparent text-moflow-text text-xs font-[inherit] text-left cursor-pointer transition-colors duration-100 hover:bg-moflow-bg-secondary hover:text-moflow-accent"
                       onClick={() => handleToneClick(opt.key)}
                     >
                       {isZh ? opt.zh : opt.en}
@@ -289,11 +288,11 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
         </>
       )}
       {rewriteError && !isStreaming && (
-        <div className="moflow-selection-ai-rewrite-presets">
+        <div className="flex flex-wrap gap-1 px-2.5 pb-2 pt-1">
           {REWRITE_PRESETS.map((p) => (
             <button
               key={p.key}
-              className="moflow-selection-ai-rewrite-preset-btn"
+              className="px-2.5 py-1 rounded-xl border border-moflow-border bg-moflow-bg-secondary text-moflow-text-secondary text-xs font-[inherit] cursor-pointer transition-all duration-150 whitespace-nowrap hover:border-moflow-accent hover:text-moflow-accent hover:bg-moflow-bg"
               onClick={() => handlePresetClick(p.key)}
             >
               {isZh ? p.zh : p.en}
@@ -580,15 +579,16 @@ export default function SelectionAIPanel() {
     left: Math.min(selectionCoords.x, window.innerWidth - 380),
     top: Math.min(selectionCoords.y + 8, window.innerHeight - (activeAction === "polish" ? 200 : 400)),
     zIndex: 50,
+    boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
   };
 
   return (
-    <div ref={panelRef} className="moflow-selection-ai-panel" style={panelStyle} onMouseDown={(e) => e.stopPropagation()}>
+    <div ref={panelRef} className="w-[360px] bg-moflow-bg border border-moflow-border rounded-[10px] flex flex-col overflow-visible animate-selection-ai-appear" style={panelStyle} onMouseDown={(e) => e.stopPropagation()}>
       {activeAction === "translate" && (
         <>
-          <div className="moflow-selection-ai-lang-row">
+          <div className="flex items-center gap-1 px-2.5 py-2 border-b border-moflow-border bg-moflow-bg-secondary">
             <select
-              className="moflow-selection-ai-lang-select moflow-selection-ai-lang-source"
+              className="flex-1 py-1 px-2 border border-moflow-border rounded-md text-xs font-[inherit] bg-moflow-bg text-moflow-text outline-none cursor-pointer min-w-0 focus:border-moflow-accent"
               value={sourceLang}
               onChange={(e) => setSourceLang(e.target.value as LanguageCode)}
             >
@@ -598,7 +598,7 @@ export default function SelectionAIPanel() {
                 </option>
               ))}
             </select>
-            <button className="moflow-selection-ai-lang-swap" onClick={swapLanguages}>
+            <button className="flex items-center justify-center w-6 h-6 rounded border-none bg-transparent text-moflow-text-secondary cursor-pointer shrink-0 hover:bg-moflow-bg hover:text-moflow-text" onClick={swapLanguages}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M7 16l-4-4 4-4" />
                 <path d="M17 8l4 4-4 4" />
@@ -606,7 +606,7 @@ export default function SelectionAIPanel() {
               </svg>
             </button>
             <select
-              className="moflow-selection-ai-lang-select moflow-selection-ai-lang-target"
+              className="flex-1 py-1 px-2 border border-moflow-accent rounded-md text-xs font-[inherit] bg-moflow-bg text-moflow-text outline-none cursor-pointer min-w-0 focus:border-moflow-accent"
               value={targetLang}
               onChange={(e) => {
                 setTargetLang(e.target.value as LanguageCode);
@@ -620,9 +620,9 @@ export default function SelectionAIPanel() {
               ))}
             </select>
           </div>
-          <div className="moflow-selection-ai-source-text">
-            <span className="moflow-selection-ai-source-bar" />
-            <span className="moflow-selection-ai-source-content">
+          <div className="flex gap-2 px-2.5 py-2 border-b border-moflow-border">
+            <span className="w-[3px] shrink-0 bg-moflow-border rounded-sm" />
+            <span className="text-[13px] text-moflow-text-secondary leading-normal break-words">
               {selectedText.length > 200 ? selectedText.slice(0, 200) + "..." : selectedText}
             </span>
           </div>
@@ -634,22 +634,22 @@ export default function SelectionAIPanel() {
       )}
 
       {(activeAction === "explain" || activeAction === "translate") && (
-        <div className="moflow-selection-ai-result">
+        <div className="px-3 py-2.5 text-[13px] text-moflow-text leading-relaxed break-words max-h-[300px] overflow-y-auto min-h-10">
           {result ? (
             <MessageContent content={result} />
           ) : (
-            <span className="moflow-selection-ai-placeholder">
+            <span className="text-moflow-text-secondary font-normal text-xs">
               {isStreaming ? t("思考中...", "Thinking...") : ""}
             </span>
           )}
-          {isStreaming && <span className="moflow-selection-ai-cursor">▌</span>}
+          {isStreaming && <span className="text-moflow-accent font-normal" style={{ animation: "moflow-selection-ai-blink 0.8s infinite" }}>▌</span>}
         </div>
       )}
 
       {(activeAction === "explain" || activeAction === "translate") && !isStreaming && lastResult && (
-        <div className="moflow-selection-ai-followup-row">
+        <div className="flex items-center gap-1.5 px-2.5 py-2 border-t border-moflow-border">
           <input
-            className="moflow-selection-ai-followup-input"
+            className="flex-1 py-1.5 px-2.5 border border-moflow-border rounded-md text-[13px] font-[inherit] bg-moflow-bg text-moflow-text outline-none focus:border-moflow-accent placeholder:text-moflow-text-secondary"
             type="text"
             value={followUpValue}
             onChange={(e) => setFollowUpValue(e.target.value)}
@@ -657,7 +657,7 @@ export default function SelectionAIPanel() {
             placeholder={t("继续追问...", "Follow up...")}
           />
           <button
-            className="moflow-selection-ai-followup-send"
+            className="flex items-center justify-center w-7 h-7 rounded-md border-none bg-moflow-accent text-white cursor-pointer shrink-0 transition-colors duration-150 hover:not-disabled:opacity-85 disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleFollowUp}
             disabled={!followUpValue.trim()}
           >
@@ -670,9 +670,9 @@ export default function SelectionAIPanel() {
       )}
 
       {activeAction === "ask" && (
-        <div className="moflow-selection-ai-ask-row">
+        <div className="flex items-center gap-1.5 px-2.5 py-2">
           <input
-            className="moflow-selection-ai-ask-input"
+            className="flex-1 py-1.5 px-2.5 border border-moflow-border rounded-md text-[13px] font-[inherit] bg-moflow-bg text-moflow-text outline-none focus:border-moflow-accent placeholder:text-moflow-text-secondary"
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
@@ -681,7 +681,7 @@ export default function SelectionAIPanel() {
             autoFocus
           />
           <button
-            className="moflow-selection-ai-ask-send"
+            className="flex items-center justify-center w-7 h-7 rounded-md border-none bg-moflow-accent text-white cursor-pointer shrink-0 transition-colors duration-150 hover:not-disabled:opacity-85 disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleAsk}
             disabled={!inputValue.trim()}
           >

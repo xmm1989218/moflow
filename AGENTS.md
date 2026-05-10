@@ -37,14 +37,20 @@ MoFlow is a desktop Markdown editor built with Tauri v2 + React + TypeScript + V
 src/                    # Frontend (React + TypeScript)
   components/
     AISidebar/          # AI chat sidebar (doCompact, auto-compact, UsageBadge)
-    ConfirmCloseDialog/ # Unsaved changes dialog
+                          AISidebar.css — sidebar layout + chat bubble styles (trimmed)
+                          MessageContent.css — Markdown element selectors (retained)
+                          ContextView.tsx — context inspection panel
+    ConfirmCloseDialog/ # Unsaved changes dialog (Tailwind, no CSS file)
     Editor/             # Milkdown editor wrapper + SelectionAIPanel
-    HamburgerMenu/      # Hamburger menu
-    SettingsPanel/      # Settings tab (appearance, AI, proxy, about)
-    StatusBar/          # Bottom status bar
-    TabBar/             # Tab management (file tabs + settings tab)
-    TitleBar/           # Custom frameless title bar (gear button)
+                          Editor.css — ProseMirror/Crepe/CodeMirror DOM overrides (retained)
+    HamburgerMenu/      # Hamburger menu (Tailwind, no CSS file)
+    SettingsPanel/      # Settings tab (appearance, AI, proxy, about) (Tailwind, no CSS file)
+    StatusBar/          # Bottom status bar (Tailwind, no CSS file)
+    TabBar/             # Tab management (file tabs + settings tab) (Tailwind, no CSS file)
+    TitleBar/           # Custom frameless title bar (gear button) (Tailwind, no CSS file)
     Toolbar/            # Formatting toolbar
+  index.css             # Global styles + @theme block (71 CSS vars → Tailwind namespace)
+                          Keyframes, animations, shadows, scrollbar styles
   stores/
     appStore.ts         # Re-exports from tabStore, themeStore, etc.
     chatStore.ts        # AI chat state (streamingContentMap, contextMap, cleanupIncompleteToolCalls)
@@ -80,7 +86,9 @@ src-tauri/              # Backend (Rust + Tauri)
 
 - No comments unless explicitly requested
 - Use existing libraries and patterns from the codebase
-- Tailwind CSS classes for styling (no CSS modules)
+- Tailwind CSS utility classes for all component styling (no CSS modules, no separate CSS files for components)
+- Only `Editor.css` (ProseMirror/Crepe/CodeMirror DOM overrides) and `MessageContent.css` (Markdown element selectors) retain CSS files — these cannot be replaced by Tailwind
+- CSS custom properties (`--ui-*`, `--moflow-*`) defined per theme in `index.css`, registered in `@theme` block for Tailwind namespace (e.g. `bg-ui-bg`, `text-moflow-text`)
 - Zustand for state management
 - Tauri plugins (dialog, fs) for native operations
 
