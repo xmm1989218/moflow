@@ -25,6 +25,7 @@ import { useSearchStore } from "../../stores/searchStore";
 import SearchBar from "./SearchBar";
 import { commandsCtx } from "@milkdown/kit/core";
 import { isMarkSelectedCommand } from "@milkdown/kit/preset/commonmark";
+import { undoCommand, redoCommand } from "@milkdown/plugin-history";
 import { saveImageToFile, getImageExt, resolveImagePath } from "../../lib/imageManager";
 
 function cmLegacy(parser: StreamParser<unknown>) {
@@ -139,6 +140,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
   const editorTheme = useThemeStore((s) => s.editorTheme);
   const updateTabContent = useTabStore((s) => s.updateTabContent);
   const setGetEditorHTML = useTabStore((s) => s.setGetEditorHTML);
+  const setEditorActions = useTabStore((s) => s.setEditorActions);
 
   const setContent = useCallback(
     (c: string) => updateTabContent(tabId, c),
@@ -451,6 +453,20 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
             html: createHtmlNodeView(),
           },
         });
+        useTabStore.getState().setEditorActions(tabId, {
+          undo: () => {
+            const ed = crepeRef.current?.editor;
+            if (ed?.status === EditorStatus.Created) {
+              ed.action((c) => { c.get(commandsCtx).call(undoCommand.key); });
+            }
+          },
+          redo: () => {
+            const ed = crepeRef.current?.editor;
+            if (ed?.status === EditorStatus.Created) {
+              ed.action((c) => { c.get(commandsCtx).call(redoCommand.key); });
+            }
+          },
+        });
       });
 
       listener.markdownUpdated((_ctx, markdown) => {
@@ -522,9 +538,10 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
   useEffect(() => {
     return () => {
       setGetEditorHTML(tabId, null);
+      setEditorActions(tabId, null);
       useSearchStore.getState().setEditorView(tabId, null);
     };
-  }, [setGetEditorHTML, tabId]);
+  }, [setGetEditorHTML, setEditorActions, tabId]);
 
   useEffect(() => {
     let tooltipEl: HTMLElement | null = null;

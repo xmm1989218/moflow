@@ -77,6 +77,16 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
       case "save_as":
         saveFileAs();
         break;
+      case "undo": {
+        const activeId = useTabStore.getState().activeFileId;
+        useTabStore.getState().editorActionMap.get(activeId)?.undo?.();
+        break;
+      }
+      case "redo": {
+        const activeId = useTabStore.getState().activeFileId;
+        useTabStore.getState().editorActionMap.get(activeId)?.redo?.();
+        break;
+      }
       case "export_html":
         exportHtml();
         break;
@@ -111,6 +121,9 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
     ...(workspaceRoot ? [item("close_folder", t("关闭目录", "Close Folder"))] : []),
     item("save", t("保存", "Save"), { shortcut: getShortcutDisplay("saveFile") }),
     item("save_as", t("另存为...", "Save As..."), { shortcut: getShortcutDisplay("saveFileAs") }),
+    sep(),
+    item("undo", t("撤销", "Undo"), { shortcut: getShortcutDisplay("undo") }),
+    item("redo", t("重做", "Redo"), { shortcut: getShortcutDisplay("redo") }),
     sep(),
     item("find", t("查找", "Find"), { shortcut: getShortcutDisplay("find") }),
     item("replace", t("替换", "Replace"), { shortcut: getShortcutDisplay("replace") }),

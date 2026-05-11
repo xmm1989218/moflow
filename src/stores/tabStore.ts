@@ -78,6 +78,7 @@ interface TabState_Store {
   sessionInitialized: boolean;
   workspaceRoot: string | null;
   getEditorHTMLMap: Map<string, () => string>;
+  editorActionMap: Map<string, { undo: () => void; redo: () => void }>;
 
   openTab: (overrides?: Partial<Omit<TabState, "id">>) => string;
   closeTab: (id: string) => void;
@@ -88,6 +89,7 @@ interface TabState_Store {
   findTabByPath: (filePath: string) => TabState | undefined;
   newFile: () => string;
   setGetEditorHTML: (tabId: string, fn: (() => string) | null) => void;
+  setEditorActions: (tabId: string, actions: { undo: () => void; redo: () => void } | null) => void;
   getEditorHTML: (tabId?: string) => (() => string) | null;
   setWorkspaceRoot: (root: string | null) => void;
   getChatKey: () => string;
@@ -100,6 +102,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
   sessionInitialized: false,
   workspaceRoot: null,
   getEditorHTMLMap: new Map(),
+  editorActionMap: new Map(),
 
   openTab: (overrides) => {
     const tab = createTab(overrides);
@@ -139,6 +142,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
       useChatStore.getState().deleteChat(id);
     }
     state.getEditorHTMLMap.delete(id);
+    state.editorActionMap.delete(id);
 
     const newFiles = state.files.filter((f) => f.id !== id);
 
@@ -290,6 +294,16 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
       map.delete(tabId);
     }
     set({ getEditorHTMLMap: map });
+  },
+
+  setEditorActions: (tabId, actions) => {
+    const map = new Map(get().editorActionMap);
+    if (actions) {
+      map.set(tabId, actions);
+    } else {
+      map.delete(tabId);
+    }
+    set({ editorActionMap: map });
   },
 
   getEditorHTML: (tabId) => {

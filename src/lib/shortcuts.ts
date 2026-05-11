@@ -13,6 +13,8 @@ const shortcuts: ShortcutDef[] = [
   { id: "openFolder", key: "o", modifiers: ["ctrl", "shift"], label: { zh: "打开目录", en: "Open Folder" } },
   { id: "saveFile", key: "s", modifiers: ["ctrl"], label: { zh: "保存", en: "Save" } },
   { id: "saveFileAs", key: "s", modifiers: ["ctrl", "shift"], label: { zh: "另存为...", en: "Save As..." } },
+  { id: "undo", key: "z", modifiers: ["ctrl"], label: { zh: "撤销", en: "Undo" } },
+  { id: "redo", key: "y", modifiers: ["ctrl"], label: { zh: "重做", en: "Redo" } },
   { id: "closeTab", key: "w", modifiers: ["ctrl"], label: { zh: "关闭标签", en: "Close Tab" } },
   { id: "nextTab", key: "Tab", modifiers: ["ctrl"], label: { zh: "下一个标签", en: "Next Tab" } },
   { id: "prevTab", key: "Tab", modifiers: ["ctrl", "shift"], label: { zh: "上一个标签", en: "Previous Tab" } },
