@@ -153,6 +153,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
   const modeRef = useRef<EditorMode>(mode);
   const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
   const savedScrollRef = useRef<number>(0);
+  const contentAtSwitchRef = useRef<string | null>(null);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -167,10 +168,11 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
           savedSelectionRef.current = { from: view.state.selection.from, to: view.state.selection.to };
           const wrapper = document.querySelector(`[data-tab-id="${tabId}"] .moflow-editor-wrapper`) as HTMLElement | null;
           savedScrollRef.current = wrapper?.scrollTop ?? 0;
+          contentAtSwitchRef.current = content;
         } catch { /* editor not ready */ }
       }
     }
-  }, [mode, tabId]);
+  }, [mode, tabId, content]);
 
   useEffect(() => {
     resetMermaidTheme();
@@ -488,21 +490,34 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
 
     editor.action(replaceAll(content, false));
     syncedContentRef.current = content;
+  }, [content, loading, getEditor, setGetEditorHTML, tabId]);
 
-    if (mode === "wysiwyg" && savedSelectionRef.current !== null) {
-      const sel = savedSelectionRef.current;
-      savedSelectionRef.current = null;
-      requestAnimationFrame(() => {
-        try {
-          const view = editor.ctx.get(editorViewCtx);
+  useEffect(() => {
+    if (mode !== "wysiwyg") return;
+    if (savedSelectionRef.current === null) return;
+    const crepe = crepeRef.current;
+    if (!crepe || !crepe.editor || crepe.editor.status !== EditorStatus.Created) return;
+
+    const sel = savedSelectionRef.current;
+    const scrollTop = savedScrollRef.current;
+    const contentAtSwitch = contentAtSwitchRef.current;
+    savedSelectionRef.current = null;
+    contentAtSwitchRef.current = null;
+
+    const contentChanged = contentAtSwitch !== null && contentAtSwitch !== content;
+
+    requestAnimationFrame(() => {
+      try {
+        const view = crepe.editor.ctx.get(editorViewCtx);
+        if (!contentChanged) {
           const pos = Math.min(sel.from, view.state.doc.content.size);
           view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.tr.doc.resolve(pos))));
-          const wrapper = document.querySelector(`[data-tab-id="${tabId}"] .moflow-editor-wrapper`) as HTMLElement | null;
-          if (wrapper) wrapper.scrollTop = savedScrollRef.current;
-        } catch { /* ignore */ }
-      });
-    }
-  }, [content, loading, getEditor, setGetEditorHTML, tabId, mode]);
+        }
+        const wrapper = document.querySelector(`[data-tab-id="${tabId}"] .moflow-editor-wrapper`) as HTMLElement | null;
+        if (wrapper) wrapper.scrollTop = scrollTop;
+      } catch { /* ignore */ }
+    });
+  }, [mode, content, tabId]);
 
   useEffect(() => {
     return () => {
