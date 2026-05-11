@@ -3,10 +3,17 @@ import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { replaceAll, getHTML } from "@milkdown/utils";
 import { EditorStatus, editorViewCtx, parserCtx } from "@milkdown/core";
 import { Slice } from "prosemirror-model";
+import { TextSelection } from "prosemirror-state";
 import type { Ctx } from "@milkdown/kit/ctx";
 import { LanguageDescription, LanguageSupport, StreamLanguage } from "@codemirror/language";
 import type { StreamParser } from "@codemirror/language";
-import { useTabStore } from "../../stores/tabStore";
+import { basicSetup } from "codemirror";
+import { markdown as cmMarkdown } from "@codemirror/lang-markdown";
+import { EditorView as CMEditorView, keymap, ViewUpdate } from "@codemirror/view";
+import { EditorState as CMEditorState } from "@codemirror/state";
+import { indentWithTab } from "@codemirror/commands";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { useTabStore, type EditorMode } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useAISelectionStore } from "../../stores/aiSelectionStore";
 import { getShortcutDisplay, getShortcutLabel } from "../../lib/shortcuts";
@@ -144,6 +151,27 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
   const syncedContentRef = useRef(content);
   const justLoadedRef = useRef(true);
   const crepeRef = useRef<Crepe | null>(null);
+  const modeRef = useRef<EditorMode>(mode);
+  const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
+  const savedScrollRef = useRef<number>(0);
+
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode === "source") {
+      const crepe = crepeRef.current;
+      if (crepe && crepe.editor && crepe.editor.status === EditorStatus.Created) {
+        try {
+          const view = crepe.editor.ctx.get(editorViewCtx);
+          savedSelectionRef.current = { from: view.state.selection.from, to: view.state.selection.to };
+          const wrapper = document.querySelector(`[data-tab-id="${tabId}"] .moflow-editor-wrapper`) as HTMLElement | null;
+          savedScrollRef.current = wrapper?.scrollTop ?? 0;
+        } catch { /* editor not ready */ }
+      }
+    }
+  }, [mode, tabId]);
 
   useEffect(() => {
     resetMermaidTheme();
@@ -427,6 +455,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
       listener.markdownUpdated((_ctx, markdown) => {
         if (editorReadyRef.current) {
           syncedContentRef.current = markdown;
+          if (modeRef.current === "source") return;
           if (justLoadedRef.current) {
             justLoadedRef.current = false;
             useTabStore.getState().updateTabMeta(tabId, { content: markdown });
@@ -458,10 +487,23 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
 
     if (content === syncedContentRef.current) return;
 
-    justLoadedRef.current = true;
-    editor.action(replaceAll(content, true));
+    editor.action(replaceAll(content, false));
     syncedContentRef.current = content;
-  }, [content, loading, getEditor, setGetEditorHTML, tabId]);
+
+    if (mode === "wysiwyg" && savedSelectionRef.current !== null) {
+      const sel = savedSelectionRef.current;
+      savedSelectionRef.current = null;
+      requestAnimationFrame(() => {
+        try {
+          const view = editor.ctx.get(editorViewCtx);
+          const pos = Math.min(sel.from, view.state.doc.content.size);
+          view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.tr.doc.resolve(pos))));
+          const wrapper = document.querySelector(`[data-tab-id="${tabId}"] .moflow-editor-wrapper`) as HTMLElement | null;
+          if (wrapper) wrapper.scrollTop = savedScrollRef.current;
+        } catch { /* ignore */ }
+      });
+    }
+  }, [content, loading, getEditor, setGetEditorHTML, tabId, mode]);
 
   useEffect(() => {
     return () => {
@@ -608,10 +650,15 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
 
   return (
     <div className="moflow-editor-wrapper" data-editor-theme={editorTheme}>
-      {mode === "wysiwyg" ? (
+      <div className={mode === "source" ? "moflow-milkdown-hidden" : ""}>
         <Milkdown />
-      ) : (
-        <SourceModeEditor content={content} setContent={setContent} />
+      </div>
+      {mode === "source" && (
+        <SourceModeEditor
+          content={content}
+          setContent={setContent}
+          editorTheme={editorTheme}
+        />
       )}
       <SelectionAIPanel />
       <SearchBar />
@@ -619,16 +666,94 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
   );
 });
 
-function SourceModeEditor({ content, setContent }: { content: string; setContent: (c: string) => void }) {
+function SourceModeEditor({
+  content,
+  setContent,
+  editorTheme,
+}: {
+  content: string;
+  setContent: (c: string) => void;
+  editorTheme: string;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<CMEditorView | null>(null);
+  const syncingRef = useRef(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentRef = useRef(content);
+
+  const isDark = editorTheme.includes("dark");
+
+  useEffect(() => {
+    contentRef.current = content;
+  }, [content]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const state = CMEditorState.create({
+      doc: contentRef.current,
+      extensions: [
+        basicSetup,
+        cmMarkdown(),
+        keymap.of([indentWithTab]),
+        ...(isDark ? [oneDark] : []),
+        CMEditorView.updateListener.of((update: ViewUpdate) => {
+          if (syncingRef.current) return;
+          if (update.docChanged) {
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+            debounceTimerRef.current = setTimeout(() => {
+              const newContent = update.state.doc.toString();
+              syncingRef.current = true;
+              setContent(newContent);
+              syncingRef.current = false;
+            }, 500);
+          }
+        }),
+        CMEditorView.theme({
+          "&": { height: "100%" },
+          ".cm-scroller": { overflow: "auto" },
+        }),
+      ],
+    });
+
+    const view = new CMEditorView({
+      state,
+      parent: containerRef.current,
+    });
+    viewRef.current = view;
+
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      view.destroy();
+      viewRef.current = null;
+    };
+  }, [isDark, setContent]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view || syncingRef.current) return;
+    const currentDoc = view.state.doc.toString();
+    if (currentDoc === content) return;
+    syncingRef.current = true;
+    view.dispatch({
+      changes: { from: 0, to: currentDoc.length, insert: content },
+    });
+    syncingRef.current = false;
+  }, [content]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "s") {
+        e.preventDefault();
+      }
+    };
+    const el = containerRef.current;
+    el?.addEventListener("keydown", handler);
+    return () => el?.removeEventListener("keydown", handler);
+  }, []);
+
   return (
-    <div className="moflow-source-wrapper">
-      <textarea
-        className="moflow-source-textarea"
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        spellCheck={false}
-      />
-    </div>
+    <div className="moflow-source-wrapper" ref={containerRef} />
   );
 }
 

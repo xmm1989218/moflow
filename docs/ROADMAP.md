@@ -445,7 +445,16 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ## v0.7.5 — 编辑器优化
 
-- [ ] 代码模式与所见即所得模式共享 undo history（当前切代码模式时 Milkdown 实例被销毁，undo history 丢失；需改为 CSS 隐藏 + 实时 `replaceAll(content, false)` 同步）
+### 代码模式与所见即所得模式共享 undo history
+
+- [x] Milkdown 始终挂载（CSS `visibility:hidden` 替代条件渲染，避免 `editor.destroy()` 销毁 undo 栈）
+- [x] SourceModeEditor 升级为 CodeMirror 6（markdown 语法高亮、行号、深色/浅色主题适配）
+- [x] Debounce 500ms 同步机制（CM6 onChange → debounce → `setContent` → `replaceAll(content, false)` 保留 undo history）
+- [x] 反馈循环防护（source 模式下 `markdownUpdated` listener 跳过 store 写入；CM6 `syncingRef` 防止外部更新触发回调）
+- [x] 光标位置保留（切到 source 前保存 ProseMirror selection，切回 WYSIWYG 后 `TextSelection.near` 恢复）
+- [x] 滚动位置保留（切到 source 前保存 `scrollTop`，切回后恢复）
+- [x] 搜索高亮保留（`editorView` 不再被销毁，搜索装饰自然保留）
+- [x] Editor.css 更新（删除 `.moflow-source-textarea` 旧样式，新增 `.moflow-milkdown-hidden` + CM6 全文档编辑器主题样式）
 
 ---
 

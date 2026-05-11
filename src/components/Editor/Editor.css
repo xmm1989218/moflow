@@ -220,31 +220,70 @@
   background-color: rgba(255, 150, 0, 0.6);
 }
 
-/* ── Source mode ── */
+/* ── Source mode (CM6 full-doc editor) ── */
+
+.moflow-milkdown-hidden {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
 
 .moflow-source-wrapper {
   flex: 1;
   width: 100%;
   height: 100%;
-  display: flex;
-  overflow-y: auto;
   max-width: var(--moflow-editor-max-width);
   margin: 0 auto;
+  overflow: hidden;
 }
 
-.moflow-source-textarea {
-  width: 100%;
+.moflow-source-wrapper .cm-editor {
   height: 100%;
-  resize: none;
-  border: none;
-  outline: none;
-  padding: var(--moflow-editor-padding-y) var(--moflow-editor-padding-x);
+  background-color: var(--moflow-bg);
   font-family: var(--moflow-font-mono);
   font-size: var(--moflow-body-size);
   line-height: 1.6;
   color: var(--moflow-text);
+}
+
+.moflow-source-wrapper .cm-editor.cm-focused {
+  outline: none;
+}
+
+.moflow-source-wrapper .cm-content {
+  padding: var(--moflow-editor-padding-y) 0;
+  caret-color: var(--moflow-text);
+}
+
+.moflow-source-wrapper .cm-gutters {
   background-color: var(--moflow-bg);
-  tab-size: 2;
+  border-right: none;
+  color: var(--moflow-text-secondary);
+  padding-right: 8px;
+}
+
+.moflow-source-wrapper .cm-activeLineGutter {
+  background-color: var(--moflow-bg-secondary);
+}
+
+.moflow-source-wrapper .cm-activeLine {
+  background-color: var(--moflow-bg-secondary);
+}
+
+.moflow-source-wrapper .cm-cursor {
+  border-left-color: var(--moflow-text);
+}
+
+.moflow-source-wrapper .cm-selectionBackground,
+.moflow-source-wrapper .cm-focused .cm-selectionBackground {
+  background-color: var(--moflow-crepe-selected) !important;
+}
+
+.moflow-source-wrapper .cm-scroller {
+  overflow: auto;
 }
 
 /* ── Crepe floating elements: position:fixed to escape overflow clipping ── */
