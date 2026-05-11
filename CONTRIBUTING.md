@@ -60,33 +60,37 @@ src/                    # Frontend (React + TypeScript)
     AISidebar/          # AI chat sidebar (doCompact, auto-compact, UsageBadge)
     ConfirmCloseDialog/ # Unsaved changes dialog
     Editor/             # Milkdown editor wrapper + SelectionAIPanel
+    FileTree/           # Workspace file tree (lazy-load, right-click menu, new/rename/delete)
     HamburgerMenu/      # Hamburger menu
+    OutlineSidebar/     # Outline tree + Files tab (dual-tab header, shared resize handle)
     SettingsPanel/      # Settings tab (appearance, AI, proxy, about)
     StatusBar/          # Bottom status bar
     TabBar/             # Tab management (file tabs + settings tab)
     TitleBar/           # Custom frameless title bar (gear button)
-    Toolbar/            # Formatting toolbar
     UpdateDialog/       # Update notification toast
   stores/
     appStore.ts         # Re-exports from tabStore, themeStore, etc.
     chatStore.ts        # AI chat state (streamingContentMap, contextMap, cleanupIncompleteToolCalls)
-    aiConfigStore.ts    # (deleted) — merged into themeStore
     aiSelectionStore.ts # Selection AI panel state
     searchStore.ts      # Find & replace state (per-tab editorViewMap)
-    tabStore.ts         # File tabs, activeFileId, per-tab getEditorHTMLMap
-    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab
+    sessionStore.ts     # Session persistence (workspaceRoot)
+    tabStore.ts         # File tabs, workspaceRoot, getChatKey, closeWorkspace
+    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab, leftPanelTab
     updateStore.ts      # Auto-update state
   lib/
-    chatPersistence.ts  # JSONL chat history (append, load, repair corrupted)
-    contextBuilder.ts   # System prompt builder (dynamic maxContext from model)
+    chatPersistence.ts  # JSONL chat history (chatKey-based, safeFileName, append, load, repair)
+    contextBuilder.ts   # System prompt builder (workspaceRoot, activeFileName, dynamic maxContext)
     modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
-    llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming)
+    llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling)
     settings.ts         # App settings persistence (proxyUrl derived proxy state)
-    exportHtml.ts       # HTML/PDF export logic
-    fileOps.ts          # File read/write via Tauri FS plugin
+    exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
+    fileOps.ts          # File read/write/open folder via Tauri FS plugin
     i18n.ts             # Shared i18n helper (t() + isZh)
+    imageManager.ts     # Image save/resolve (saveImageToFile, resolveImagePath)
+    shortcuts.ts        # Centralized shortcut registry (getShortcutDisplay, getShortcutLabel)
     themeCSS.ts         # Dynamic theme CSS generation
-    tools.ts            # AI tool definitions (outline, grep, read_lines, read_section, webfetch)
+    tools.ts            # AI tool definitions + execution (outline, grep, read_lines, read_section, webfetch, find, glob, ls)
+    types.ts            # Shared types (ToolCall, ToolDefinition, ChatMessage)
     updater.ts          # Auto-update with proxy support
   App.tsx               # Root component
   main.tsx              # Entry point

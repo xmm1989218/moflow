@@ -1,8 +1,44 @@
 import type { EditorTheme } from "../stores/appStore";
 import { getThemeCSS } from "./themeCSS";
+import { readFile } from "@tauri-apps/plugin-fs";
 
-export function exportAsHtml(bodyHtml: string, themeName: EditorTheme): string {
+const ASSET_HOST_RE = /https?:\/\/asset\.localhost\//gi;
+
+function replaceAssetUrlsWithBase64(html: string): Promise<string> {
+  const matches = [...html.matchAll(/src="(https?:\/\/asset\.localhost\/[^"]+)"/gi)];
+  if (matches.length === 0) return Promise.resolve(html);
+
+  const replacements = matches.map(async (match) => {
+    const assetUrl = match[1];
+    const filePath = decodeURIComponent(assetUrl.replace(ASSET_HOST_RE, ""));
+    try {
+      const data = await readFile(filePath);
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(data)));
+      const ext = filePath.split(".").pop()?.toLowerCase() ?? "png";
+      const mimeMap: Record<string, string> = {
+        png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+        gif: "image/gif", svg: "image/svg+xml", webp: "image/webp",
+        bmp: "image/bmp", ico: "image/x-icon",
+      };
+      const mime = mimeMap[ext] ?? "image/png";
+      return { assetUrl, dataUrl: `data:${mime};base64,${base64}` };
+    } catch {
+      return { assetUrl, dataUrl: assetUrl };
+    }
+  });
+
+  return Promise.all(replacements).then((results) => {
+    let result = html;
+    for (const { assetUrl, dataUrl } of results) {
+      result = result.replaceAll(assetUrl, dataUrl);
+    }
+    return result;
+  });
+}
+
+export async function exportAsHtml(bodyHtml: string, themeName: EditorTheme): Promise<string> {
   const css = getThemeCSS(themeName);
+  const processedHtml = await replaceAssetUrlsWithBase64(bodyHtml);
 
   return `<!DOCTYPE html>
 <html lang="en" data-editor-theme="${themeName}">
@@ -46,7 +82,7 @@ export function exportAsHtml(bodyHtml: string, themeName: EditorTheme): string {
   </style>
 </head>
 <body>
-${bodyHtml}
+${processedHtml}
 </body>
 </html>`;
 }

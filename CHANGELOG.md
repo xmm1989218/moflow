@@ -1,5 +1,78 @@
 # Changelog
 
+## v0.7.0 (2026-05-12)
+
+### New Features
+
+- **Workspace & File Tree** — Open a folder as workspace with a browsable file tree in the left panel
+  - `workspaceRoot` persisted in session; auto-restore on restart
+  - OutlineSidebar dual-tab header (📁 Files / 📑 Outline), shared resize handle
+  - FileTree: lazy-load directories, click to expand folders and open `.md`/`.txt` files
+  - File icons: 📁 folder / 📝 md·txt / 🖼️ image / 📄 other; active file highlight
+  - Right-click context menu: New File, New Folder, Rename, Delete
+  - New File: inline input → `writeFile` → `allow_paths` → refresh tree → auto-open
+  - New Folder: inline input → `mkdir` recursive → refresh tree
+  - Rename: inline edit → `rename` → update tab filePath/fileName if open
+  - Delete: confirm dialog → `remove` recursive → close tab if open
+  - `closeWorkspace` only closes workspace-related tabs, preserves other tabs; returns `false` if user cancels unsaved dialog
+  - Opening a new directory auto-closes current workspace first (with unsaved confirm)
+  - HamburgerMenu "Open Folder" / "打开目录" menu item
+
+- **Workspace-aware AI tools** — 8 tools with workspace mode providing project-level file exploration
+  - `outline()`, `read_lines()`, `read_section()` — document-level tools (always available)
+  - `grep()`, `find()`, `glob()`, `ls()`, `read_file()` — workspace-level tools (workspace mode only)
+  - `webfetch()` — network tool (always available)
+  - `isPathAllowed(path, workspaceRoot)` security boundary for all file-reading tools
+  - `getToolDefinitions(needsDocTools, workspaceRoot)` combines tools by mode
+  - Tool descriptions use `des(zh, en)` i18n based on `navigator.language`
+  - grep/find/glob: exclude `.git`/`node_modules`/`assets`/`.`-prefixed, maxDepth=3
+
+- **Chat key dual-mode** — workspace vs single-file chat lifecycle
+  - Workspace: `chatKey = "dir:" + normalized path` — one chat per workspace, survives tab switch/close
+  - Single-file: `chatKey = tabId` — deleted on tab close
+  - `safeFileName(chatKey)` replaces `[:/\\]` with `_` for JSONL filenames
+  - Workspace chat lifecycle: close tab → don't delete; close workspace → delete; switch workspace → delete old
+  - `closeWorkspace` deletes workspace chat JSONL on success
+
+- **Image management** — Paste images auto-saved to document's `./assets/` directory
+  - `imageManager.ts` — `saveImageToFile()` saves to `{docDir}/assets/`, returns `./assets/{filename}`
+  - `resolveImagePath()` resolves relative paths to absolute → `convertFileSrc()` for display
+  - `proxyDomURL`: Markdown `./assets/xxx.png` → DOM `https://asset.localhost/...`
+  - Paste detection: `clipboardData.items` image type → auto-upload
+  - Unsaved document paste: toast "Please save the document first"
+  - HTML export: asset URLs → file paths → base64 embedding
+  - Remote images: CSP blocks `https://` img-src, paste remote URL shows "not supported" toast
+
+- **Empty startup page** — When no file is open, shows keyboard shortcuts instead of placeholder
+  - Workspace empty page shows directory name + "AI assistant available"
+  - No-workspace page shows shortcut hints
+
+- **Shortcuts registry** — Centralized in `src/lib/shortcuts.ts`
+  - 15 shortcuts with `getShortcutDisplay()`/`getShortcutLabel()`
+  - Platform-aware display (Ctrl vs ⌘)
+  - HamburgerMenu and empty page use `getShortcutDisplay`
+
+- **System prompt workspace mode** — `buildSystemPrompt` adapts to workspace vs single-file
+  - Workspace mode: filename label + "may switch files" note + all 8 tools
+  - No-workspace mode: document tools only + webfetch
+  - `workspaceRoot` and `activeFileName` as explicit params
+
+### Improvements
+
+- `tabStore` — `getChatKey()`, `closeWorkspace()`, workspace-aware `closeTab`/`switchTab`/`setWorkspaceRoot`
+- `restoreSession` no longer returns null when tabs empty — preserves `workspaceRoot`
+- `App.tsx` — startup loads chat via `getChatKey()`, adds `workspaceRoot` to `allow_paths`
+- `AISidebar.tsx` — ~30 chat key references changed from `activeFileId` to `chatKey`
+- `fileOps.ts` — `openFolder` auto-closes workspace; `closeLastTab` no longer destroys window; `Ctrl+Shift+O` for open folder
+- `chatPersistence.ts` — all params renamed `tabId` → `chatKey`; `safeFileName` for chat key normalization
+- `contextBuilder.ts` — `buildSystemPrompt` with `workspaceRoot?` and `activeFileName?` params
+- 134 tests across 12 files (chatPersistence, tabStore, contextBuilder, shortcuts, tools, chatStore, etc.)
+
+### Removed
+
+- `attachedFiles` / `FileMentionMenu` system — replaced by workspace-aware tools (AI explores files via grep/find/glob/ls/read instead of manual @-mention)
+- `aiConfigStore` — all references migrated to `themeStore`
+
 ## v0.6.5 (2026-05-11)
 
 ### Improvements

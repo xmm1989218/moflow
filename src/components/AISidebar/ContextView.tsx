@@ -2,7 +2,8 @@ import { useMemo } from "react";
 import { useChatStore, type Message } from "../../stores/chatStore";
 import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, formatCost } from "../../lib/modelInfo";
-import { docToolDefinitions, networkToolDefinitions } from "../../lib/tools";
+import { getToolDefinitions } from "../../lib/tools";
+import { useTabStore } from "../../stores/tabStore";
 import { t } from "../../lib/i18n";
 
 interface ContextViewProps {
@@ -165,11 +166,10 @@ export default function ContextView({ tabId, providerId, model, docContent }: Co
     const docRatio = 0.50;
     const reserved = Math.floor(maxContext * (1 - docRatio));
     const needsDocTools = estimateTokens(docContent) > (maxContext - reserved);
+    const workspaceRoot = useTabStore.getState().workspaceRoot;
 
-    const { prompt, needsDocTools: promptNeedsDocTools } = buildSystemPrompt(docContent, maxContext, needsDocTools);
-    const toolList = promptNeedsDocTools
-      ? [...docToolDefinitions, ...networkToolDefinitions]
-      : [...networkToolDefinitions];
+    const { prompt, needsDocTools: promptNeedsDocTools } = buildSystemPrompt(docContent, maxContext, needsDocTools, workspaceRoot);
+    const toolList = getToolDefinitions(promptNeedsDocTools, workspaceRoot);
     const bd = computeBreakdown(prompt, contextMsgs, contextTokens);
     const total = bd.reduce((sum, b) => sum + b.tokens, 0);
     return { tools: toolList, breakdown: bd, totalBreakdown: total };

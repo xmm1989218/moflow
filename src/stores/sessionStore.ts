@@ -15,9 +15,10 @@ interface SessionData {
   activeTabId?: string;
   activeFilePath?: string | null;
   activeUntitledId?: string;
+  workspaceRoot?: string | null;
 }
 
-async function persistSession(files: TabState[], activeFileId: string) {
+async function persistSession(files: TabState[], activeFileId: string, workspaceRoot?: string | null) {
   try {
     const session: SessionData = {
       tabs: files.map((tab) => ({
@@ -27,6 +28,7 @@ async function persistSession(files: TabState[], activeFileId: string) {
         mode: tab.mode,
       })),
       activeTabId: activeFileId,
+      workspaceRoot: workspaceRoot ?? useTabStore.getState().workspaceRoot,
     };
 
     const dir = await appDataDir();

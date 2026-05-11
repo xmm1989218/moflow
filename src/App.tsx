@@ -15,7 +15,7 @@ import { useThemeStore, resolveAppTheme } from "./stores/themeStore";
 import { useUpdateStore } from "./stores/updateStore";
 import { useSearchStore } from "./stores/searchStore";
 import { useChatStore } from "./stores/chatStore";
-import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab } from "./lib/fileOps";
+import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab, openFolder } from "./lib/fileOps";
 import { t } from "./lib/i18n";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
@@ -53,15 +53,18 @@ function App() {
       getCurrentWindow().show();
       window.__startupMark?.("window-shown", "session-loaded");
       startupReport();
-      const activeTabId = useTabStore.getState().activeFileId;
-      useChatStore.getState().loadChatHistory(activeTabId);
+      const chatKey = useTabStore.getState().getChatKey();
+      if (chatKey) useChatStore.getState().loadChatHistory(chatKey);
       useUpdateStore.getState().checkUpdate();
       const tabs = useTabStore.getState().files;
+      const activeFileId = useTabStore.getState().activeFileId;
+      const workspaceRoot = useTabStore.getState().workspaceRoot;
       const paths = tabs.map((t) => t.filePath).filter(Boolean) as string[];
+      if (workspaceRoot) paths.push(workspaceRoot);
       if (paths.length > 0) {
         await invoke("allow_paths", { paths });
       }
-      const activeTab = tabs.find((t) => t.id === activeTabId);
+      const activeTab = tabs.find((t) => t.id === activeFileId);
       if (activeTab && !activeTab.contentLoaded && activeTab.filePath) {
         const { loadTabContent } = await import("./lib/fileOps");
         loadTabContent(activeTab.id);
@@ -155,7 +158,11 @@ function App() {
 
       if (mod && e.key === "o") {
         e.preventDefault();
-        openFile();
+        if (e.shiftKey) {
+          openFolder();
+        } else {
+          openFile();
+        }
       } else if (mod && e.key === "s" && !e.shiftKey) {
         e.preventDefault();
         saveFile();
@@ -168,6 +175,7 @@ function App() {
       } else if (mod && e.key === "w") {
         e.preventDefault();
         const state = useTabStore.getState();
+        if (state.files.length === 0) return;
         const active = state.getActiveFile();
 
         if (state.files.length === 1) {

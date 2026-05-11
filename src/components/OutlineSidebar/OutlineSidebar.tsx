@@ -4,6 +4,7 @@ import { useThemeStore } from "../../stores/themeStore";
 import { useSearchStore } from "../../stores/searchStore";
 import { buildOutlineTree, type OutlineItem } from "../../lib/outlineTree";
 import { t } from "../../lib/i18n";
+import FileTree from "../FileTree/FileTree";
 
 function OutlineNode({
   item,
@@ -77,6 +78,8 @@ function OutlineNode({
 export default function OutlineSidebar() {
   const outlineWidth = useThemeStore((s) => s.outlineWidth);
   const setOutlineWidth = useThemeStore((s) => s.setOutlineWidth);
+  const leftPanelTab = useThemeStore((s) => s.leftPanelTab);
+  const setLeftPanelTab = useThemeStore((s) => s.setLeftPanelTab);
   const activeFileId = useTabStore((s) => s.activeFileId);
   const content = useTabStore(
     (s) => {
@@ -205,11 +208,26 @@ export default function OutlineSidebar() {
   return (
     <div className="flex flex-col border-r border-moflow-border bg-moflow-bg relative animate-outline-slide shrink-0" style={{ width: outlineWidth, minWidth: outlineWidth }}>
       <div className="absolute -right-0.5 top-0 w-1 h-full cursor-col-resize z-10 transition-[background-color] duration-150 hover:bg-moflow-accent/40" onMouseDown={handleResizeStart} />
-      <div className="h-9 flex items-center px-3 border-b border-moflow-border bg-moflow-bg-secondary shrink-0">
-        <span className="text-[13px] font-semibold text-moflow-text">{t("大纲", "Outline")}</span>
+      <div className="h-9 flex items-center border-b border-moflow-border bg-moflow-bg-secondary shrink-0">
+        <button
+          className={`flex items-center gap-1 px-3 h-full border-none bg-none text-[13px] cursor-pointer transition-[color] duration-100 ${leftPanelTab === "files" ? "text-moflow-text font-semibold" : "text-moflow-text-secondary hover:text-moflow-text"}`}
+          onClick={() => setLeftPanelTab("files")}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h5l2 2h5v8H2V3z" /></svg>
+          {t("文件", "Files")}
+        </button>
+        <button
+          className={`flex items-center gap-1 px-3 h-full border-none bg-none text-[13px] cursor-pointer transition-[color] duration-100 ${leftPanelTab === "outline" ? "text-moflow-text font-semibold" : "text-moflow-text-secondary hover:text-moflow-text"}`}
+          onClick={() => setLeftPanelTab("outline")}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 2h12M2 6h8M2 10h10M2 14h6" /></svg>
+          {t("大纲", "Outline")}
+        </button>
       </div>
-      <div className="flex-1 overflow-y-auto overflow-x-hidden py-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm [&::-webkit-scrollbar-thumb]:bg-moflow-scrollbar-thumb [&::-webkit-scrollbar-track]:bg-moflow-scrollbar-track">
-        {flatList.length === 0 ? (
+      <div className="flex-1 overflow-y-auto overflow-x-hidden py-1 min-h-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm [&::-webkit-scrollbar-thumb]:bg-moflow-scrollbar-thumb [&::-webkit-scrollbar-track]:bg-moflow-scrollbar-track">
+        {leftPanelTab === "files" ? (
+          <FileTree />
+        ) : flatList.length === 0 ? (
           <div className="flex items-center justify-center h-full text-moflow-text-secondary text-[13px] opacity-60 p-5 text-center">{t("无标题", "No headings")}</div>
         ) : (
           <ul className="list-none m-0 p-0">

@@ -408,22 +408,48 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.7.0 — 跨平台支持
+## v0.7.0 — 文档管理 & 多文件上下文 ✅
 
-### macOS 适配
+### 文件管理
 
-- [ ] PDF 导出改用 WKWebView
-- [ ] 窗口装饰适配
-- [ ] 菜单栏集成
+- [x] 权限扩展：`fs:allow-read-dir`, `fs:allow-stat`, `fs:allow-rename`, `fs:allow-copy-file`
+- [x] `tabStore` 增加 `workspaceRoot: string | null`
+- [x] `sessionStore` 持久化 `workspaceRoot`
+- [x] Rust `preload_startup_data` 读取 `workspaceRoot`
+- [x] HamburgerMenu 增加 "打开目录" / "Open Folder" 菜单项
+- [x] 打开目录：`open({ directory: true })` → 设置 `workspaceRoot` → `allow_paths` → 自动切换到 Files tab
+- [x] `themeStore` 增加 `leftPanelTab: "files" | "outline"`，默认 `"outline"`
+- [x] OutlineSidebar 顶部 header 改为双 tab 按钮（📁 Files / 📑 Outline），共享宽度 + resize handle
+- [x] FileTree 组件（懒加载树，点击文件夹 `readDir()` 展开子项）
+- [x] 文件树显示规则：所有子文件夹 + 所有文件；仅 `.md` / `.markdown` / `.txt` 可点击打开；其他文件灰显不可点击
+- [x] 文件图标：📁 文件夹 / 📝 md·txt / 🖼️ 图片 / 📄 其他
+- [x] 当前活跃文件高亮（对比 `tabStore.files[].filePath`）
+- [x] 右键菜单：New File / New Folder / Rename / Delete
+- [x] New File：内联输入 → `writeFile` → `allow_paths` → 刷新目录 → 自动打开
+- [x] New Folder：内联输入 → `mkdir` recursive → 刷新
+- [x] Rename：内联编辑 → `rename` → 更新 tab filePath/fileName（如正在编辑）
+- [x] Delete：确认对话框 → `remove` recursive → 关闭 tab（如正在编辑）
 
-### Linux 适配
+### 图片上传和管理
 
-- [ ] AppImage / deb 打包
-- [ ] WebKitGTK 适配测试
+- [x] Crepe ImageBlock 配置 `onUpload(file: File): Promise<string>` + `proxyDomURL(url: string): string`
+- [x] `imageManager.ts` — `saveImageToFile(tabFilePath, data, ext)` → 保存到 `{docDir}/assets/` → 返回 `"./assets/{filename}"`
+- [x] `imageManager.ts` — `resolveImagePath(src, docFilePath)` → 相对路径解析为绝对路径 → `convertFileSrc(absPath)`
+- [x] `proxyDomURL`：markdown 中的 `./assets/xxx.png` → DOM 中显示为 `https://asset.localhost/...`
+- [x] Paste 图片：editor paste 事件检测 `clipboardData.items` image 类型 → 触发上传
+- [x] 未保存文档插入图片：toast 提示 "请先保存文档再插入图片"
+- [x] 导出 HTML：图片 asset URL 转回文件路径 → base64 内嵌
+- [x] 远程图片：CSP 不允许 `https://` img-src，粘贴远程 URL 时提示不支持
 
 ---
 
-## v1.0.0 — 正式版
+## v0.7.5 — 编辑器优化
+
+- [ ] 代码模式与所见即所得模式共享 undo history（当前切代码模式时 Milkdown 实例被销毁，undo history 丢失；需改为 CSS 隐藏 + 实时 `replaceAll(content, false)` 同步）
+
+---
+
+## v0.8.0 — i18n & 无障碍
 
 ### i18n 正式方案
 
@@ -431,43 +457,28 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] 运行时语言切换
 - [ ] 支持更多语言（日语、韩语等）
 
-### 性能优化
-
-- [ ] 大文件编辑性能
-- [ ] 内存占用优化
-
 ### 无障碍（a11y）
 
 - [ ] 键盘导航完善
 - [ ] 屏幕阅读器支持
 
-### 插件系统
+---
 
-- [ ] 可扩展插件 API 架构设计（视情况可能延后到 v1.x）
+## v0.9.0 — 性能优化
+
+- [ ] 大文件编辑性能
+- [ ] 内存占用优化
+- [ ] 优化 AI 提示词，让输出更加精简且关键
+- [ ] 环境变量配置（方便 skill 等使用）
 
 ---
 
-## v1.x — 后续迭代（按需）
+## v1.0.0 — 正式版（插件 & Skill 系统）
 
-- [ ] 优化提示词，让输出更加精简且关键
-- [ ] 增加环境变量配置，方便 skill 等使用
-- [ ] 对话导出（Markdown / JSON）
-- [ ] 聊天历史搜索
+### 插件系统
+
+- [ ] 可扩展插件 API 架构设计
 - [ ] 自定义 system prompt 模板
-- [ ] 多文件上下文（引用其他打开的文档）
-- [ ] Vim keybindings 模式
-- [ ] 图片上传和管理
-- [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边）
-- [ ] 打开目录（文件夹树浏览，快速打开目录下的文件）
-- [ ] AI 回复插入文档（聊天消息「插入」按钮，回复内容插入编辑器光标处）
-- [ ] 代码模式与所见即所得模式共享 undo history（当前切代码模式时 Milkdown 实例被销毁，undo history 丢失；需改为 CSS 隐藏 + 实时 `replaceAll(content, false)` 同步）
-
-### webfetch 增强（已移至 v0.4.1）
-
-- [x] nav/footer/aside/header/button/form 整块删除 → v0.4.1 markdown/text 模式 strip_noise
-- [x] class/style 属性剥离 → v0.4.1 markdown/text 模式 strip_class_style
-- [x] scraper 结构化提取 → v0.4.1 markdown 模式（html2md crate）
-- [x] webfetch raw 参数 → v0.4.1 html 模式（最小剔除，保留结构和属性）
 
 ### Skill 市场与 Skill 管理
 
@@ -478,3 +489,33 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] Skill 对话模式（选择 skill 后进入专属对话，独立上下文）
 - [ ] 内置 skill 示例（翻译助手、代码审查、文档润色等）
 - [ ] 社区 skill 分享（GitHub 仓库作为 skill 源，约定目录结构）
+
+---
+
+## v1.x — 跨平台 & 后续迭代
+
+### 跨平台支持
+
+- [ ] macOS 适配（PDF 导出改用 WKWebView、窗口装饰适配、菜单栏集成）
+- [ ] Linux 适配（AppImage / deb 打包、WebKitGTK 适配测试）
+
+### AI 增强
+
+- [ ] AI 回复插入文档（聊天消息「插入」按钮，回复内容插入编辑器光标处）
+- [ ] 对话导出（Markdown / JSON）
+- [ ] 聊天历史搜索
+
+### 编辑器
+
+- [ ] Vim keybindings 模式
+
+### 修复
+
+- [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边）
+
+### webfetch 增强（已移至 v0.4.1）
+
+- [x] nav/footer/aside/header/button/form 整块删除 → v0.4.1 markdown/text 模式 strip_noise
+- [x] class/style 属性剥离 → v0.4.1 markdown/text 模式 strip_class_style
+- [x] scraper 结构化提取 → v0.4.1 markdown 模式（html2md crate）
+- [x] webfetch raw 参数 → v0.4.1 html 模式（最小剔除，保留结构和属性）

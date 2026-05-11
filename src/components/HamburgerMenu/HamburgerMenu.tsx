@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useSearchStore } from "../../stores/searchStore";
-import { openFile, saveFile, saveFileAs, exportHtml, exportPdf } from "../../lib/fileOps";
+import { openFile, saveFile, saveFileAs, exportHtml, exportPdf, openFolder } from "../../lib/fileOps";
 import { t } from "../../lib/i18n";
+import { getShortcutDisplay } from "../../lib/shortcuts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -43,6 +44,7 @@ function item(
 export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const newFile = useTabStore((s) => s.newFile);
+  const workspaceRoot = useTabStore((s) => s.workspaceRoot);
   const openSettingsTab = useThemeStore((s) => s.openSettingsTab);
 
   useEffect(() => {
@@ -62,6 +64,12 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
         break;
       case "open":
         openFile();
+        break;
+      case "open_folder":
+        openFolder();
+        break;
+      case "close_folder":
+        useTabStore.getState().closeWorkspace();
         break;
       case "save":
         saveFile();
@@ -97,13 +105,15 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
   };
 
   const menuItems: MenuEntry[] = [
-    item("new", t("新建", "New"), { shortcut: "Ctrl+N" }),
-    item("open", t("打开...", "Open..."), { shortcut: "Ctrl+O" }),
-    item("save", t("保存", "Save"), { shortcut: "Ctrl+S" }),
-    item("save_as", t("另存为...", "Save As..."), { shortcut: "Ctrl+Shift+S" }),
+    item("new", t("新建", "New"), { shortcut: getShortcutDisplay("newFile") }),
+    item("open", t("打开...", "Open..."), { shortcut: getShortcutDisplay("openFile") }),
+    item("open_folder", t("打开目录...", "Open Folder..."), { shortcut: getShortcutDisplay("openFolder") }),
+    ...(workspaceRoot ? [item("close_folder", t("关闭目录", "Close Folder"))] : []),
+    item("save", t("保存", "Save"), { shortcut: getShortcutDisplay("saveFile") }),
+    item("save_as", t("另存为...", "Save As..."), { shortcut: getShortcutDisplay("saveFileAs") }),
     sep(),
-    item("find", t("查找", "Find"), { shortcut: "Ctrl+F" }),
-    item("replace", t("替换", "Replace"), { shortcut: "Ctrl+H" }),
+    item("find", t("查找", "Find"), { shortcut: getShortcutDisplay("find") }),
+    item("replace", t("替换", "Replace"), { shortcut: getShortcutDisplay("replace") }),
     sep(),
     item("export", t("导出", "Export"), {
       submenu: [
@@ -112,9 +122,9 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
       ],
     }),
     sep(),
-    item("settings", t("设置", "Settings"), { shortcut: "Ctrl+," }),
-    item("fullscreen", t("全屏", "Fullscreen"), { shortcut: "F11" }),
-    item("devtools", t("开发者工具", "Developer Tools"), { shortcut: "F12" }),
+    item("settings", t("设置", "Settings"), { shortcut: getShortcutDisplay("settings") }),
+    item("fullscreen", t("全屏", "Fullscreen"), { shortcut: getShortcutDisplay("fullscreen") }),
+    item("devtools", t("开发者工具", "Developer Tools"), { shortcut: getShortcutDisplay("devtools") }),
   ];
 
   return (

@@ -9,6 +9,7 @@ import { buildSystemPrompt } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
 import { t, isZh } from "../../lib/i18n";
+import { mdSyntaxZh, mdSyntaxEn } from "../../lib/markdownSyntax";
 import MessageContent from "../AISidebar/MessageContent";
 
 function getLangLabel(code: LanguageCode): string {
@@ -32,42 +33,44 @@ const TONE_OPTIONS = [
 ] as const;
 
 function getRewritePrompt(key: string, selectedText: string): string {
+  const mdHint = `\n\n${mdSyntaxZh}\n\n请特别注意：数学公式请使用 LaTeX 语法（行内 $...$，独立 $$...$$），代码请用代码块包裹。`;
+  const mdHintEn = `\n\n${mdSyntaxEn}\n\nPlease note: math formulas must use LaTeX syntax (inline $...$, display $$...$$), code must be wrapped in code blocks.`;
   const prompts: Record<string, [string, string]> = {
     polish: [
-      `请润色以下文字，使其更加流畅自然。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式（如列表、加粗、标题等），只输出润色后的结果：\n\n${selectedText}`,
-      `Polish the following text to make it more fluent and natural. This is a Markdown editor, use Markdown formatting where appropriate, output only the result:\n\n${selectedText}`,
+      `请润色以下文字，使其更加流畅自然。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出润色后的结果：\n\n${selectedText}`,
+      `Polish the following text to make it more fluent and natural. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
     ],
     expand: [
-      `请扩写以下文字，增加更多细节和丰富内容。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式（如列表、加粗、标题等），只输出扩写后的结果：\n\n${selectedText}`,
-      `Expand the following text with more details and richer content. This is a Markdown editor, use Markdown formatting where appropriate, output only the result:\n\n${selectedText}`,
+      `请扩写以下文字，增加更多细节和丰富内容。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出扩写后的结果：\n\n${selectedText}`,
+      `Expand the following text with more details and richer content. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
     ],
     shorten: [
-      `请缩写以下文字，使其更加简洁精炼，保留核心要点。只输出缩写后的结果：\n\n${selectedText}`,
-      `Shorten the following text to be more concise while keeping the key points. Output only the result:\n\n${selectedText}`,
+      `请缩写以下文字，使其更加简洁精炼，保留核心要点。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出缩写后的结果：\n\n${selectedText}`,
+      `Shorten the following text to be more concise while keeping the key points. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
     ],
     professional: [
-      `请将以下文字改写为更专业的表达，使用行业术语和规范用语。只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite in a more professional tone using industry terminology. Output only the result:\n\n${selectedText}`,
+      `请将以下文字改写为更专业的表达，使用行业术语和规范用语。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite in a more professional tone using industry terminology. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
     ],
     academic: [
-      `请将以下文字改写为更学术化的表达，使用学术语言和严谨论述。只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite in a more academic tone with scholarly language. Output only the result:\n\n${selectedText}`,
+      `请将以下文字改写为更学术化的表达，使用学术语言和严谨论述。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite in a more academic tone with scholarly language. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
     ],
     formal: [
-      `请将以下文字改写为更正式的表达，适合商务或公文场景。只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite in a more formal tone suitable for business contexts. Output only the result:\n\n${selectedText}`,
+      `请将以下文字改写为更正式的表达，适合商务或公文场景。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite in a more formal tone suitable for business contexts. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
     ],
     casual: [
-      `请将以下文字改写为更轻松活泼的表达，口语化、亲切自然。只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite in a more casual and friendly tone. Output only the result:\n\n${selectedText}`,
+      `请将以下文字改写为更轻松活泼的表达，口语化、亲切自然。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite in a more casual and friendly tone. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
     ],
     literary: [
-      `请将以下文字改写得更有文采，修辞优美、意境深远。只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite with more literary flair and elegant rhetoric. Output only the result:\n\n${selectedText}`,
+      `请将以下文字改写得更有文采，修辞优美、意境深远。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite with more literary flair and elegant rhetoric. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
     ],
     internet: [
-      `请将以下文字改写得更有网感，适合社交媒体传播，简洁有力、有梗有趣。只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite with an internet-savvy style for social media, concise and engaging. Output only the result:\n\n${selectedText}`,
+      `请将以下文字改写得更有网感，适合社交媒体传播，简洁有力、有梗有趣。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
+      `Rewrite with an internet-savvy style for social media, concise and engaging. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
     ],
   };
   const pair = prompts[key];
@@ -76,9 +79,11 @@ function getRewritePrompt(key: string, selectedText: string): string {
 }
 
 function getCustomRewritePrompt(instruction: string, selectedText: string): string {
+  const mdHint = `\n\n${mdSyntaxZh}\n\n请特别注意：数学公式请使用 LaTeX 语法（行内 $...$，独立 $$...$$），代码请用代码块包裹。`;
+  const mdHintEn = `\n\n${mdSyntaxEn}\n\nPlease note: math formulas must use LaTeX syntax (inline $...$, display $$...$$), code must be wrapped in code blocks.`;
   return t(
-    `请根据以下要求改写文字：${instruction}。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式（如列表、加粗、标题等），只输出改写后的结果：\n\n${selectedText}`,
-    `Rewrite the following text according to this instruction: ${instruction}. This is a Markdown editor, use Markdown formatting where appropriate, output only the result:\n\n${selectedText}`
+    `请根据以下要求改写文字：${instruction}。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
+    `Rewrite the following text according to this instruction: ${instruction}. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`
   );
 }
 
@@ -396,7 +401,7 @@ export default function SelectionAIPanel() {
   useEffect(() => {
     if (activeAction === "polish") return;
     if (activeAction === "explain" && selectedText) {
-      const prompt = t(`请用简洁的语言解释以下内容。这是一款 Markdown 编辑器的解释功能，请合理使用 Markdown 格式（如列表、加粗、标题等）使解释更清晰：\n\n${selectedText}`, `Briefly explain the following. This is a Markdown editor's explain feature, use Markdown formatting (lists, bold, headings, etc.) to make the explanation clearer:\n\n${selectedText}`);
+      const prompt = t(`请用简洁的语言解释以下内容。这是一款 Markdown 编辑器的解释功能，请合理使用 Markdown 格式使解释更清晰：\n\n${mdSyntaxZh}\n\n${selectedText}`, `Briefly explain the following. This is a Markdown editor's explain feature, use Markdown formatting to make the explanation clearer:\n\n${mdSyntaxEn}\n\n${selectedText}`);
       queueMicrotask(() => doLLMRequest(prompt));
     } else if (activeAction === "translate" && selectedText) {
       const targetLabel = getLangLabel(targetLang);

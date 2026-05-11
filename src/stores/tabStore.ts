@@ -68,10 +68,15 @@ export async function deleteUntitledContent(tabId: string) {
 
 const untitledTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+function setDocumentTitle(title: string) {
+  if (typeof document !== "undefined") document.title = title;
+}
+
 interface TabState_Store {
   files: TabState[];
   activeFileId: string;
   sessionInitialized: boolean;
+  workspaceRoot: string | null;
   getEditorHTMLMap: Map<string, () => string>;
 
   openTab: (overrides?: Partial<Omit<TabState, "id">>) => string;
@@ -84,14 +89,16 @@ interface TabState_Store {
   newFile: () => string;
   setGetEditorHTML: (tabId: string, fn: (() => string) | null) => void;
   getEditorHTML: (tabId?: string) => (() => string) | null;
+  setWorkspaceRoot: (root: string | null) => void;
+  getChatKey: () => string;
+  closeWorkspace: () => Promise<boolean>;
 }
 
-const initialTab = createTab();
-
 export const useTabStore = create<TabState_Store>((set, get) => ({
-  files: [initialTab],
-  activeFileId: initialTab.id,
+  files: [],
+  activeFileId: "",
   sessionInitialized: false,
+  workspaceRoot: null,
   getEditorHTMLMap: new Map(),
 
   openTab: (overrides) => {
@@ -100,12 +107,15 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
       files: [...state.files, tab],
       activeFileId: tab.id,
     }));
-    document.title = `${tab.fileName} - MoFlow`;
-    if (tab.filePath === null) {
+    setDocumentTitle(`${tab.fileName} - MoFlow`);    if (tab.filePath === null) {
       writeUntitledContent(tab.id, tab.content);
     }
     const state = get();
     persistSession(state.files, state.activeFileId);
+    const chatKey = get().getChatKey();
+    if (!useChatStore.getState().chatLoadedMap[chatKey]) {
+      useChatStore.getState().loadChatHistory(chatKey);
+    }
     return tab.id;
   },
 
@@ -121,20 +131,27 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
 
     const tab = state.files.find((f) => f.id === id);
     if (tab && tab.filePath === null) {
-      deleteUntitledContent(id);
+      if (typeof window !== "undefined") deleteUntitledContent(id);
     }
 
-    import("../lib/chatPersistence").then(({ removeChat }) => removeChat(id));
-    useChatStore.getState().deleteChat(id);
+    if (!state.workspaceRoot) {
+      import("../lib/chatPersistence").then(({ removeChat }) => removeChat(id));
+      useChatStore.getState().deleteChat(id);
+    }
     state.getEditorHTMLMap.delete(id);
 
     const newFiles = state.files.filter((f) => f.id !== id);
 
     if (newFiles.length === 0) {
-      const newTab = createTab();
-      set({ files: [newTab], activeFileId: newTab.id });
-      document.title = `${newTab.fileName} - MoFlow`;
-      persistSession([newTab], newTab.id);
+      if (state.workspaceRoot) {
+        set({ files: [], activeFileId: "" });
+        setDocumentTitle("MoFlow");
+        persistSession([], "");
+      } else {
+        set({ files: [], activeFileId: "" });
+        setDocumentTitle("MoFlow");
+        persistSession([], "");
+      }
       return;
     }
 
@@ -149,7 +166,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     if (id === state.activeFileId) {
       const newActive = newFiles.find((f) => f.id === newActiveId);
       if (newActive) {
-        document.title = `${newActive.fileName}${newActive.isModified ? "*" : ""} - MoFlow`;
+        setDocumentTitle(`${newActive.fileName}${newActive.isModified ? "*" : ""} - MoFlow`);
 
         if (!newActive.contentLoaded && newActive.filePath) {
           import("../lib/fileOps").then(({ loadTabContent }) => {
@@ -157,9 +174,10 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
           });
         }
 
-        const chatLoaded = useChatStore.getState().chatLoadedMap[newActiveId];
+        const chatKey = get().getChatKey();
+        const chatLoaded = useChatStore.getState().chatLoadedMap[chatKey];
         if (chatLoaded === undefined) {
-          useChatStore.getState().loadChatHistory(newActiveId);
+          useChatStore.getState().loadChatHistory(chatKey);
         }
       }
     }
@@ -179,7 +197,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     const tab = state.files.find((f) => f.id === id);
     if (!tab) return;
     set({ activeFileId: id });
-    document.title = `${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`;
+    setDocumentTitle(`${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`);
     persistSession(get().files, id);
 
     if (!tab.contentLoaded && tab.filePath) {
@@ -188,9 +206,10 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
       });
     }
 
-    const chatLoaded = useChatStore.getState().chatLoadedMap[id];
+    const chatKey = get().getChatKey();
+    const chatLoaded = useChatStore.getState().chatLoadedMap[chatKey];
     if (chatLoaded === undefined) {
-      useChatStore.getState().loadChatHistory(id);
+      useChatStore.getState().loadChatHistory(chatKey);
     }
   },
 
@@ -244,7 +263,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     if (id === state.activeFileId) {
       const tab = state.files.find((f) => f.id === id);
       if (tab) {
-        document.title = `${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`;
+        setDocumentTitle(`${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`);
       }
     }
     persistSession(state.files, state.activeFileId);
@@ -276,6 +295,95 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
   getEditorHTML: (tabId) => {
     const id = tabId ?? get().activeFileId;
     return get().getEditorHTMLMap.get(id) ?? null;
+  },
+
+  setWorkspaceRoot: (root) => {
+    const prev = get().workspaceRoot;
+    if (prev && prev !== root) {
+      const oldKey = "dir:" + prev.replace(/\\/g, "/").toLowerCase();
+      import("../lib/chatPersistence").then(({ removeChat }) => removeChat(oldKey));
+      useChatStore.getState().deleteChat(oldKey);
+    }
+    set({ workspaceRoot: root });
+    persistSession(get().files, get().activeFileId);
+    if (root) {
+      const chatKey = get().getChatKey();
+      if (!useChatStore.getState().chatLoadedMap[chatKey]) {
+        useChatStore.getState().loadChatHistory(chatKey);
+      }
+    }
+  },
+
+  getChatKey: () => {
+    const state = get();
+    if (state.workspaceRoot) {
+      return "dir:" + state.workspaceRoot.replace(/\\/g, "/").toLowerCase();
+    }
+    return state.activeFileId;
+  },
+
+  closeWorkspace: async (): Promise<boolean> => {
+    const state = get();
+    if (!state.workspaceRoot) return true;
+
+    const wsRoot = state.workspaceRoot.replace(/\\/g, "/").toLowerCase();
+    const isWsTab = (f: TabState) => {
+      if (f.filePath === null) return false;
+      return f.filePath.replace(/\\/g, "/").toLowerCase().startsWith(wsRoot);
+    };
+
+    const wsTabs = state.files.filter(isWsTab);
+    const otherTabs = state.files.filter((f) => !isWsTab(f));
+
+    const hasUnsaved = wsTabs.some(
+      (f) => f.isModified || (f.filePath === null && f.content.length > 0)
+    );
+    if (hasUnsaved) {
+      const { showConfirmCloseDialog } = await import("../lib/closeDialog");
+      const { t } = await import("../lib/i18n");
+      const wsName = state.workspaceRoot.replace(/\\/g, "/").split("/").filter(Boolean).pop() || state.workspaceRoot;
+      const message = t(
+        `「${wsName}」内有未保存的修改，是否保存？`,
+        `Workspace "${wsName}" has unsaved changes. Save them?`
+      );
+      const result = await showConfirmCloseDialog(message);
+      if (result === "cancel") return false;
+      if (result === "save") {
+        const { saveAllFiles } = await import("../lib/fileOps");
+        await saveAllFiles();
+      }
+    }
+
+    const chatKey = "dir:" + wsRoot;
+    const { removeChat } = await import("../lib/chatPersistence");
+    removeChat(chatKey);
+    useChatStore.getState().deleteChat(chatKey);
+
+    for (const tab of wsTabs) {
+      if (tab.filePath === null) {
+        deleteUntitledContent(tab.id);
+      }
+    }
+
+    let newActiveId = state.activeFileId;
+    const activeTab = state.files.find((f) => f.id === state.activeFileId);
+    if (!activeTab || isWsTab(activeTab)) {
+      newActiveId = otherTabs[0]?.id ?? "";
+    }
+
+    set({ files: otherTabs, activeFileId: newActiveId, workspaceRoot: null });
+    const newActive = otherTabs.find((f) => f.id === newActiveId);
+    setDocumentTitle(newActive ? `${newActive.fileName}${newActive.isModified ? "*" : ""} - MoFlow` : "MoFlow");
+    persistSession(otherTabs, newActiveId);
+
+    if (newActiveId) {
+      const newChatKey = get().getChatKey();
+      if (!useChatStore.getState().chatLoadedMap[newChatKey]) {
+        useChatStore.getState().loadChatHistory(newChatKey);
+      }
+    }
+
+    return true;
   },
 }));
 
@@ -383,8 +491,9 @@ export async function initFromStartupData(): Promise<boolean> {
     if (found) activeFileId = found.id;
   }
 
-  useTabStore.setState({ files: tabs, activeFileId, sessionInitialized: true });
-  persistSession(tabs, activeFileId);
+  const workspaceRoot = (data.session.workspaceRoot as string) ?? null;
+  useTabStore.setState({ files: tabs, activeFileId, sessionInitialized: true, workspaceRoot });
+  persistSession(tabs, activeFileId, workspaceRoot);
 
   performance.mark("restore-session-end");
   performance.measure("restore-session", "restore-session-start", "restore-session-end");
@@ -424,6 +533,7 @@ export async function initSession() {
       files: restored.files,
       activeFileId: restored.activeFileId,
       sessionInitialized: true,
+      workspaceRoot: restored.workspaceRoot,
     });
 
     const activeTab = restored.files.find((f) => f.id === restored.activeFileId);
@@ -443,7 +553,7 @@ export async function initSession() {
   persistSession(state.files, state.activeFileId);
 }
 
-async function restoreSession(): Promise<{ files: TabState[]; activeFileId: string } | null> {
+async function restoreSession(): Promise<{ files: TabState[]; activeFileId: string; workspaceRoot: string | null } | null> {
   try {
     const dir = await appDataDir();
     const sessionPath = await join(dir, "session.json");
@@ -453,43 +563,44 @@ async function restoreSession(): Promise<{ files: TabState[]; activeFileId: stri
 
     const data = await readFile(sessionPath);
     const session: SessionData = JSON.parse(new TextDecoder().decode(data));
-    if (!session.tabs || session.tabs.length === 0) return null;
 
     const tabs: TabState[] = [];
-    for (const st of session.tabs) {
-      const tabId = st.tabId || st.untitledId;
+    if (session.tabs && session.tabs.length > 0) {
+      for (const st of session.tabs) {
+        const tabId = st.tabId || st.untitledId;
 
-      if (st.filePath) {
-        tabs.push(
-          createTab({
-            id: tabId,
-            filePath: st.filePath,
-            fileName: st.fileName,
-            mode: st.mode,
-            content: "",
-            lastSavedContent: "",
-            isModified: false,
-            contentLoaded: false,
-          })
-        );
-      } else {
-        const content = tabId ? (await readUntitledContent(tabId)) ?? "" : "";
-        tabs.push(
-          createTab({
-            id: tabId,
-            filePath: null,
-            fileName: st.fileName,
-            mode: st.mode,
-            content,
-            lastSavedContent: content,
-            isModified: false,
-            contentLoaded: true,
-          })
-        );
+        if (st.filePath) {
+          tabs.push(
+            createTab({
+              id: tabId,
+              filePath: st.filePath,
+              fileName: st.fileName,
+              mode: st.mode,
+              content: "",
+              lastSavedContent: "",
+              isModified: false,
+              contentLoaded: false,
+            })
+          );
+        } else {
+          const content = tabId ? (await readUntitledContent(tabId)) ?? "" : "";
+          tabs.push(
+            createTab({
+              id: tabId,
+              filePath: null,
+              fileName: st.fileName,
+              mode: st.mode,
+              content,
+              lastSavedContent: content,
+              isModified: false,
+              contentLoaded: true,
+            })
+          );
+        }
       }
     }
 
-    let activeFileId = tabs[0].id;
+    let activeFileId = tabs[0]?.id ?? "";
     if (session.activeTabId) {
       const found = tabs.find((t) => t.id === session.activeTabId);
       if (found) activeFileId = found.id;
@@ -501,7 +612,7 @@ async function restoreSession(): Promise<{ files: TabState[]; activeFileId: stri
       if (found) activeFileId = found.id;
     }
 
-    return { files: tabs, activeFileId };
+    return { files: tabs, activeFileId, workspaceRoot: session.workspaceRoot ?? null };
   } catch (e) {
     console.error("restoreSession error:", e);
     return null;
@@ -521,6 +632,7 @@ interface SessionData {
   activeTabId?: string;
   activeFilePath?: string | null;
   activeUntitledId?: string;
+  workspaceRoot?: string | null;
 }
 
 export async function flushAllUntitled() {

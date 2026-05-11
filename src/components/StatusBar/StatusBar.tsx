@@ -18,14 +18,14 @@ const EyeIcon = () => (
 export default function StatusBar() {
   const showStatusBar = useThemeStore((s) => s.showStatusBar);
   const autoSave = useThemeStore((s) => s.autoSave);
+  const activeFileId = useTabStore((s) => s.activeFileId);
   const mode = useTabStore((s) => {
     const tab = s.files.find((f) => f.id === s.activeFileId);
     return tab?.mode ?? "wysiwyg";
   });
-  const activeFileId = useTabStore((s) => s.activeFileId);
 
   const setMode = (m: "wysiwyg" | "source") => {
-    useTabStore.getState().updateTabMeta(activeFileId, { mode: m });
+    if (activeFileId) useTabStore.getState().updateTabMeta(activeFileId, { mode: m });
   };
 
   if (!showStatusBar) return null;
@@ -33,13 +33,15 @@ export default function StatusBar() {
   return (
     <div className="h-6 shrink-0 border-t border-ui-border flex items-center text-xs justify-between bg-ui-bg-secondary text-ui-text-secondary px-4">
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => setMode(mode === "wysiwyg" ? "source" : "wysiwyg")}
-          className="bg-none border border-ui-border rounded text-ui-text-secondary px-[5px] cursor-pointer flex items-center justify-center h-[18px] leading-none"
-          title={mode === "wysiwyg" ? "Switch to Source Mode" : "Switch to WYSIWYG Mode"}
-        >
-          {mode === "wysiwyg" ? <CodeIcon /> : <EyeIcon />}
-        </button>
+        {activeFileId && (
+          <button
+            onClick={() => setMode(mode === "wysiwyg" ? "source" : "wysiwyg")}
+            className="bg-none border border-ui-border rounded text-ui-text-secondary px-[5px] cursor-pointer flex items-center justify-center h-[18px] leading-none"
+            title={mode === "wysiwyg" ? "Switch to Source Mode" : "Switch to WYSIWYG Mode"}
+          >
+            {mode === "wysiwyg" ? <CodeIcon /> : <EyeIcon />}
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-3">
         <span>UTF-8</span>

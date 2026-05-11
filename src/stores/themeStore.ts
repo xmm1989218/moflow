@@ -51,6 +51,7 @@ interface ThemeState {
   settingsTabActive: boolean;
   showOutline: boolean;
   outlineWidth: number;
+  leftPanelTab: "files" | "outline";
 
   setAppTheme: (theme: AppTheme) => void;
   setEditorTheme: (theme: EditorTheme) => void;
@@ -66,6 +67,7 @@ interface ThemeState {
   closeSettingsTab: () => void;
   activateSettingsTab: () => void;
   deactivateSettingsTab: () => void;
+  setLeftPanelTab: (tab: "files" | "outline") => void;
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
@@ -81,6 +83,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   settingsTabActive: false,
   showOutline: false,
   outlineWidth: 240,
+  leftPanelTab: "outline" as const,
 
   setAppTheme: (appTheme) => {
     set({ appTheme });
@@ -142,5 +145,9 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   deactivateSettingsTab: () => {
     set({ settingsTabActive: false });
+  },
+
+  setLeftPanelTab: (tab) => {
+    set({ leftPanelTab: tab });
   },
 }));

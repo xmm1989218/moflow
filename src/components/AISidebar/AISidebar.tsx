@@ -7,7 +7,8 @@ import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClien
 import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
-import { docToolDefinitions, networkToolDefinitions, executeTool, WEBFETCH_LIMIT } from "../../lib/tools";
+import { getToolDefinitions, executeTool, WEBFETCH_LIMIT } from "../../lib/tools";
+import type { ToolContext } from "../../lib/tools";
 import { useShallow } from "zustand/react/shallow";
 import SlashCommandMenu from "./SlashCommandMenu";
 import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
@@ -88,14 +89,23 @@ function ToolCallStatus({ name, args }: { name: string; args: Record<string, unk
     case "outline":
       text = t("正在获取文档大纲...", "Getting document outline...");
       break;
-    case "grep":
-      text = t(`正在搜索: "${args.pattern}"`, `Searching: "${args.pattern}"`);
-      break;
-    case "read_lines":
-      text = t(`正在读取第 ${args.start}-${args.end} 行`, `Reading lines ${args.start}-${args.end}`);
+    case "read":
+      text = t("正在读取文件内容...", "Reading file content...");
       break;
     case "read_section":
       text = t(`正在读取: ${args.heading}`, `Reading: ${args.heading}`);
+      break;
+    case "grep":
+      text = t(`正在搜索: "${args.pattern}"`, `Searching: "${args.pattern}"`);
+      break;
+    case "find":
+      text = t(`正在搜索文件: "${args.pattern}"`, `Finding files: "${args.pattern}"`);
+      break;
+    case "glob":
+      text = t(`正在匹配文件: "${args.pattern}"`, `Globbing: "${args.pattern}"`);
+      break;
+    case "ls":
+      text = t("正在列出目录...", "Listing directory...");
       break;
     case "webfetch":
       text = t(`正在访问: ${args.url}`, `Fetching: ${args.url}`);
@@ -151,14 +161,24 @@ function ToolResultBlock({ msg, messages }: { msg: Message; messages: Message[] 
   );
 }
 
+
 export default function AISidebar() {
   const activeFileId = useTabStore((s) => s.activeFileId);
-  const chatLoaded = useChatStore((s) => s.chatLoadedMap[activeFileId] ?? true);
+  const workspaceRoot = useTabStore((s) => s.workspaceRoot);
+  const chatKey = useTabStore((s) => {
+    if (s.workspaceRoot) return "dir:" + s.workspaceRoot.replace(/\\/g, "/").toLowerCase();
+    return s.activeFileId;
+  });
+  const activeFileName = useTabStore((s) => {
+    const tab = s.files.find((f) => f.id === s.activeFileId);
+    return tab?.fileName ?? null;
+  });
+  const chatLoaded = useChatStore((s) => s.chatLoadedMap[chatKey] ?? true);
   const { messages, isStreaming, streamingContent, addMessage, appendStreamingContent, clearStreamingContent, clearMessages, setStreaming, stopGeneration } = useChatStore(
     useShallow((s) => ({
-      messages: s.messagesMap[activeFileId] || emptyMessages,
+      messages: s.messagesMap[chatKey] || emptyMessages,
       isStreaming: s.isStreaming,
-      streamingContent: s.streamingContentMap[activeFileId] ?? "",
+      streamingContent: s.streamingContentMap[chatKey] ?? "",
       addMessage: s.addMessage,
       appendStreamingContent: s.appendStreamingContent,
       clearStreamingContent: s.clearStreamingContent,
@@ -271,10 +291,9 @@ export default function AISidebar() {
   }, [input, isStreaming]);
 
   const doCompact = async () => {
-    const contextMsgs = useChatStore.getState().getContext(activeFileId);
-    if (contextMsgs.length === 0) return;
+    const contextMsgs = useChatStore.getState().getContext(chatKey);
 
-    const contextTokens = useChatStore.getState().contextTokensMap[activeFileId] ?? 0;
+    const contextTokens = useChatStore.getState().contextTokensMap[chatKey] ?? 0;
 
     let tailStart = contextMsgs.length;
     let turnCount = 0;
@@ -371,11 +390,11 @@ export default function AISidebar() {
         ? `请将以下对话历史总结为简洁的摘要，保留关键信息：\n\n${summaryContent}`
         : `Please summarize the following conversation history concisely, preserving key information:\n\n${summaryContent}`;
 
-    const compactMsg = addMessage(activeFileId, { role: "user", content: "/compact" });
-    await appendMessage(activeFileId, compactMsg);
+    const compactMsg = addMessage(chatKey, { role: "user", content: "/compact" });
+    await appendMessage(chatKey, compactMsg);
 
     setStreaming(true);
-    clearStreamingContent(activeFileId);
+    clearStreamingContent(chatKey);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -393,7 +412,7 @@ export default function AISidebar() {
           },
         ],
         (chunk) => {
-          appendStreamingContent(activeFileId, chunk);
+          appendStreamingContent(chatKey, chunk);
         },
         controller.signal
       );
@@ -401,36 +420,37 @@ export default function AISidebar() {
       const promptTokens = result.usage.promptTokens;
       const completionTokens = result.usage.completionTokens;
       const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
-      useChatStore.getState().recordUsage(activeFileId, promptTokens, completionTokens, costVal);
+      useChatStore.getState().recordUsage(chatKey, promptTokens, completionTokens, costVal);
 
-      const content = useChatStore.getState().streamingContentMap[activeFileId] ?? "";
-      const summaryMsg = addMessage(activeFileId, { role: "assistant", content, isCompactSummary: true });
-      await appendMessage(activeFileId, summaryMsg);
+      const content = useChatStore.getState().streamingContentMap[chatKey] ?? "";
+      const summaryMsg = addMessage(chatKey, { role: "assistant", content, isCompactSummary: true });
+      await appendMessage(chatKey, summaryMsg);
 
       useChatStore.setState((state) => ({
-        contextMap: { ...state.contextMap, [activeFileId]: [...tailMsgs, summaryMsg] },
+        contextMap: { ...state.contextMap, [chatKey]: [...tailMsgs, summaryMsg] },
       }));
     } catch (e) {
       if (e instanceof TimeoutError) {
         console.error(`[AISidebar] Request timeout: ${e.message}`);
-        appendStreamingContent(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+        appendStreamingContent(chatKey, `\n\n❌ ${t("请求超时", "Request timed out")}`);
       } else if (e instanceof DOMException && e.name === "AbortError") {
-        const content = useChatStore.getState().streamingContentMap[activeFileId];
+        const content = useChatStore.getState().streamingContentMap[chatKey];
+
         if (content) {
-          const summaryMsg = addMessage(activeFileId, { role: "assistant", content, isCompactSummary: true });
-          await appendMessage(activeFileId, summaryMsg);
+          const summaryMsg = addMessage(chatKey, { role: "assistant", content, isCompactSummary: true });
+          await appendMessage(chatKey, summaryMsg);
           useChatStore.setState((state) => ({
-            contextMap: { ...state.contextMap, [activeFileId]: [...tailMsgs, summaryMsg] },
+            contextMap: { ...state.contextMap, [chatKey]: [...tailMsgs, summaryMsg] },
           }));
         }
       } else {
         const errorMsg = e instanceof Error ? e.message : String(e);
-        appendStreamingContent(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+        appendStreamingContent(chatKey, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
       }
     } finally {
       setStreaming(false);
       abortRef.current = null;
-      clearStreamingContent(activeFileId);
+      clearStreamingContent(chatKey);
     }
   };
 
@@ -442,25 +462,25 @@ export default function AISidebar() {
     setShowScrollBottom(false);
 
     if (text.startsWith("/")) {
-      const errMsg = addMessage(activeFileId, { role: "assistant", content: `❌ ${t("未知命令。可用命令: /new, /compact, /models", "Unknown command. Available: /new, /compact, /models")}` });
-      await appendMessage(activeFileId, errMsg);
+      const errMsg = addMessage(chatKey, { role: "assistant", content: `❌ ${t("未知命令。可用命令: /new, /compact, /models", "Unknown command. Available: /new, /compact, /models")}` });
+      await appendMessage(chatKey, errMsg);
       setInput("");
       return;
     }
 
     const maxContext = getModelInfo(aiConfig.providerId, aiConfig.model).maxContext || 0;
-    const contextTokens = useChatStore.getState().contextTokensMap[activeFileId] ?? 0;
+    const contextTokens = useChatStore.getState().contextTokensMap[chatKey] ?? 0;
 
     if (maxContext > 0 && contextTokens > maxContext * 0.8) {
       await doCompact();
     }
 
     setInput("");
-    const userMsg = addMessage(activeFileId, { role: "user", content: text });
-    await appendMessage(activeFileId, userMsg);
+    const userMsg = addMessage(chatKey, { role: "user", content: text });
+    await appendMessage(chatKey, userMsg);
 
     setStreaming(true);
-    clearStreamingContent(activeFileId);
+    clearStreamingContent(chatKey);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -470,10 +490,10 @@ export default function AISidebar() {
     const reserved = Math.floor(maxContext * (1 - docRatio));
     const needsDocTools = docTokens > (maxContext - reserved);
 
-    const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsDocTools);
-    const tools = needsDocTools
-      ? [...docToolDefinitions, ...networkToolDefinitions]
-      : [...networkToolDefinitions];
+    const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsDocTools, workspaceRoot, activeFileName);
+    const tools = getToolDefinitions(needsDocTools, workspaceRoot);
+
+    const toolCtx: ToolContext = { workspaceRoot: workspaceRoot ?? undefined, docContent };
 
     try {
       const client = getLLMClient(aiConfig);
@@ -483,7 +503,7 @@ export default function AISidebar() {
       while (round <= MAX_TOOL_ROUNDS) {
         round++;
 
-        const contextMsgs = useChatStore.getState().getContext(activeFileId);
+        const contextMsgs = useChatStore.getState().getContext(chatKey);
         const historyMsgs: ChatMessage[] = contextMsgs.map((m) => {
           const msg: ChatMessage = { role: m.role as ChatMessage["role"], content: m.content };
           if (m.role === "assistant" && m.toolCalls?.length) {
@@ -507,7 +527,7 @@ export default function AISidebar() {
         const result = await client.chat(
           chatMessages,
           (chunk) => {
-            appendStreamingContent(activeFileId, chunk);
+            appendStreamingContent(chatKey, chunk);
           },
           controller.signal,
           { tools }
@@ -516,38 +536,38 @@ export default function AISidebar() {
         const promptTokens = result.usage.promptTokens;
         const completionTokens = result.usage.completionTokens;
         const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
-        useChatStore.getState().recordUsage(activeFileId, promptTokens, completionTokens, costVal);
+        useChatStore.getState().recordUsage(chatKey, promptTokens, completionTokens, costVal);
 
-        const content = useChatStore.getState().streamingContentMap[activeFileId] ?? "";
+        const content = useChatStore.getState().streamingContentMap[chatKey] ?? "";
 
         if (result.finishReason !== "tool_calls" || !result.toolCalls?.length) {
-          const assistantMsg = addMessage(activeFileId, {
+          const assistantMsg = addMessage(chatKey, {
             role: "assistant",
             content,
             reasoningContent: result.reasoningContent || undefined,
           });
-          await appendMessage(activeFileId, assistantMsg);
-          clearStreamingContent(activeFileId);
+          await appendMessage(chatKey, assistantMsg);
+          clearStreamingContent(chatKey);
           break;
         }
 
         if (controller.signal.aborted) {
           if (content) {
-            const assistantMsg = addMessage(activeFileId, { role: "assistant", content });
-            await appendMessage(activeFileId, assistantMsg);
+            const assistantMsg = addMessage(chatKey, { role: "assistant", content });
+            await appendMessage(chatKey, assistantMsg);
           }
-          clearStreamingContent(activeFileId);
+          clearStreamingContent(chatKey);
           break;
         }
 
-        const assistantMsg = addMessage(activeFileId, {
+        const assistantMsg = addMessage(chatKey, {
           role: "assistant",
           content,
           toolCalls: result.toolCalls,
           reasoningContent: result.reasoningContent || undefined,
         });
-        await appendMessage(activeFileId, assistantMsg);
-        clearStreamingContent(activeFileId);
+        await appendMessage(chatKey, assistantMsg);
+        clearStreamingContent(chatKey);
 
         for (const tc of result.toolCalls) {
           if (controller.signal.aborted) break;
@@ -567,30 +587,35 @@ export default function AISidebar() {
                 `Webfetch 调用次数已达上限（${WEBFETCH_LIMIT} 次）`,
                 `Webfetch call limit reached (${WEBFETCH_LIMIT} per request)`
               );
-              const toolMsg = addMessage(activeFileId, {
+              const toolMsg = addMessage(chatKey, {
                 role: "tool",
                 content: limitMsg,
                 toolCallId: tc.id,
                 toolName: tc.name,
               });
-              await appendMessage(activeFileId, toolMsg);
+              await appendMessage(chatKey, toolMsg);
               continue;
             }
           }
 
           setToolCallStatus({ name: tc.name, args });
 
-          const toolResult = await executeTool(tc.name, args, docContent, controller.signal);
+          let toolResult: string;
+          try {
+            toolResult = await executeTool(tc.name, args, controller.signal, toolCtx);
+          } catch (e) {
+            toolResult = `❌ ${t("工具执行出错", "Tool execution error")}: ${e instanceof Error ? e.message : String(e)}`;
+          }
 
           if (controller.signal.aborted) break;
 
-          const toolMsg = addMessage(activeFileId, {
+          const toolMsg = addMessage(chatKey, {
             role: "tool",
             content: toolResult,
             toolCallId: tc.id,
             toolName: tc.name,
           });
-          await appendMessage(activeFileId, toolMsg);
+          await appendMessage(chatKey, toolMsg);
         }
 
         if (controller.signal.aborted) break;
@@ -598,39 +623,39 @@ export default function AISidebar() {
         setToolCallStatus(null);
 
         if (round >= MAX_TOOL_ROUNDS) {
-          const limitMsg = addMessage(activeFileId, {
+          const limitMsg = addMessage(chatKey, {
             role: "assistant",
             content: t(
               "（已达到工具调用次数上限，请基于已有信息回答）",
               "(Maximum tool call rounds reached. Please answer based on available information.)"
             ),
           });
-          await appendMessage(activeFileId, limitMsg);
+          await appendMessage(chatKey, limitMsg);
           break;
         }
       }
     } catch (e) {
       if (e instanceof TimeoutError) {
         console.error(`[AISidebar] Request timeout: ${e.message}`);
-        appendStreamingContent(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+        appendStreamingContent(chatKey, `\n\n❌ ${t("请求超时", "Request timed out")}`);
       } else if (e instanceof DOMException && e.name === "AbortError") {
         // handled in finally
       } else {
         const errorMsg = e instanceof Error ? e.message : String(e);
-        appendStreamingContent(activeFileId, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+        appendStreamingContent(chatKey, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
       }
 
-      const content = useChatStore.getState().streamingContentMap[activeFileId];
+      const content = useChatStore.getState().streamingContentMap[chatKey];
       if (content) {
-        const assistantMsg = addMessage(activeFileId, { role: "assistant", content });
-        await appendMessage(activeFileId, assistantMsg);
+        const assistantMsg = addMessage(chatKey, { role: "assistant", content });
+        await appendMessage(chatKey, assistantMsg);
       }
     } finally {
-      useChatStore.getState().cleanupIncompleteToolCalls(activeFileId);
+      useChatStore.getState().cleanupIncompleteToolCalls(chatKey);
       setToolCallStatus(null);
       setStreaming(false);
       abortRef.current = null;
-      clearStreamingContent(activeFileId);
+      clearStreamingContent(chatKey);
     }
   };
 
@@ -638,7 +663,7 @@ export default function AISidebar() {
     setInput("");
 
     if (id === "new") {
-      clearMessages(activeFileId);
+      clearMessages(chatKey);
       return;
     }
 
@@ -694,19 +719,37 @@ export default function AISidebar() {
     }
   };
 
+  if (!chatKey) {
+    return (
+      <div className="moflow-ai-sidebar" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
+        <div className="moflow-ai-resize-handle" onMouseDown={handleResizeStart} />
+        <div className="moflow-ai-header">
+          <span className="moflow-ai-header-title" style={{ flex: "none" }}>{t("AI 助手", "AI Assistant")}</span>
+        </div>
+        <div className="moflow-ai-messages flex items-center justify-center">
+          <div className="moflow-ai-empty">
+            <div className="moflow-ai-empty-icon">📝</div>
+            <p>{t("请先打开一个文档", "Open a document first")}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="moflow-ai-sidebar" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
       <div className="moflow-ai-resize-handle" onMouseDown={handleResizeStart} />
       <div className="moflow-ai-header">
-        <span className="moflow-ai-header-title">{showContext ? t("上下文", "Context") : t("AI 助手", "AI Assistant")}</span>
+        <span className="moflow-ai-header-title" style={{ flex: "none" }}>{showContext ? t("上下文", "Context") : t("AI 助手", "AI Assistant")}</span>
+        <span className="flex-1" />
         <span className="moflow-ai-header-mode">
           {aiConfig.mode === "mock" ? "Mock" : aiConfig.model || "API"}
         </span>
-        <UsageBadge tabId={activeFileId} providerId={aiConfig.providerId} model={aiConfig.model} onClick={() => setShowContext((v) => !v)} active={showContext} />
+        <UsageBadge tabId={chatKey} providerId={aiConfig.providerId} model={aiConfig.model} onClick={() => setShowContext((v) => !v)} active={showContext} />
       </div>
 
       {showContext ? (
-        <ContextView tabId={activeFileId} providerId={aiConfig.providerId} model={aiConfig.model} docContent={docContent} />
+        <ContextView tabId={chatKey} providerId={aiConfig.providerId} model={aiConfig.model} docContent={docContent} />
       ) : (
       <div className="moflow-ai-messages" ref={messagesContainerRef}>
         {!chatLoaded ? (
@@ -772,7 +815,7 @@ export default function AISidebar() {
 
       {!showContext && (
       <div className="moflow-ai-input-area">
-        <div className="moflow-ai-input-wrap">
+        <div className="moflow-ai-input-wrap relative">
           <textarea
             ref={inputRef}
             className="moflow-ai-input"

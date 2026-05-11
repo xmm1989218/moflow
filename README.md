@@ -32,6 +32,7 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **Export** — HTML and PDF export
 - **AI Sidebar** — Integrated AI chat with context management, auto-compact, and usage tracking
 - **AI Tool-Calling** — AI can actively explore documents via tools (outline, grep, read_lines, read_section) and fetch web content instead of relying on truncated context
+- **Workspace-aware AI** — Open a folder as workspace, AI gets project-level tools (grep, find, glob, ls, read) to explore the entire codebase; workspace chat persists across tab switches
 - **Context View** — Inspect token usage, context breakdown, and raw messages in a dedicated panel
 - **Selection AI** — Explain, translate, or ask questions about selected text
 - **Settings Tab** — Unified settings panel with appearance, AI config, proxy, and about sections
@@ -39,6 +40,8 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **Find & Replace** — Regex support, case-sensitive search, replace all
 - **Outline Sidebar** — Document heading tree with click-to-navigate and active heading tracking
 - **Mermaid Diagrams** — Inline SVG rendering for flowcharts, sequence diagrams, class diagrams, etc.
+- **Workspace & File Tree** — Open a folder as workspace, browse files in a tree, right-click to create/rename/delete files and folders
+- **Image Management** — Paste images auto-saved to `./assets/`, relative paths in Markdown, base64 embedding in HTML export
 - **Auto Update** — Silent check on startup, background download, non-intrusive notification with one-click install & restart
 - **Status bar** — Word count, cursor position, file info at a glance
 - **Tailwind-first styling** — Component styles use Tailwind CSS utility classes with CSS custom properties for theming; only editor DOM overrides remain in CSS files
