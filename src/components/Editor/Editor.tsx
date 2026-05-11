@@ -12,7 +12,6 @@ import { markdown as cmMarkdown } from "@codemirror/lang-markdown";
 import { EditorView as CMEditorView, keymap, ViewUpdate } from "@codemirror/view";
 import { EditorState as CMEditorState } from "@codemirror/state";
 import { indentWithTab } from "@codemirror/commands";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { useTabStore, type EditorMode } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useAISelectionStore } from "../../stores/aiSelectionStore";
@@ -657,7 +656,6 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
         <SourceModeEditor
           content={content}
           setContent={setContent}
-          editorTheme={editorTheme}
         />
       )}
       <SelectionAIPanel />
@@ -669,19 +667,15 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
 function SourceModeEditor({
   content,
   setContent,
-  editorTheme,
 }: {
   content: string;
   setContent: (c: string) => void;
-  editorTheme: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<CMEditorView | null>(null);
   const syncingRef = useRef(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const contentRef = useRef(content);
-
-  const isDark = editorTheme.includes("dark");
 
   useEffect(() => {
     contentRef.current = content;
@@ -696,7 +690,6 @@ function SourceModeEditor({
         basicSetup,
         cmMarkdown(),
         keymap.of([indentWithTab]),
-        ...(isDark ? [oneDark] : []),
         CMEditorView.updateListener.of((update: ViewUpdate) => {
           if (syncingRef.current) return;
           if (update.docChanged) {
@@ -728,7 +721,7 @@ function SourceModeEditor({
       view.destroy();
       viewRef.current = null;
     };
-  }, [isDark, setContent]);
+  }, [setContent]);
 
   useEffect(() => {
     const view = viewRef.current;

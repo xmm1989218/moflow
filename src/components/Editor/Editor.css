@@ -274,6 +274,20 @@
   background-color: var(--moflow-crepe-selected) !important;
 }
 
+.moflow-source-wrapper .cm-content .ͼ1 .cm-line .ͼb,
+.moflow-source-wrapper .tok-keyword { color: var(--moflow-accent); }
+.moflow-source-wrapper .tok-string { color: #0a8; }
+.moflow-source-wrapper .tok-number { color: #905; }
+.moflow-source-wrapper .tok-comment { color: var(--moflow-text-secondary); font-style: italic; }
+.moflow-source-wrapper .tok-heading { color: var(--moflow-accent); font-weight: bold; }
+.moflow-source-wrapper .tok-meta { color: var(--moflow-text-secondary); }
+.moflow-source-wrapper .tok-link { color: var(--moflow-accent); text-decoration: underline; }
+.moflow-source-wrapper .tok-url { color: var(--moflow-accent); }
+.moflow-source-wrapper .tok-monospace { color: var(--moflow-text); background-color: var(--moflow-code-bg); border-radius: 3px; padding: 1px 4px; }
+.moflow-source-wrapper .tok-emphasis { font-style: italic; }
+.moflow-source-wrapper .tok-strong { font-weight: bold; }
+.moflow-source-wrapper .tok-processingInstruction { color: var(--moflow-text-secondary); }
+
 /* ── Crepe floating elements: position:fixed to escape overflow clipping ── */
 /* Floating UI computes viewport coordinates (strategy:'absolute' with getBoundingClientRect) */
 /* position:fixed uses the same viewport coordinate system, so positions match perfectly */
