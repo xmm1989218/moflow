@@ -1,11 +1,30 @@
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { readFile, writeFile } from "@tauri-apps/plugin-fs";
-import { useTabStore, type CloseDialogResult, deleteUntitledContent, deleteSession } from "../stores/appStore";
-import type { TabState } from "../stores/appStore";
+import { useTabStore, type CloseDialogResult, type TabState } from "../stores/appStore";
 import { useThemeStore } from "../stores/themeStore";
 import { exportAsHtml } from "./exportHtml";
 import { showConfirmCloseDialog, showAlertDialog } from "./closeDialog";
 import { invoke } from "@tauri-apps/api/core";
+import { invalidateDirCache } from "../components/FileTree/FileTree";
+
+export async function openFolder() {
+  const selected = await open({ directory: true, multiple: false });
+  if (!selected) return;
+
+  const state = useTabStore.getState();
+  if (state.workspaceRoot) {
+    const closed = await state.closeWorkspace();
+    if (!closed) return;
+  }
+
+  useTabStore.getState().setWorkspaceRoot(selected);
+  await invoke("allow_paths", { paths: [selected] });
+  useThemeStore.getState().setLeftPanelTab("files");
+  if (!useThemeStore.getState().showOutline) {
+    useThemeStore.getState().toggleOutline();
+  }
+  invalidateDirCache();
+}
 
 export async function openFile() {
   const selected = await open({
@@ -75,7 +94,7 @@ export async function saveFileAs() {
 
   if (ext === "html") {
     const bodyHtml = tabState.getEditorHTML() ? tabState.getEditorHTML()!() : "";
-    const html = exportAsHtml(bodyHtml, editorTheme);
+    const html = await exportAsHtml(bodyHtml, editorTheme);
     const data = new TextEncoder().encode(html);
     await invoke("allow_paths", { paths: [selected] });
     await writeFile(selected, data);
@@ -103,7 +122,7 @@ export async function exportHtml() {
   if (!selected) return;
 
   const bodyHtml = getHTMLFn ? getHTMLFn() : "";
-  const html = exportAsHtml(bodyHtml, editorTheme);
+  const html = await exportAsHtml(bodyHtml, editorTheme);
   await writeFile(selected, new TextEncoder().encode(html));
 }
 
@@ -121,7 +140,7 @@ export async function exportPdf() {
   if (!selected) return;
 
   const bodyHtml = getHTMLFn ? getHTMLFn() : "";
-  const html = exportAsHtml(bodyHtml, editorTheme);
+  const html = await exportAsHtml(bodyHtml, editorTheme);
 
   const ok: boolean = await invoke("export_pdf", { html, path: selected });
   if (!ok) {
@@ -216,13 +235,7 @@ export async function closeLastTab(tab: TabState) {
     }
   }
 
-  if (tab.filePath === null) {
-    await deleteUntitledContent(tab.id);
-  }
-  await deleteSession();
-
-  const { getCurrentWindow } = await import("@tauri-apps/api/window");
-  getCurrentWindow().destroy();
+  useTabStore.getState().closeTab(tab.id);
 }
 
 export async function saveAllFiles() {

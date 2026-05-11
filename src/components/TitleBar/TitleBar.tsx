@@ -2,11 +2,11 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useThemeStore } from "../../stores/themeStore";
 import TabBar from "../TabBar/TabBar";
+import { getShortcutDisplay, getShortcutLabel } from "../../lib/shortcuts";
 
 const HamburgerMenu = lazy(() => import("../HamburgerMenu/HamburgerMenu"));
 
 const appWindow = getCurrentWindow();
-import { t } from "../../lib/i18n";
 
 export default function TitleBar() {
   const showAISidebar = useThemeStore((s) => s.showAISidebar);
@@ -53,14 +53,14 @@ export default function TitleBar() {
         <button
           className={`flex items-center justify-center border-none bg-none cursor-pointer h-10 px-2.5 rounded transition-[background-color] duration-150 gap-1 text-[11px] font-bold tracking-wide leading-none ${showAISidebar ? "text-ui-accent bg-ui-menu-hover" : "text-ui-titlebar-text hover:bg-ui-hover"}`}
           onClick={toggleAISidebar}
-          title={t("AI 助手 (F8)", "AI Assistant (F8)")}
+          title={`AI Assistant (${getShortcutDisplay("aiSidebar")})`}
         >
           <span>AI</span>
         </button>
         <button
           className={`flex items-center justify-center border-none bg-none cursor-pointer h-10 px-2.5 rounded transition-[background-color] duration-150 ${showOutline ? "text-ui-accent bg-ui-menu-hover" : "text-ui-titlebar-text hover:bg-ui-hover"}`}
           onClick={toggleOutline}
-          title={t("大纲 (F7)", "Outline (F7)")}
+          title={`Outline (${getShortcutDisplay("outline")})`}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="8" y1="6" x2="21" y2="6" />
@@ -84,7 +84,7 @@ export default function TitleBar() {
         <button
           className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-10 px-2 transition-[background-color] duration-150 hover:bg-ui-hover px-2.5"
           onClick={openSettingsTab}
-          title={t("设置", "Settings")}
+          title={`${getShortcutLabel("settings")} (${getShortcutDisplay("settings")})`}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />

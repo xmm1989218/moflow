@@ -44,15 +44,115 @@ export interface SystemPromptResult {
 }
 
 import { isZh } from "./i18n";
+import { mdSyntaxZh, mdSyntaxEn } from "./markdownSyntax";
 
 const webfetchInstructionZh = `你可以使用 webfetch(url, format?) 访问网页内容来获取外部信息或参考资料。format 参数可选：markdown（默认，HTML转Markdown结构化输出）、text（纯文本提取）、html（保留HTML结构）。图片 URL 自动返回 base64 数据。如果文档内容已足够回答，不需要使用此工具。`;
 const webfetchInstructionEn = `You can use webfetch(url, format?) to access web page content for external information or references. Optional format parameter: markdown (default, HTML to structured Markdown), text (plain text extraction), html (preserve HTML structure). Image URLs automatically return base64 data. If the document content is sufficient to answer, there is no need to use this tool.`;
 
+const wsFileToolsZh = `- outline(path?) — 获取标题大纲及行号范围
+- read(path?, offset?, limit?) — 读取文件内容（省略 path 为当前文件）
+- read_section(heading, path?) — 读取指定标题下的内容
+- grep(pattern, path?) — 搜索文件内容
+- find(pattern) — 按文件名搜索
+- glob(pattern) — 按 glob 模式匹配文件
+- ls(path?) — 列出目录内容`;
+
+const wsFileToolsEn = `- outline(path?) — Get heading outline with line ranges
+- read(path?, offset?, limit?) — Read file content (omit path for current file)
+- read_section(heading, path?) — Read content under a heading
+- grep(pattern, path?) — Search file content
+- find(pattern) — Search by filename
+- glob(pattern) — Match files by glob pattern
+- ls(path?) — List directory contents`;
+
+const wsSwitchNoteZh = `\n\n注意：用户可能在工作区内切换文件，上述内容是当前活跃文件。如果用户提到其他文件，请使用工具查看。`;
+const wsSwitchNoteEn = `\n\nNote: The user may switch files within the workspace. The content above is from the currently active file. If the user mentions other files, please use tools to view them.`;
+
 export function buildSystemPrompt(
   docContent: string,
   maxContext: number,
-  needsDocTools: boolean = false
+  needsDocTools: boolean = false,
+  workspaceRoot?: string | null,
+  activeFileName?: string | null,
 ): SystemPromptResult {
+  const hasWorkspace = !!workspaceRoot;
+
+  if (hasWorkspace) {
+    const docRatio = needsDocTools ? 0.50 : 0.65;
+    const reserved = Math.floor(maxContext * (1 - docRatio));
+    const availableDocTokens = maxContext - reserved;
+
+    if (!docContent || docContent.trim().length === 0) {
+      return {
+        prompt: isZh
+          ? `你是 MoFlow 编辑器的 AI 助手。用户已打开工作区，当前没有打开任何文件。\n\n${mdSyntaxZh}\n\n你可以使用以下工具浏览工作区文件：\n${wsFileToolsZh}\n- webfetch(url, format?) — 访问网页内容获取外部信息（format: markdown/text/html）\n\n${webfetchInstructionZh}`
+          : `You are the AI assistant for MoFlow editor. The user has a workspace open but no file is currently active.\n\n${mdSyntaxEn}\n\nYou can use the following tools to browse workspace files:\n${wsFileToolsEn}\n- webfetch(url, format?) — Access web page content for external information (format: markdown/text/html)\n\n${webfetchInstructionEn}`,
+        needsDocTools: true,
+      };
+    }
+
+    const docTokens = estimateTokens(docContent);
+
+    if (docTokens <= availableDocTokens) {
+      const fileLabel = activeFileName ? `「${activeFileName}」` : "";
+      return {
+        prompt: isZh
+          ? `你是 MoFlow 编辑器的 AI 助手。用户正在工作区中编辑 Markdown 文档${fileLabel}：\n---\n${docContent}\n---\n请基于文档内容回答用户问题。${wsSwitchNoteZh}\n\n${mdSyntaxZh}\n\n你可以使用以下工具：\n${wsFileToolsZh}\n- webfetch(url, format?) — 访问网页内容获取外部信息（format: markdown/text/html）\n\n${webfetchInstructionZh}`
+          : `You are the AI assistant for MoFlow editor. The user is editing${activeFileName ? ` "${activeFileName}"` : " a Markdown document"} in a workspace:\n---\n${docContent}\n---\nPlease answer the user's questions based on the document content.${wsSwitchNoteEn}\n\n${mdSyntaxEn}\n\nYou can use the following tools:\n${wsFileToolsEn}\n- webfetch(url, format?) — Access web page content for external information (format: markdown/text/html)\n\n${webfetchInstructionEn}`,
+        needsDocTools: true,
+      };
+    }
+
+    const zhCount = Array.from(docContent).filter((ch) =>
+      /[\u4e00-\u9fff\u3400-\u4dbf]/.test(ch)
+    ).length;
+    const zhRatio = docContent.length > 0 ? zhCount / docContent.length : 0;
+    const charPerToken = zhRatio > 0.3 ? 2 : 4;
+    const maxChars = availableDocTokens * charPerToken;
+
+    const truncated = docContent.slice(0, maxChars);
+    const outline = buildOutline(docContent);
+    const fileLabel = activeFileName ? `「${activeFileName}」` : "";
+
+    const prompt = isZh
+      ? `你是 MoFlow 编辑器的 AI 助手。用户正在工作区中编辑 Markdown 文档${fileLabel}（内容较长，仅展示开头部分）：
+
+---文档内容（截断）---
+${truncated}
+---
+
+---文档结构---
+${outline}
+---${wsSwitchNoteZh}
+
+${mdSyntaxZh}
+
+你可以使用以下工具来探索文档的完整内容：
+${wsFileToolsZh}
+- webfetch(url, format?) — 访问网页内容获取外部信息（format: markdown/text/html）
+
+当用户的问题涉及截断部分的内容时，请主动使用工具查找相关信息，而不是猜测。`
+      : `You are the AI assistant for MoFlow editor. The user is editing${activeFileName ? ` "${activeFileName}"` : " a Markdown document"} in a workspace (long content, only the beginning is shown):
+
+---Document content (truncated)---
+${truncated}
+---
+
+---Document structure---
+${outline}
+---${wsSwitchNoteEn}
+
+${mdSyntaxEn}
+
+You can use the following tools to explore the full document content:
+${wsFileToolsEn}
+- webfetch(url, format?) — Access web page content for external information (format: markdown/text/html)
+
+When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.`;
+
+    return { prompt, needsDocTools: true };
+  }
+
   const docRatio = needsDocTools ? 0.50 : 0.65;
   const reserved = Math.floor(maxContext * (1 - docRatio));
   const availableDocTokens = maxContext - reserved;
@@ -60,8 +160,8 @@ export function buildSystemPrompt(
   if (!docContent || docContent.trim().length === 0) {
     return {
       prompt: isZh
-        ? `你是 MoFlow 编辑器的 AI 助手。用户当前没有打开文档内容，请直接回答用户的问题。\n\n${webfetchInstructionZh}`
-        : `You are the AI assistant for MoFlow editor. The user has no document open. Please answer their questions directly.\n\n${webfetchInstructionEn}`,
+        ? `你是 MoFlow 编辑器的 AI 助手。用户当前没有打开文档内容，请直接回答用户的问题。\n\n${mdSyntaxZh}\n\n${webfetchInstructionZh}`
+        : `You are the AI assistant for MoFlow editor. The user has no document open. Please answer their questions directly.\n\n${mdSyntaxEn}\n\n${webfetchInstructionEn}`,
       needsDocTools: false,
     };
   }
@@ -71,8 +171,8 @@ export function buildSystemPrompt(
   if (docTokens <= availableDocTokens) {
     return {
       prompt: isZh
-        ? `你是 MoFlow 编辑器的 AI 助手。用户正在编辑以下 Markdown 文档：\n---\n${docContent}\n---\n请基于文档内容回答用户问题。\n\n${webfetchInstructionZh}`
-        : `You are the AI assistant for MoFlow editor. The user is editing the following Markdown document:\n---\n${docContent}\n---\nPlease answer the user's questions based on the document content.\n\n${webfetchInstructionEn}`,
+        ? `你是 MoFlow 编辑器的 AI 助手。用户正在编辑以下 Markdown 文档：\n---\n${docContent}\n---\n请基于文档内容回答用户问题。\n\n${mdSyntaxZh}\n\n${webfetchInstructionZh}`
+        : `You are the AI assistant for MoFlow editor. The user is editing the following Markdown document:\n---\n${docContent}\n---\nPlease answer the user's questions based on the document content.\n\n${mdSyntaxEn}\n\n${webfetchInstructionEn}`,
       needsDocTools: false,
     };
   }
@@ -98,10 +198,12 @@ ${truncated}
 ${outline}
 ---
 
+${mdSyntaxZh}
+
 你可以使用以下工具来探索文档的完整内容：
 - outline() — 获取完整的标题大纲及行号范围
 - grep(pattern) — 搜索文档，返回匹配行及行号
-- read_lines(start, end) — 读取指定行号范围的内容
+- read(offset?, limit?) — 读取指定行号范围的内容
 - read_section(heading) — 读取指定标题下的内容
 - webfetch(url, format?) — 访问网页内容获取外部信息（format: markdown/text/html）
 
@@ -116,10 +218,12 @@ ${truncated}
 ${outline}
 ---
 
+${mdSyntaxEn}
+
 You can use the following tools to explore the full document content:
 - outline() — Get the complete heading outline with line ranges
 - grep(pattern) — Search the document, returning matching lines with line numbers
-- read_lines(start, end) — Read a range of lines by line number
+- read(offset?, limit?) — Read a range of lines by line number
 - read_section(heading) — Read content under a specific heading
 - webfetch(url, format?) — Access web page content for external information (format: markdown/text/html)
 

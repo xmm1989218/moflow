@@ -9,6 +9,8 @@ import type { StreamParser } from "@codemirror/language";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useAISelectionStore } from "../../stores/aiSelectionStore";
+import { getShortcutDisplay, getShortcutLabel } from "../../lib/shortcuts";
+import { t } from "../../lib/i18n";
 import { highlightPlugin, highlightSchema, toggleHighlightCommand } from "../../lib/highlightMark";
 import { searchPlugin } from "../../lib/searchPlugin";
 import { createHtmlNodeView } from "../../lib/htmlBlock";
@@ -17,6 +19,7 @@ import { useSearchStore } from "../../stores/searchStore";
 import SearchBar from "./SearchBar";
 import { commandsCtx } from "@milkdown/kit/core";
 import { isMarkSelectedCommand } from "@milkdown/kit/preset/commonmark";
+import { saveImageToFile, getImageExt, resolveImagePath } from "../../lib/imageManager";
 
 function cmLegacy(parser: StreamParser<unknown>) {
   return new LanguageSupport(StreamLanguage.define(parser));
@@ -237,6 +240,22 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
         [Crepe.Feature.BlockEdit]: true,
       },
       featureConfigs: {
+        [Crepe.Feature.ImageBlock]: {
+          onUpload: async (file: File) => {
+            const tab = useTabStore.getState().files.find((f) => f.id === tabId);
+            if (!tab?.filePath) {
+              return "";
+            }
+            const ext = getImageExt(file);
+            const buffer = await file.arrayBuffer();
+            const data = new Uint8Array(buffer);
+            return await saveImageToFile(tab.filePath, data, ext);
+          },
+          proxyDomURL: (url: string) => {
+            const tab = useTabStore.getState().files.find((f) => f.id === tabId);
+            return resolveImagePath(url, tab?.filePath ?? null);
+          },
+        },
         [Crepe.Feature.CodeMirror]: {
           languages: cmLanguages,
         },
@@ -617,8 +636,46 @@ export default function Editor() {
   const files = useTabStore((s) => s.files);
   const activeFileId = useTabStore((s) => s.activeFileId);
   const sessionInitialized = useTabStore((s) => s.sessionInitialized);
+  const workspaceRoot = useTabStore((s) => s.workspaceRoot);
 
   if (!sessionInitialized) return null;
+
+  if (files.length === 0) {
+    if (workspaceRoot) {
+      const wsName = workspaceRoot.replace(/\\/g, "/").split("/").filter(Boolean).pop() || workspaceRoot;
+      return (
+        <div className="flex-1 min-h-0 flex items-center justify-center bg-moflow-bg">
+          <div className="flex flex-col items-center gap-3 text-moflow-text-secondary select-none">
+            <div className="text-sm opacity-70">{wsName}</div>
+            <div className="text-xs opacity-50">{t("AI 助手可用", "AI Assistant available")}</div>
+            {(["newFile", "openFile"] as const).map((id) => (
+              <div key={id} className="flex items-center gap-2 text-sm">
+                <kbd className="px-2 py-0.5 rounded bg-moflow-code-bg text-moflow-text text-xs font-mono border border-moflow-border">
+                  {getShortcutDisplay(id)}
+                </kbd>
+                <span className="opacity-50 text-xs">{getShortcutLabel(id)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex-1 min-h-0 flex items-center justify-center bg-moflow-bg">
+        <div className="flex flex-col items-center gap-3 text-moflow-text-secondary select-none">
+          {(["newFile", "openFile", "openFolder"] as const).map((id) => (
+            <div key={id} className="flex items-center gap-2 text-sm">
+              <kbd className="px-2 py-0.5 rounded bg-moflow-code-bg text-moflow-text text-xs font-mono border border-moflow-border">
+                {getShortcutDisplay(id)}
+              </kbd>
+              <span className="opacity-50 text-xs">{getShortcutLabel(id)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex-1 min-h-0">

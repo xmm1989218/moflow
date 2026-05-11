@@ -2,6 +2,10 @@ import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, writeFile, mkdir, remove, exists, rename } from "@tauri-apps/plugin-fs";
 import type { Message } from "../stores/chatStore";
 
+function safeFileName(chatKey: string): string {
+  return chatKey.replace(/[:/\\]/g, "_");
+}
+
 async function ensureChatDir(): Promise<string> {
   const dir = await appDataDir();
   const chatDirPath = await join(dir, "chat");
@@ -11,9 +15,9 @@ async function ensureChatDir(): Promise<string> {
   return chatDirPath;
 }
 
-async function chatFilePath(tabId: string): Promise<string> {
+async function chatFilePath(chatKey: string): Promise<string> {
   const dir = await ensureChatDir();
-  return await join(dir, `${tabId}.jsonl`);
+  return await join(dir, `${safeFileName(chatKey)}.jsonl`);
 }
 
 function serializeMessage(msg: Message): string {
@@ -43,9 +47,9 @@ function deserializeMessage(line: string): Message | null {
   }
 }
 
-export async function appendMessage(tabId: string, msg: Message): Promise<void> {
+export async function appendMessage(chatKey: string, msg: Message): Promise<void> {
   try {
-    const path = await chatFilePath(tabId);
+    const path = await chatFilePath(chatKey);
     const line = new TextEncoder().encode(serializeMessage(msg) + "\n");
     await writeFile(path, line, { append: true });
   } catch (e) {
@@ -53,9 +57,9 @@ export async function appendMessage(tabId: string, msg: Message): Promise<void> 
   }
 }
 
-export async function clearChat(tabId: string): Promise<void> {
+export async function clearChat(chatKey: string): Promise<void> {
   try {
-    const path = await chatFilePath(tabId);
+    const path = await chatFilePath(chatKey);
     if (await exists(path)) {
       await remove(path);
     }
@@ -64,23 +68,21 @@ export async function clearChat(tabId: string): Promise<void> {
   }
 }
 
-export async function removeChat(tabId: string): Promise<void> {
+export async function removeChat(chatKey: string): Promise<void> {
   try {
-    const path = await chatFilePath(tabId);
+    const path = await chatFilePath(chatKey);
     if (await exists(path)) {
       await remove(path);
     }
-  } catch {
-    // file may not exist, ignore
-  }
+  } catch { /* file may not exist */ }
 }
 
-async function repairIfNeeded(tabId: string, path: string, lines: string[], msgs: Message[]): Promise<void> {
+async function repairIfNeeded(chatKey: string, path: string, lines: string[], msgs: Message[]): Promise<void> {
   if (msgs.length === lines.length) return;
   if (msgs.length === 0) return;
   try {
     const dir = await ensureChatDir();
-    const tmpPath = await join(dir, `${tabId}.jsonl.repair`);
+    const tmpPath = await join(dir, `${safeFileName(chatKey)}.jsonl.repair`);
     const content = msgs.map(serializeMessage).join("\n") + "\n";
     await writeFile(tmpPath, new TextEncoder().encode(content));
     try {
@@ -93,10 +95,10 @@ async function repairIfNeeded(tabId: string, path: string, lines: string[], msgs
   }
 }
 
-export async function loadChat(tabId: string): Promise<Message[]> {
-  performance.mark(`loadChat-start-${tabId}`);
+export async function loadChat(chatKey: string): Promise<Message[]> {
+  performance.mark(`loadChat-start-${chatKey}`);
   try {
-    const path = await chatFilePath(tabId);
+    const path = await chatFilePath(chatKey);
     if (!(await exists(path))) {
       return [];
     }
@@ -108,14 +110,14 @@ export async function loadChat(tabId: string): Promise<Message[]> {
       const msg = deserializeMessage(line);
       if (msg) msgs.push(msg);
     }
-    await repairIfNeeded(tabId, path, lines, msgs);
-    performance.mark(`loadChat-end-${tabId}`);
-    performance.measure(`loadChat-${tabId}`, `loadChat-start-${tabId}`, `loadChat-end-${tabId}`);
+    await repairIfNeeded(chatKey, path, lines, msgs);
+    performance.mark(`loadChat-end-${chatKey}`);
+    performance.measure(`loadChat-${chatKey}`, `loadChat-start-${chatKey}`, `loadChat-end-${chatKey}`);
     return msgs;
   } catch (e) {
     console.error("[chatPersistence] loadChat error:", e);
-    performance.mark(`loadChat-end-${tabId}`);
-    performance.measure(`loadChat-${tabId}`, `loadChat-start-${tabId}`, `loadChat-end-${tabId}`);
+    performance.mark(`loadChat-end-${chatKey}`);
+    performance.measure(`loadChat-${chatKey}`, `loadChat-start-${chatKey}`, `loadChat-end-${chatKey}`);
     return [];
   }
 }
