@@ -68,6 +68,10 @@ export async function deleteUntitledContent(tabId: string) {
 
 const untitledTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+function setDocumentTitle(title: string) {
+  if (typeof document !== "undefined") document.title = title;
+}
+
 interface TabState_Store {
   files: TabState[];
   activeFileId: string;
@@ -103,8 +107,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
       files: [...state.files, tab],
       activeFileId: tab.id,
     }));
-    document.title = `${tab.fileName} - MoFlow`;
-    if (tab.filePath === null) {
+    setDocumentTitle(`${tab.fileName} - MoFlow`);    if (tab.filePath === null) {
       writeUntitledContent(tab.id, tab.content);
     }
     const state = get();
@@ -128,7 +131,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
 
     const tab = state.files.find((f) => f.id === id);
     if (tab && tab.filePath === null) {
-      deleteUntitledContent(id);
+      if (typeof window !== "undefined") deleteUntitledContent(id);
     }
 
     if (!state.workspaceRoot) {
@@ -142,11 +145,11 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     if (newFiles.length === 0) {
       if (state.workspaceRoot) {
         set({ files: [], activeFileId: "" });
-        document.title = "MoFlow";
+        setDocumentTitle("MoFlow");
         persistSession([], "");
       } else {
         set({ files: [], activeFileId: "" });
-        document.title = "MoFlow";
+        setDocumentTitle("MoFlow");
         persistSession([], "");
       }
       return;
@@ -163,7 +166,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     if (id === state.activeFileId) {
       const newActive = newFiles.find((f) => f.id === newActiveId);
       if (newActive) {
-        document.title = `${newActive.fileName}${newActive.isModified ? "*" : ""} - MoFlow`;
+        setDocumentTitle(`${newActive.fileName}${newActive.isModified ? "*" : ""} - MoFlow`);
 
         if (!newActive.contentLoaded && newActive.filePath) {
           import("../lib/fileOps").then(({ loadTabContent }) => {
@@ -194,7 +197,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     const tab = state.files.find((f) => f.id === id);
     if (!tab) return;
     set({ activeFileId: id });
-    document.title = `${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`;
+    setDocumentTitle(`${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`);
     persistSession(get().files, id);
 
     if (!tab.contentLoaded && tab.filePath) {
@@ -260,7 +263,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     if (id === state.activeFileId) {
       const tab = state.files.find((f) => f.id === id);
       if (tab) {
-        document.title = `${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`;
+        setDocumentTitle(`${tab.fileName}${tab.isModified ? "*" : ""} - MoFlow`);
       }
     }
     persistSession(state.files, state.activeFileId);
@@ -370,7 +373,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
 
     set({ files: otherTabs, activeFileId: newActiveId, workspaceRoot: null });
     const newActive = otherTabs.find((f) => f.id === newActiveId);
-    document.title = newActive ? `${newActive.fileName}${newActive.isModified ? "*" : ""} - MoFlow` : "MoFlow";
+    setDocumentTitle(newActive ? `${newActive.fileName}${newActive.isModified ? "*" : ""} - MoFlow` : "MoFlow");
     persistSession(otherTabs, newActiveId);
 
     if (newActiveId) {
