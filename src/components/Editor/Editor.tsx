@@ -711,7 +711,8 @@ function SourceModeEditor({
         }),
         CMEditorView.theme({
           "&": { height: "100%" },
-          ".cm-scroller": { overflow: "auto" },
+          ".cm-scroller": { overflow: "visible" },
+          ".cm-gutters": { display: "none" },
         }),
       ],
     });

@@ -237,7 +237,6 @@
   height: 100%;
   max-width: var(--moflow-editor-max-width);
   margin: 0 auto;
-  overflow: hidden;
 }
 
 .moflow-source-wrapper .cm-editor {
@@ -254,19 +253,12 @@
 }
 
 .moflow-source-wrapper .cm-content {
-  padding: var(--moflow-editor-padding-y) 0;
+  padding: var(--moflow-editor-padding-y) var(--moflow-editor-padding-x);
   caret-color: var(--moflow-text);
 }
 
 .moflow-source-wrapper .cm-gutters {
-  background-color: var(--moflow-bg);
-  border-right: none;
-  color: var(--moflow-text-secondary);
-  padding-right: 8px;
-}
-
-.moflow-source-wrapper .cm-activeLineGutter {
-  background-color: var(--moflow-bg-secondary);
+  display: none;
 }
 
 .moflow-source-wrapper .cm-activeLine {
@@ -280,10 +272,6 @@
 .moflow-source-wrapper .cm-selectionBackground,
 .moflow-source-wrapper .cm-focused .cm-selectionBackground {
   background-color: var(--moflow-crepe-selected) !important;
-}
-
-.moflow-source-wrapper .cm-scroller {
-  overflow: auto;
 }
 
 /* ── Crepe floating elements: position:fixed to escape overflow clipping ── */
