@@ -45,38 +45,35 @@ function App() {
   }, []);
 
   useEffect(() => {
-    initFromStartupData().then(async (ok) => {
-      if (!ok) {
-        await initSession();
-      }
-      window.__startupMark?.("session-loaded", "react-mount");
-      getCurrentWindow().show();
-      window.__startupMark?.("window-shown", "session-loaded");
-      startupReport();
-      const chatKey = useTabStore.getState().getChatKey();
-      if (chatKey) useChatStore.getState().loadChatHistory(chatKey);
-      useUpdateStore.getState().checkUpdate();
-      const tabs = useTabStore.getState().files;
-      const activeFileId = useTabStore.getState().activeFileId;
-      const workspaceRoot = useTabStore.getState().workspaceRoot;
-      const paths = tabs.map((t) => t.filePath).filter(Boolean) as string[];
-      if (workspaceRoot) paths.push(workspaceRoot);
-      if (paths.length > 0) {
-        await invoke("allow_paths", { paths });
-      }
-      const activeTab = tabs.find((t) => t.id === activeFileId);
-      if (activeTab && !activeTab.contentLoaded && activeTab.filePath) {
-        const { loadTabContent } = await import("./lib/fileOps");
-        loadTabContent(activeTab.id);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    const fallback = setTimeout(() => {
-      getCurrentWindow().show();
-    }, 3000);
-    return () => clearTimeout(fallback);
+    getCurrentWindow().show();
+    initFromStartupData()
+      .then(async (ok) => {
+        if (!ok) {
+          await initSession();
+        }
+        window.__startupMark?.("session-loaded", "react-mount");
+        window.__startupMark?.("window-shown", "session-loaded");
+        startupReport();
+        const chatKey = useTabStore.getState().getChatKey();
+        if (chatKey) useChatStore.getState().loadChatHistory(chatKey);
+        useUpdateStore.getState().checkUpdate();
+        const tabs = useTabStore.getState().files;
+        const activeFileId = useTabStore.getState().activeFileId;
+        const workspaceRoot = useTabStore.getState().workspaceRoot;
+        const paths = tabs.map((t) => t.filePath).filter(Boolean) as string[];
+        if (workspaceRoot) paths.push(workspaceRoot);
+        if (paths.length > 0) {
+          await invoke("allow_paths", { paths });
+        }
+        const activeTab = tabs.find((t) => t.id === activeFileId);
+        if (activeTab && !activeTab.contentLoaded && activeTab.filePath) {
+          const { loadTabContent } = await import("./lib/fileOps");
+          loadTabContent(activeTab.id);
+        }
+      })
+      .catch((e) => {
+        console.error("initFromStartupData failed:", e);
+      });
   }, []);
 
   useEffect(() => {

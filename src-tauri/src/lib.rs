@@ -795,6 +795,16 @@ pub fn run() {
                 }
             }
 
+            {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    if let Some(window) = handle.get_webview_window("main") {
+                        let _ = window.show();
+                    }
+                });
+            }
+
             log::info!("[startup] setup-done: {}ms", app_start.elapsed().as_millis());
 
             Ok(())
