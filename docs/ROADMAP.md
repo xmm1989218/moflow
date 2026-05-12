@@ -443,18 +443,37 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.7.5 — 编辑器优化
+## v0.7.5 — 编辑器优化 ✅
 
 ### 代码模式与所见即所得模式共享 undo history
 
 - [x] Milkdown 始终挂载（CSS `visibility:hidden` 替代条件渲染，避免 `editor.destroy()` 销毁 undo 栈）
-- [x] SourceModeEditor 升级为 CodeMirror 6（markdown 语法高亮、行号、深色/浅色主题适配）
+- [x] SourceModeEditor 升级为 CodeMirror 6（markdown 语法高亮、深色/浅色主题适配，主题跟随编辑器 CSS 变量）
 - [x] Debounce 500ms 同步机制（CM6 onChange → debounce → `setContent` → `replaceAll(content, false)` 保留 undo history）
 - [x] 反馈循环防护（source 模式下 `markdownUpdated` listener 跳过 store 写入；CM6 `syncingRef` 防止外部更新触发回调）
-- [x] 光标位置保留（切到 source 前保存 ProseMirror selection，切回 WYSIWYG 后 `TextSelection.near` 恢复）
+- [x] 光标位置保留（切到 source 前保存 ProseMirror selection，切回 WYSIWYG 后 `TextSelection.near` 恢复；source 模式有编辑时不恢复旧光标，避免 undo 位置跳动）
 - [x] 滚动位置保留（切到 source 前保存 `scrollTop`，切回后恢复）
 - [x] 搜索高亮保留（`editorView` 不再被销毁，搜索装饰自然保留）
+- [x] `replaceAllNoHistory`（初始加载/tab 切换用 `setMeta('addToHistory', false)` 事务不进 undo 栈，防止 Ctrl+Z 回退到空白文档）
+- [x] Undo/Redo 统一（禁用 CM6 history，Ctrl+Z/Y 路由到 ProseMirror undo/redo；source 模式 undo 后 `getMarkdown()` 回写 store 同步 CM6）
+- [x] Source mode 主题跟随 WYSIWYG（CSS 变量控制背景/文字/光标/选中色 + 语法高亮 token 颜色）
+- [x] Source mode 滚动条位置对齐 WYSIWYG（CM6 `overflow: visible`，外层 wrapper 滚动）
+- [x] Source mode 去掉行号（`.cm-gutters { display: none }`）
 - [x] Editor.css 更新（删除 `.moflow-source-textarea` 旧样式，新增 `.moflow-milkdown-hidden` + CM6 全文档编辑器主题样式）
+
+### Undo/Redo 菜单项
+
+- [x] 快捷键注册（`shortcuts.ts` 新增 undo Ctrl+Z / redo Ctrl+Y）
+- [x] `editorActionMap`（`tabStore` 新增 Map，`setEditorActions` 注册 undo/redo action，遵循 `getEditorHTMLMap` 模式）
+- [x] Editor `listener.mounted` 注册 undo/redo（`undoCommand`/`redoCommand` from `@milkdown/plugin-history`），卸载时清理
+- [x] HamburgerMenu 新增 Undo/Redo 菜单项（Save 和 Find 之间，快捷键显示）
+
+### 构建修复
+
+- [x] 删除 `vite.config.ts` 残留 Vue.js `define` 指令（导致 Rolldown CJS interop 对 `react/jsx-runtime` 处理出错，`g is not a function`）
+- [x] `await import("react/jsx-runtime")` Rolldown CJS interop workaround（强制 jsx-runtime 打进主 chunk）
+- [x] 删除 `cmLanguages` 中无效动态导入（CSS/HTML/JS/JSX/TS/Markdown，已被 `lang-markdown`/`lang-html` 静态依赖）
+- [x] 窗口显示修复（`getCurrentWindow().show()` 提前到 `initFromStartupData()` 之前；Rust 5 秒 fallback 线程）
 
 ---
 

@@ -28,6 +28,7 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **Rich Markdown** — GFM (tables, strikethrough, task lists), math (KaTeX), Mermaid diagrams, code highlighting (Prism), highlight (`==text==`)
   See [Markdown syntax support](./tests/markdown-support.md) for full details
 - **Multi-tab** — Open and switch between multiple files with instant tab switching, auto-save, and preserved scroll/cursor/undo per tab
+- **Source mode** — CodeMirror 6 powered source editing with markdown syntax highlighting; shared undo history with WYSIWYG mode
 - **Dual theme** — Light and dark themes with smooth switching
 - **Export** — HTML and PDF export
 - **AI Sidebar** — Integrated AI chat with context management, auto-compact, and usage tracking

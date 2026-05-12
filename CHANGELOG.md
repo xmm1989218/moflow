@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.7.5 (2026-05-12)
+
+### New Features
+
+- **Source mode with CodeMirror 6** — Replaced textarea with CM6 full-doc editor providing markdown syntax highlighting, theme following WYSIWYG via CSS variables, no line numbers, wrapper-based scrollbar
+- **Shared undo history** — Milkdown stays mounted (CSS hidden) instead of being destroyed on mode switch; CM6 history disabled, Ctrl+Z/Y routed to ProseMirror as the sole undo/redo engine; undo/redo writeback syncs CM6 via `skipHistoryRef`
+- **Undo/Redo menu items** — Added Undo (Ctrl+Z) and Redo (Ctrl+Y) to HamburgerMenu; `editorActionMap` in tabStore for editor action encapsulation
+- **`replaceAllNoHistory`** — Non-user edits (initial load, tab switch, undo/redo writeback) use `setMeta('addToHistory', false)` to avoid creating undo steps
+- **Cursor & scroll preservation** — Save/restore ProseMirror selection and scrollTop on mode switch; skip cursor restore if content changed in source mode
+- **Search highlights preserved** — editorView no longer destroyed, search decorations persist across mode switches
+
+### Bug Fixes
+
+- **Production build crash "g is not a function"** — Removed stale Vue.js `define` directives from vite.config.ts; added `await import("react/jsx-runtime")` Rolldown CJS interop workaround
+- **Window not showing in production** — Moved `getCurrentWindow().show()` before init; added 5s Rust fallback thread
+- **Removed ineffective dynamic imports** — Cleaned up cmLanguages (CSS/HTML/JS/JSX/TS/Markdown already statically imported by lang-markdown/lang-html)
+
 ## v0.7.0 (2026-05-12)
 
 ### New Features
