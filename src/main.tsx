@@ -1,5 +1,4 @@
 import { StrictMode } from "react";
-import "react/jsx-runtime";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
@@ -22,6 +21,8 @@ function startupMark(label: string, startMark?: string) {
 window.__startupMark = startupMark;
 
 performance.mark("js-exec");
+
+await import("react/jsx-runtime");
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
