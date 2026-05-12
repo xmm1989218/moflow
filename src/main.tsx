@@ -1,4 +1,5 @@
 import { StrictMode } from "react";
+import "react/jsx-runtime";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
