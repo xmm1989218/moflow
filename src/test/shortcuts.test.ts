@@ -68,8 +68,8 @@ describe("shortcuts", () => {
   });
 
   describe("getAllShortcuts", () => {
-    it("returns all 15 shortcuts", () => {
-      expect(getAllShortcuts()).toHaveLength(15);
+    it("returns all 17 shortcuts", () => {
+      expect(getAllShortcuts()).toHaveLength(17);
     });
 
     it("includes all expected shortcut ids", () => {
