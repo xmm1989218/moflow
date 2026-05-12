@@ -7,11 +7,13 @@ import { TextSelection } from "prosemirror-state";
 import type { Ctx } from "@milkdown/kit/ctx";
 import { LanguageDescription, LanguageSupport, StreamLanguage } from "@codemirror/language";
 import type { StreamParser } from "@codemirror/language";
-import { basicSetup } from "codemirror";
 import { markdown as cmMarkdown } from "@codemirror/lang-markdown";
-import { EditorView as CMEditorView, keymap, ViewUpdate } from "@codemirror/view";
+import { EditorView as CMEditorView, keymap, ViewUpdate, highlightSpecialChars, drawSelection, highlightActiveLine } from "@codemirror/view";
 import { EditorState as CMEditorState } from "@codemirror/state";
-import { indentWithTab } from "@codemirror/commands";
+import { indentWithTab, defaultKeymap, historyKeymap } from "@codemirror/commands";
+import { indentOnInput, syntaxHighlighting, defaultHighlightStyle, bracketMatching } from "@codemirror/language";
+import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
+import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { useTabStore, type EditorMode } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useAISelectionStore } from "../../stores/aiSelectionStore";
@@ -456,14 +458,20 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
         useTabStore.getState().setEditorActions(tabId, {
           undo: () => {
             const ed = crepeRef.current?.editor;
-            if (ed?.status === EditorStatus.Created) {
-              ed.action((c) => { c.get(commandsCtx).call(undoCommand.key); });
+            if (ed?.status !== EditorStatus.Created) return;
+            ed.action((c) => { c.get(commandsCtx).call(undoCommand.key); });
+            if (modeRef.current === "source") {
+              const md = crepeRef.current?.getMarkdown() ?? syncedContentRef.current;
+              useTabStore.getState().updateTabContent(tabId, md);
             }
           },
           redo: () => {
             const ed = crepeRef.current?.editor;
-            if (ed?.status === EditorStatus.Created) {
-              ed.action((c) => { c.get(commandsCtx).call(redoCommand.key); });
+            if (ed?.status !== EditorStatus.Created) return;
+            ed.action((c) => { c.get(commandsCtx).call(redoCommand.key); });
+            if (modeRef.current === "source") {
+              const md = crepeRef.current?.getMarkdown() ?? syncedContentRef.current;
+              useTabStore.getState().updateTabContent(tabId, md);
             }
           },
         });
@@ -716,12 +724,56 @@ function SourceModeEditor({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    const filteredHistoryKeymap = historyKeymap.filter((b) => {
+      const k = b.key;
+      return k !== "Mod-z" && k !== "Mod-y" && k !== "Mod-Shift-z";
+    });
+
     const state = CMEditorState.create({
       doc: contentRef.current,
       extensions: [
-        basicSetup,
+        highlightSpecialChars(),
+        drawSelection(),
+        indentOnInput(),
+        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        bracketMatching(),
+        closeBrackets(),
+        highlightActiveLine(),
+        highlightSelectionMatches(),
         cmMarkdown(),
-        keymap.of([indentWithTab]),
+        keymap.of([
+          ...closeBracketsKeymap,
+          ...defaultKeymap,
+          ...searchKeymap,
+          ...filteredHistoryKeymap,
+        ]),
+        keymap.of([
+          {
+            key: "Mod-z",
+            run: () => {
+              const activeId = useTabStore.getState().activeFileId;
+              useTabStore.getState().editorActionMap.get(activeId)?.undo?.();
+              return true;
+            },
+          },
+          {
+            key: "Mod-y",
+            run: () => {
+              const activeId = useTabStore.getState().activeFileId;
+              useTabStore.getState().editorActionMap.get(activeId)?.redo?.();
+              return true;
+            },
+          },
+          {
+            key: "Mod-Shift-z",
+            run: () => {
+              const activeId = useTabStore.getState().activeFileId;
+              useTabStore.getState().editorActionMap.get(activeId)?.redo?.();
+              return true;
+            },
+          },
+          indentWithTab,
+        ]),
         CMEditorView.updateListener.of((update: ViewUpdate) => {
           if (syncingRef.current) return;
           if (update.docChanged) {
