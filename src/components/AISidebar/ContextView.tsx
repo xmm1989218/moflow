@@ -4,7 +4,8 @@ import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, formatCost } from "../../lib/modelInfo";
 import { getToolDefinitions } from "../../lib/tools";
 import { useTabStore } from "../../stores/tabStore";
-import { t } from "../../lib/i18n";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 
 interface ContextViewProps {
   tabId: string;
@@ -118,7 +119,7 @@ function MessageRow({ msg }: { msg: ContextMessage }) {
   return (
     <details className={`moflow-ctx-msg moflow-ctx-msg-${role}${isCompactSummary ? " moflow-ctx-msg-summary" : ""}`}>
       <summary className="moflow-ctx-msg-header">
-        <span className="moflow-ctx-msg-arrow">▸</span>
+        <span className="moflow-ctx-msg-arrow">▾</span>
         <span
           className={`moflow-ctx-msg-badge${isCompactSummary ? " moflow-ctx-badge-summary" : ` moflow-ctx-badge-${role}`}`}
         >
@@ -154,6 +155,7 @@ function MessageRow({ msg }: { msg: ContextMessage }) {
 }
 
 export default function ContextView({ tabId, providerId, model, docContent }: ContextViewProps) {
+  useT();
   const contextTokens = useChatStore((s) => s.contextTokensMap[tabId] ?? 0);
   const cost = useChatStore((s) => s.costMap[tabId] ?? 0);
   const contextMsgs = useChatStore((s) => s.contextMap[tabId] ?? EMPTY_MESSAGES);
@@ -178,25 +180,25 @@ export default function ContextView({ tabId, providerId, model, docContent }: Co
   return (
     <div className="moflow-ctx-view">
       <div className="moflow-ctx-section">
-        <div className="moflow-ctx-section-header">{t("统计信息", "Statistics")}</div>
+        <div className="moflow-ctx-section-header">{t("ai.context.statistics")}</div>
         <div className="moflow-ctx-stat-row">
-          <span>{t("上下文", "Context")}</span>
+          <span>{t("ai.context.context")}</span>
           <span>{contextTokens.toLocaleString()} / {maxContext.toLocaleString()} tokens</span>
         </div>
         {tools.length > 0 && (
           <div className="moflow-ctx-stat-row">
-            <span>{t("工具", "Tools")}</span>
+            <span>{t("ai.context.tools")}</span>
             <span>{tools.map((t) => t.function.name).join(", ")}</span>
           </div>
         )}
         <div className="moflow-ctx-stat-row">
-          <span>{t("费用", "Cost")}</span>
+          <span>{t("ai.context.cost")}</span>
           <span>{formatCost(cost, currency)}</span>
         </div>
       </div>
 
       <div className="moflow-ctx-section">
-        <div className="moflow-ctx-section-header">{t("上下文占比", "Context Breakdown")}</div>
+        <div className="moflow-ctx-section-header">{t("ai.context.breakdown")}</div>
         {totalBreakdown > 0 ? (
           <>
             <div className="moflow-ctx-bar">
@@ -229,14 +231,14 @@ export default function ContextView({ tabId, providerId, model, docContent }: Co
             </div>
           </>
         ) : (
-          <div className="moflow-ctx-empty">{t("暂无上下文", "No context yet")}</div>
+          <div className="moflow-ctx-empty">{t("ai.context.noContext")}</div>
         )}
       </div>
 
       <div className="moflow-ctx-section">
-        <div className="moflow-ctx-section-header">{t("原始消息", "Raw Messages")}</div>
+        <div className="moflow-ctx-section-header">{t("ai.context.rawMessages")}</div>
         {contextMsgs.length === 0 ? (
-          <div className="moflow-ctx-empty">{t("暂无消息", "No messages")}</div>
+          <div className="moflow-ctx-empty">{t("ai.context.noMessages")}</div>
         ) : (
           <div className="moflow-ctx-msg-list">
             {contextMsgs.map((msg) => (

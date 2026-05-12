@@ -20,8 +20,7 @@ describe("shortcuts", () => {
       for (const s of all) {
         expect(s.id).toBeTruthy();
         expect(s.key).toBeTruthy();
-        expect(s.label.zh).toBeTruthy();
-        expect(s.label.en).toBeTruthy();
+        expect(s.labelKey).toBeTruthy();
         expect(Array.isArray(s.modifiers)).toBe(true);
       }
     });

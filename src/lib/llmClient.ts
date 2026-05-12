@@ -2,6 +2,7 @@ import type { AIConfig } from "./settings";
 import { getProviderInfo } from "./modelInfo";
 import { estimateTokens } from "./contextBuilder";
 import type { ToolCall, ToolDefinition } from "./types";
+import { t, isZh } from "../i18n/core";
 
 export class TimeoutError extends Error {
   constructor(timeout: number) {
@@ -513,8 +514,6 @@ export function getLLMClient(config: AIConfig): LLMClient {
   return new OpenAICompatibleClient(config.apiEndpoint, config.apiToken, config.model);
 }
 
-import { t } from "./i18n";
-
 function generateMockResponse(userMessage: string, docContent: string): string {
   const lines = docContent.split("\n").filter((l) => l.trim());
   const headings = lines.filter((l) => l.startsWith("#"));
@@ -523,66 +522,50 @@ function generateMockResponse(userMessage: string, docContent: string): string {
 
   const lower = userMessage.toLowerCase();
 
-  if (lower.includes("总结") || lower.includes("summar")) {
+  if (lower.includes("总结") || lower.includes("summarize") || lower.includes("summary")) {
     if (headings.length > 0) {
-      return t(
-        `这篇文档包含 ${headings.length} 个标题，共 ${charCount} 个字符。主要章节包括：\n${headings.map((h) => `- ${h}`).join("\n")}\n\n整体来看，文档结构清晰，内容围绕核心主题展开。`,
-        `This document has ${headings.length} heading(s) and ${charCount} characters. Main sections:\n${headings.map((h) => `- ${h}`).join("\n")}\n\nThe document is well-structured and focused on its core topic.`
-      );
+      return t("ai.mock.summaryWithHeadings", {
+        n: headings.length,
+        c: charCount,
+        headings: headings.map((h) => `- ${h}`).join("\n"),
+      });
     }
-    return t(
-      `文档共 ${charCount} 个字符，约 ${wordCount} 个词。目前内容较为简短，可以进一步扩展。`,
-      `The document has ${charCount} characters and approximately ${wordCount} words. It's relatively brief and could be expanded.`
-    );
+    return t("ai.mock.summaryNoHeadings", { c: charCount, w: wordCount });
   }
 
-  if (lower.includes("改进") || lower.includes("improv") || lower.includes("建议") || lower.includes("suggest")) {
-    return t(
-      "以下是一些改进建议：\n\n1. **结构优化** - 考虑添加更多层级的标题来组织内容\n2. **内容充实** - 每个章节可以添加更多细节和示例\n3. **格式规范** - 确保列表、代码块等格式一致\n4. **可读性** - 适当使用粗体、引用等增强可读性",
-      "Here are some improvement suggestions:\n\n1. **Structure** - Consider adding more heading levels to organize content\n2. **Content** - Each section could benefit from more details and examples\n3. **Formatting** - Ensure consistent use of lists, code blocks, etc.\n4. **Readability** - Use bold, quotes, etc. to enhance readability"
-    );
+  if (lower.includes("改进") || lower.includes("improve") || lower.includes("建议") || lower.includes("suggest") || lower.includes("suggestion")) {
+    return t("ai.mock.suggestions");
   }
 
-  if (lower.includes("标题") || lower.includes("title") || lower.includes("heading")) {
+  if (lower.includes("标题") || lower.includes("title") || lower.includes("heading") || lower.includes("headings")) {
     if (headings.length > 0) {
-      return t(
-        `文档中的标题结构：\n${headings.map((h, i) => `${i + 1}. ${h}`).join("\n")}\n\n标题层次清晰，建议保持一致的命名风格。`,
-        `Document headings:\n${headings.map((h, i) => `${i + 1}. ${h}`).join("\n")}\n\nThe heading hierarchy is clear. Consider maintaining a consistent naming style.`
-      );
+      return t("ai.mock.headingsList", {
+        headings: headings.map((h, i) => `${i + 1}. ${h}`).join("\n"),
+      });
     }
-    return t("文档目前没有使用标题。建议添加标题来组织内容结构。", "The document doesn't use headings yet. Consider adding headings to organize the content structure.");
+    return t("ai.mock.noHeadings");
   }
 
-  if (lower.includes("解释") || lower.includes("explai")) {
-    return t(
-      `这段内容共 ${charCount} 个字符。文档的核心理念通过清晰的逻辑展开，建议结合上下文进一步理解其深层含义。`,
-      `This passage has ${charCount} characters. The core concept is developed through clear logic. Consider the broader context for deeper understanding.`
-    );
+  if (lower.includes("解释") || lower.includes("explain")) {
+    return t("ai.mock.explain", { c: charCount });
   }
 
-  if (lower.includes("翻译") || lower.includes("translat")) {
-    return t(
-      `[Mock 翻译结果] 这段内容的翻译将保持原文的语义和风格，确保准确传达原文信息。`,
-      `[Mock translation] The translation of this content preserves the original meaning and style, ensuring accurate conveyance of the original information.`
-    );
+  if (lower.includes("翻译") || lower.includes("translate")) {
+    return t("ai.mock.translate");
   }
 
   if (charCount === 0) {
-    return t(
-      "看起来文档还是空的。你可以先开始写一些内容，然后我来帮你分析和改进！",
-      "The document appears to be empty. Start writing some content, and I'll help you analyze and improve it!"
-    );
+    return t("ai.mock.emptyDoc");
   }
 
   const templates = [
-    t(
-      `我看到了你的文档，目前有 ${charCount} 个字符。有什么具体想让我帮忙的吗？比如总结内容、提供改进建议、或者分析文档结构。`,
-      `I can see your document with ${charCount} characters. How can I help? I can summarize content, suggest improvements, or analyze the document structure.`
-    ),
-    t(
-      `这是一份 ${charCount} 字符的文档。${headings.length > 0 ? `包含 ${headings.length} 个标题，结构看起来不错。` : "还没有添加标题，建议用标题来组织内容。"} 试试问我关于文档的任何问题！`,
-      `This is a ${charCount}-character document. ${headings.length > 0 ? `It has ${headings.length} heading(s) and looks well-structured.` : "No headings yet — consider using headings to organize content."} Try asking me anything about the document!`
-    ),
+    t("ai.mock.template1", { c: charCount }),
+    t("ai.mock.template2", {
+      c: charCount,
+      hasHeadings: headings.length > 0
+        ? (isZh() ? `包含 ${headings.length} 个标题，结构看起来不错。` : `It has ${headings.length} heading(s) and looks well-structured.`)
+        : (isZh() ? "还没有添加标题，建议用标题来组织内容。" : "No headings yet — consider using headings to organize content."),
+    }),
   ];
 
   return templates[Math.floor(Math.random() * templates.length)];

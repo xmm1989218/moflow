@@ -32,7 +32,8 @@ import { useTabStore, type EditorMode } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useAISelectionStore } from "../../stores/aiSelectionStore";
 import { getShortcutDisplay, getShortcutLabel } from "../../lib/shortcuts";
-import { t } from "../../lib/i18n";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 import { highlightPlugin, highlightSchema, toggleHighlightCommand } from "../../lib/highlightMark";
 import { searchPlugin } from "../../lib/searchPlugin";
 import { createHtmlNodeView } from "../../lib/htmlBlock";
@@ -80,25 +81,24 @@ function getBlockHandleMetrics() {
   return { proseMirrorLeft, paddingX };
 }
 
-import { isZh } from "../../lib/i18n";
 
-const SLASH_MD_MAP: Record<string, { zh: string; md: string }> = {
-  "Text": { zh: "正文", md: "paragraph" },
-  "Heading 1": { zh: "一级标题", md: "# " },
-  "Heading 2": { zh: "二级标题", md: "## " },
-  "Heading 3": { zh: "三级标题", md: "### " },
-  "Heading 4": { zh: "四级标题", md: "#### " },
-  "Heading 5": { zh: "五级标题", md: "##### " },
-  "Heading 6": { zh: "六级标题", md: "###### " },
-  "Quote": { zh: "引用", md: "> " },
-  "Divider": { zh: "分割线", md: "---" },
-  "Bullet List": { zh: "无序列表", md: "- " },
-  "Ordered List": { zh: "有序列表", md: "1. " },
-  "Task List": { zh: "待办列表", md: "- [ ] " },
-  "Image": { zh: "图片", md: "![alt](url)" },
-  "Code": { zh: "代码块", md: "```↵```" },
-  "Table": { zh: "表格", md: "| | |\\n|---|---|" },
-  "Math": { zh: "数学公式", md: "$$↵$$" },
+const SLASH_MD_MAP: Record<string, { i18nKey: string; md: string }> = {
+  "Text": { i18nKey: "editor.block.text", md: "paragraph" },
+  "Heading 1": { i18nKey: "editor.block.heading1", md: "# " },
+  "Heading 2": { i18nKey: "editor.block.heading2", md: "## " },
+  "Heading 3": { i18nKey: "editor.block.heading3", md: "### " },
+  "Heading 4": { i18nKey: "editor.block.heading4", md: "#### " },
+  "Heading 5": { i18nKey: "editor.block.heading5", md: "##### " },
+  "Heading 6": { i18nKey: "editor.block.heading6", md: "###### " },
+  "Quote": { i18nKey: "editor.block.quote", md: "> " },
+  "Divider": { i18nKey: "editor.block.divider", md: "---" },
+  "Bullet List": { i18nKey: "editor.block.bulletList", md: "- " },
+  "Ordered List": { i18nKey: "editor.block.orderedList", md: "1. " },
+  "Task List": { i18nKey: "editor.block.taskList", md: "- [ ] " },
+  "Image": { i18nKey: "editor.block.image", md: "![alt](url)" },
+  "Code": { i18nKey: "editor.block.code", md: "```?```" },
+  "Table": { i18nKey: "editor.block.table", md: "| | |\n|---|---|" },
+  "Math": { i18nKey: "editor.block.math", md: "$$∑$$" },
 };
 
 const explainIcon = `
@@ -134,13 +134,14 @@ const highlightIcon = `
   </svg>
 `;
 
-import { toolbarTooltipMap, BUILT_IN_TOOLTIP_KEYS } from "../../lib/toolbarTooltip";
+import { getToolbarTooltipMap, BUILT_IN_TOOLTIP_KEYS } from "../../lib/toolbarTooltip";
 
 interface MilkdownWrapperProps {
   tabId: string;
 }
 
 const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapperProps) {
+  useT();
   const { content, mode } = useTabStore(
     useShallow((s) => {
       const tab = s.files.find((f) => f.id === tabId);
@@ -205,15 +206,16 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
     };
 
     const getTooltipText = (btn: Element): string | undefined => {
+      const map = getToolbarTooltipMap();
       const svg = btn.querySelector("svg[data-toolbar-key]");
       const key = svg?.getAttribute("data-toolbar-key");
-      if (key && toolbarTooltipMap[key]) return toolbarTooltipMap[key];
+      if (key && map[key]) return map[key];
       const toolbar = btn.closest(".milkdown-toolbar");
       if (!toolbar) return undefined;
       const allButtons = toolbar.querySelectorAll(".toolbar-item");
       const index = Array.from(allButtons).indexOf(btn);
       if (index >= 0 && index < BUILT_IN_TOOLTIP_KEYS.length) {
-        return toolbarTooltipMap[BUILT_IN_TOOLTIP_KEYS[index]];
+        return map[BUILT_IN_TOOLTIP_KEYS[index]];
       }
       return undefined;
     };
@@ -608,7 +610,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
           const label = span?.textContent?.trim() ?? "";
           if (!label) return;
           const entry = SLASH_MD_MAP[label];
-          const nameLine = isZh && entry ? entry.zh : label;
+          const nameLine = entry ? t(entry.i18nKey) : label;
           const mdLine = entry ? `Markdown: ${entry.md}` : "";
           li.dataset.tip = mdLine ? `${nameLine}\n${mdLine}` : nameLine;
           li.addEventListener("mouseenter", () => showTooltip(li));
@@ -852,6 +854,7 @@ function SourceModeEditor({
 }
 
 export default function Editor() {
+  useT();
   const files = useTabStore((s) => s.files);
   const activeFileId = useTabStore((s) => s.activeFileId);
   const sessionInitialized = useTabStore((s) => s.sessionInitialized);
@@ -866,7 +869,7 @@ export default function Editor() {
         <div className="flex-1 min-h-0 flex items-center justify-center bg-moflow-bg">
           <div className="flex flex-col items-center gap-3 text-moflow-text-secondary select-none">
             <div className="text-sm opacity-70">{wsName}</div>
-            <div className="text-xs opacity-50">{t("AI 助手可用", "AI Assistant available")}</div>
+            <div className="text-xs opacity-50">{t("editor.aiAvailable")}</div>
             {(["newFile", "openFile"] as const).map((id) => (
               <div key={id} className="flex items-center gap-2 text-sm">
                 <kbd className="px-2 py-0.5 rounded bg-moflow-code-bg text-moflow-text text-xs font-mono border border-moflow-border">

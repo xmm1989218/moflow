@@ -3,7 +3,8 @@ import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useSearchStore } from "../../stores/searchStore";
 import { openFile, saveFile, saveFileAs, exportHtml, exportPdf, openFolder } from "../../lib/fileOps";
-import { t } from "../../lib/i18n";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 import { getShortcutDisplay } from "../../lib/shortcuts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
@@ -46,6 +47,7 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
   const newFile = useTabStore((s) => s.newFile);
   const workspaceRoot = useTabStore((s) => s.workspaceRoot);
   const openSettingsTab = useThemeStore((s) => s.openSettingsTab);
+  useT();
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -115,29 +117,29 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
   };
 
   const menuItems: MenuEntry[] = [
-    item("new", t("新建", "New"), { shortcut: getShortcutDisplay("newFile") }),
-    item("open", t("打开...", "Open..."), { shortcut: getShortcutDisplay("openFile") }),
-    item("open_folder", t("打开目录...", "Open Folder..."), { shortcut: getShortcutDisplay("openFolder") }),
-    ...(workspaceRoot ? [item("close_folder", t("关闭目录", "Close Folder"))] : []),
-    item("save", t("保存", "Save"), { shortcut: getShortcutDisplay("saveFile") }),
-    item("save_as", t("另存为...", "Save As..."), { shortcut: getShortcutDisplay("saveFileAs") }),
+    item("new", t("menu.new"), { shortcut: getShortcutDisplay("newFile") }),
+    item("open", t("menu.open"), { shortcut: getShortcutDisplay("openFile") }),
+    item("open_folder", t("menu.openFolder"), { shortcut: getShortcutDisplay("openFolder") }),
+    ...(workspaceRoot ? [item("close_folder", t("menu.closeFolder"))] : []),
+    item("save", t("menu.save"), { shortcut: getShortcutDisplay("saveFile") }),
+    item("save_as", t("menu.saveAs"), { shortcut: getShortcutDisplay("saveFileAs") }),
     sep(),
-    item("undo", t("撤销", "Undo"), { shortcut: getShortcutDisplay("undo") }),
-    item("redo", t("重做", "Redo"), { shortcut: getShortcutDisplay("redo") }),
+    item("undo", t("menu.undo"), { shortcut: getShortcutDisplay("undo") }),
+    item("redo", t("menu.redo"), { shortcut: getShortcutDisplay("redo") }),
     sep(),
-    item("find", t("查找", "Find"), { shortcut: getShortcutDisplay("find") }),
-    item("replace", t("替换", "Replace"), { shortcut: getShortcutDisplay("replace") }),
+    item("find", t("menu.find"), { shortcut: getShortcutDisplay("find") }),
+    item("replace", t("menu.replace"), { shortcut: getShortcutDisplay("replace") }),
     sep(),
-    item("export", t("导出", "Export"), {
+    item("export", t("menu.export"), {
       submenu: [
         item("export_html", "HTML"),
         item("export_pdf", "PDF"),
       ],
     }),
     sep(),
-    item("settings", t("设置", "Settings"), { shortcut: getShortcutDisplay("settings") }),
-    item("fullscreen", t("全屏", "Fullscreen"), { shortcut: getShortcutDisplay("fullscreen") }),
-    item("devtools", t("开发者工具", "Developer Tools"), { shortcut: getShortcutDisplay("devtools") }),
+    item("settings", t("menu.settings"), { shortcut: getShortcutDisplay("settings") }),
+    item("fullscreen", t("menu.fullscreen"), { shortcut: getShortcutDisplay("fullscreen") }),
+    item("devtools", t("menu.devtools"), { shortcut: getShortcutDisplay("devtools") }),
   ];
 
   return (
@@ -154,7 +156,7 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
             onClick={() => handleAction(entry.id)}
           >
             <span className="w-4 shrink-0 text-center text-xs text-ui-accent">
-              {entry.checked ? "✓" : ""}
+              {entry.checked ? "?" : ""}
             </span>
             <span className="flex-1">{entry.label}</span>
             {entry.shortcut && (
@@ -178,10 +180,10 @@ function SubmenuItem({ item: menuItem, onAction }: { item: MenuItem; onAction: (
     >
       <button className={`flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left gap-2 whitespace-nowrap hover:bg-ui-menu-hover${menuItem.checked ? " font-semibold" : ""}`}>
         <span className="w-4 shrink-0 text-center text-xs text-ui-accent">
-          {menuItem.checked ? "✓" : ""}
+          {menuItem.checked ? "?" : ""}
         </span>
         <span className="flex-1">{menuItem.label}</span>
-        <span className="text-sm text-ui-text-secondary ml-2">›</span>
+        <span className="text-sm text-ui-text-secondary ml-2">?</span>
       </button>
       {open && menuItem.submenu && (
         <div className="absolute left-full top-0 min-w-[200px] bg-ui-menu-bg border border-ui-border rounded-lg shadow-menu p-1 z-[1001] animate-menu-fadein">
@@ -199,7 +201,7 @@ function SubmenuItem({ item: menuItem, onAction }: { item: MenuItem; onAction: (
                 }}
               >
                 <span className="w-4 shrink-0 text-center text-xs text-ui-accent">
-                  {entry.checked ? "✓" : ""}
+{entry.checked ? "?" : ""}
                 </span>
                 <span className="flex-1">{entry.label}</span>
               </button>

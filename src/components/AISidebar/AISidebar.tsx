@@ -14,7 +14,8 @@ import SlashCommandMenu from "./SlashCommandMenu";
 import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
 import MessageContent from "./MessageContent";
 import ContextView from "./ContextView";
-import { t, isZh } from "../../lib/i18n";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 import "./AISidebar.css";
 
 const emptyMessages: Message[] = [];
@@ -25,6 +26,7 @@ function UsageBadge({ tabId, providerId, model, onClick, active }: { tabId: stri
   const totalTokens = useChatStore((s) => s.totalTokensMap[tabId] ?? 0);
   const cost = useChatStore((s) => s.costMap[tabId] ?? 0);
   const [showTooltip, setShowTooltip] = useState(false);
+  useT();
 
   const modelInfo = getModelInfo(providerId, model);
   const maxContext = modelInfo.maxContext || 0;
@@ -62,19 +64,19 @@ function UsageBadge({ tabId, providerId, model, onClick, active }: { tabId: stri
       {showTooltip && (
         <div className="moflow-ai-usage-tooltip">
           <div className="moflow-ai-usage-tooltip-row">
-            <span>{t("上下文", "Context")}</span>
+            <span>{t("ai.usage.context")}</span>
             <span>{contextTokens.toLocaleString()} tokens</span>
           </div>
           <div className="moflow-ai-usage-tooltip-row">
-            <span>{t("使用率", "Usage")}</span>
+            <span>{t("ai.usage.usage")}</span>
             <span>{(pct * 100).toFixed(1)}%</span>
           </div>
           <div className="moflow-ai-usage-tooltip-row">
-            <span>{t("累计", "Total")}</span>
+            <span>{t("ai.usage.total")}</span>
             <span>{totalTokens.toLocaleString()} tokens</span>
           </div>
           <div className="moflow-ai-usage-tooltip-row moflow-ai-usage-tooltip-cost">
-            <span>{t("费用", "Cost")}</span>
+            <span>{t("ai.usage.cost")}</span>
             <span>{formatCost(cost, currency)}</span>
           </div>
         </div>
@@ -84,34 +86,35 @@ function UsageBadge({ tabId, providerId, model, onClick, active }: { tabId: stri
 }
 
 function ToolCallStatus({ name, args }: { name: string; args: Record<string, unknown> }) {
+  useT();
   let text: string;
   switch (name) {
     case "outline":
-      text = t("正在获取文档大纲...", "Getting document outline...");
+      text = t("ai.toolStatus.outline");
       break;
     case "read":
-      text = t("正在读取文件内容...", "Reading file content...");
+      text = t("ai.toolStatus.read");
       break;
     case "read_section":
-      text = t(`正在读取: ${args.heading}`, `Reading: ${args.heading}`);
+      text = t("ai.toolStatus.readSection", { heading: String(args.heading) });
       break;
     case "grep":
-      text = t(`正在搜索: "${args.pattern}"`, `Searching: "${args.pattern}"`);
+      text = t("ai.toolStatus.grep", { pattern: String(args.pattern) });
       break;
     case "find":
-      text = t(`正在搜索文件: "${args.pattern}"`, `Finding files: "${args.pattern}"`);
+      text = t("ai.toolStatus.find", { pattern: String(args.pattern) });
       break;
     case "glob":
-      text = t(`正在匹配文件: "${args.pattern}"`, `Globbing: "${args.pattern}"`);
+      text = t("ai.toolStatus.glob", { pattern: String(args.pattern) });
       break;
     case "ls":
-      text = t("正在列出目录...", "Listing directory...");
+      text = t("ai.toolStatus.ls");
       break;
     case "webfetch":
-      text = t(`正在访问: ${args.url}`, `Fetching: ${args.url}`);
+      text = t("ai.toolStatus.webfetch", { url: String(args.url) });
       break;
     default:
-      text = t(`正在执行: ${name}`, `Executing: ${name}`);
+      text = t("ai.toolStatus.default", { name });
   }
 
   return (
@@ -130,6 +133,7 @@ function formatToolArgs(name: string, args: Record<string, unknown>): string {
 }
 
 function ToolResultBlock({ msg, messages }: { msg: Message; messages: Message[] }) {
+  const [open, setOpen] = useState(false);
   let argsLabel = msg.toolName ?? "";
   if (msg.toolCallId) {
     for (const m of messages) {
@@ -150,9 +154,9 @@ function ToolResultBlock({ msg, messages }: { msg: Message; messages: Message[] 
 
   return (
     <div className="moflow-ai-tool-result">
-      <details>
+      <details aria-expanded={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
         <summary className="moflow-ai-tool-result-summary">
-          <span className="moflow-ai-tool-result-icon">🔧</span>
+          <span className="moflow-ai-tool-result-icon">??</span>
           <span className="moflow-ai-tool-args-text">{argsLabel}</span>
         </summary>
         <pre className="moflow-ai-tool-result-content">{msg.content}</pre>
@@ -205,6 +209,7 @@ export default function AISidebar() {
   const [showContext, setShowContext] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [toolCallStatus, setToolCallStatus] = useState<{ name: string; args: Record<string, unknown> } | null>(null);
+  useT();
 
   useEffect(() => {
     if (!isStreaming) {
@@ -383,12 +388,8 @@ export default function AISidebar() {
     const summaryContent = summaryContentParts.join("\n");
 
     const summaryPrompt = previousSummary
-      ? isZh
-        ? `<previous-summary>\n${previousSummary.content}\n</previous-summary>\n\n请将以上历史摘要和以下新对话一起总结为一份更新后的摘要，保留关键信息：\n\n${summaryContent}`
-        : `<previous-summary>\n${previousSummary.content}\n</previous-summary>\n\nPlease summarize the previous summary above together with the new conversation below into an updated summary, preserving key information:\n\n${summaryContent}`
-      : isZh
-        ? `请将以下对话历史总结为简洁的摘要，保留关键信息：\n\n${summaryContent}`
-        : `Please summarize the following conversation history concisely, preserving key information:\n\n${summaryContent}`;
+      ? t("ai.compact.summaryWithPrevious", { prev: previousSummary.content, content: summaryContent })
+      : t("ai.compact.summaryNew", { content: summaryContent });
 
     const compactMsg = addMessage(chatKey, { role: "user", content: "/compact" });
     await appendMessage(chatKey, compactMsg);
@@ -432,7 +433,7 @@ export default function AISidebar() {
     } catch (e) {
       if (e instanceof TimeoutError) {
         console.error(`[AISidebar] Request timeout: ${e.message}`);
-        appendStreamingContent(chatKey, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+        appendStreamingContent(chatKey, `\n\n? ${t("ai.error.timeout")}`);
       } else if (e instanceof DOMException && e.name === "AbortError") {
         const content = useChatStore.getState().streamingContentMap[chatKey];
 
@@ -445,7 +446,7 @@ export default function AISidebar() {
         }
       } else {
         const errorMsg = e instanceof Error ? e.message : String(e);
-        appendStreamingContent(chatKey, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+        appendStreamingContent(chatKey, `\n\n|?${t("ai.error.requestFailed")}: ${errorMsg}`);
       }
     } finally {
       setStreaming(false);
@@ -462,7 +463,7 @@ export default function AISidebar() {
     setShowScrollBottom(false);
 
     if (text.startsWith("/")) {
-      const errMsg = addMessage(chatKey, { role: "assistant", content: `❌ ${t("未知命令。可用命令: /new, /compact, /models", "Unknown command. Available: /new, /compact, /models")}` });
+      const errMsg = addMessage(chatKey, { role: "assistant", content: `|?${t("ai.error.unknownCommand")}` });
       await appendMessage(chatKey, errMsg);
       setInput("");
       return;
@@ -583,10 +584,7 @@ export default function AISidebar() {
             webfetchCount++;
             if (webfetchCount > WEBFETCH_LIMIT) {
               console.warn(`[AISidebar] webfetch limit reached (${WEBFETCH_LIMIT} per request)`);
-              const limitMsg = t(
-                `Webfetch 调用次数已达上限（${WEBFETCH_LIMIT} 次）`,
-                `Webfetch call limit reached (${WEBFETCH_LIMIT} per request)`
-              );
+              const limitMsg = t("ai.error.webfetchLimit", { n: WEBFETCH_LIMIT });
               const toolMsg = addMessage(chatKey, {
                 role: "tool",
                 content: limitMsg,
@@ -604,7 +602,7 @@ export default function AISidebar() {
           try {
             toolResult = await executeTool(tc.name, args, controller.signal, toolCtx);
           } catch (e) {
-            toolResult = `❌ ${t("工具执行出错", "Tool execution error")}: ${e instanceof Error ? e.message : String(e)}`;
+            toolResult = `|?${t("ai.error.toolExecution")}: ${e instanceof Error ? e.message : String(e)}`;
           }
 
           if (controller.signal.aborted) break;
@@ -625,10 +623,7 @@ export default function AISidebar() {
         if (round >= MAX_TOOL_ROUNDS) {
           const limitMsg = addMessage(chatKey, {
             role: "assistant",
-            content: t(
-              "（已达到工具调用次数上限，请基于已有信息回答）",
-              "(Maximum tool call rounds reached. Please answer based on available information.)"
-            ),
+            content: t("ai.error.toolRoundsLimit"),
           });
           await appendMessage(chatKey, limitMsg);
           break;
@@ -637,12 +632,12 @@ export default function AISidebar() {
     } catch (e) {
       if (e instanceof TimeoutError) {
         console.error(`[AISidebar] Request timeout: ${e.message}`);
-        appendStreamingContent(chatKey, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+        appendStreamingContent(chatKey, `\n\n? ${t("ai.error.timeout")}`);
       } else if (e instanceof DOMException && e.name === "AbortError") {
         // handled in finally
       } else {
         const errorMsg = e instanceof Error ? e.message : String(e);
-        appendStreamingContent(chatKey, `\n\n❌ ${t("请求失败", "Request failed")}: ${errorMsg}`);
+        appendStreamingContent(chatKey, `\n\n|?${t("ai.error.requestFailed")}: ${errorMsg}`);
       }
 
       const content = useChatStore.getState().streamingContentMap[chatKey];
@@ -724,12 +719,12 @@ export default function AISidebar() {
       <div className="moflow-ai-sidebar" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
         <div className="moflow-ai-resize-handle" onMouseDown={handleResizeStart} />
         <div className="moflow-ai-header">
-          <span className="moflow-ai-header-title" style={{ flex: "none" }}>{t("AI 助手", "AI Assistant")}</span>
+          <span className="moflow-ai-header-title" style={{ flex: "none" }}>{t("ai.header.title")}</span>
         </div>
         <div className="moflow-ai-messages flex items-center justify-center">
           <div className="moflow-ai-empty">
-            <div className="moflow-ai-empty-icon">📝</div>
-            <p>{t("请先打开一个文档", "Open a document first")}</p>
+            <div className="moflow-ai-empty-icon">??</div>
+            <p>{t("ai.empty.openDoc")}</p>
           </div>
         </div>
       </div>
@@ -740,7 +735,7 @@ export default function AISidebar() {
     <div className="moflow-ai-sidebar" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
       <div className="moflow-ai-resize-handle" onMouseDown={handleResizeStart} />
       <div className="moflow-ai-header">
-        <span className="moflow-ai-header-title" style={{ flex: "none" }}>{showContext ? t("上下文", "Context") : t("AI 助手", "AI Assistant")}</span>
+        <span className="moflow-ai-header-title" style={{ flex: "none" }}>{showContext ? t("ai.header.context") : t("ai.header.title")}</span>
         <span className="flex-1" />
         <span className="moflow-ai-header-mode">
           {aiConfig.mode === "mock" ? "Mock" : aiConfig.model || "API"}
@@ -751,23 +746,23 @@ export default function AISidebar() {
       {showContext ? (
         <ContextView tabId={chatKey} providerId={aiConfig.providerId} model={aiConfig.model} docContent={docContent} />
       ) : (
-      <div className="moflow-ai-messages" ref={messagesContainerRef}>
+      <div className="moflow-ai-messages" ref={messagesContainerRef} role="log" aria-live="polite">
         {!chatLoaded ? (
           <div className="moflow-ai-empty">
             <div className="moflow-ai-loading-spinner" />
-            <p>{t("加载中…", "Loading…")}</p>
+            <p>{t("ai.empty.loading")}</p>
           </div>
         ) : messages.length === 0 && !streamingContent ? (
           <div className="moflow-ai-empty">
-            <div className="moflow-ai-empty-icon">✨</div>
-            <p>{t("有什么关于当前文档的问题？", "Questions about the current document?")}</p>
+            <div className="moflow-ai-empty-icon">??</div>
+            <p>{t("ai.empty.prompt")}</p>
           </div>
         ) : null}
         {chatLoaded && messages.map((msg) => {
           if (msg.content === "/compact" && msg.role === "user") {
             return (
               <div key={msg.id} className="moflow-ai-compact-divider">
-                <span>{t("已压缩", "Compacted")}</span>
+                <span>{t("ai.compacted")}</span>
               </div>
             );
           }
@@ -796,14 +791,14 @@ export default function AISidebar() {
           <div className="moflow-ai-message moflow-ai-message-assistant">
             <div className="moflow-ai-message-content">
               <MessageContent content={streamingContent} />
-              {isStreaming && <span className="moflow-ai-cursor">▌</span>}
+              {isStreaming && <span className="moflow-ai-cursor">▊</span>}
             </div>
           </div>
         )}
         {toolCallStatus && <ToolCallStatus name={toolCallStatus.name} args={toolCallStatus.args} />}
         <div ref={messagesEndRef} />
         {showScrollBottom && (
-          <button className="moflow-ai-scroll-bottom-btn" onClick={scrollToBottom}>
+          <button className="moflow-ai-scroll-bottom-btn" onClick={scrollToBottom} aria-label={t("ai.scrollBottom")}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M7 13l5 5 5-5" />
               <path d="M7 6l5 5 5-5" />
@@ -822,7 +817,7 @@ export default function AISidebar() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={t("输入消息...", "Type a message...")}
+            placeholder={t("ai.input.placeholder")}
             rows={2}
             disabled={isStreaming}
           />

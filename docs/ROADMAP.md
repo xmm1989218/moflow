@@ -477,18 +477,130 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.8.0 — i18n & 无障碍
+## v0.8.0 ✅ — i18n & 无障碍
 
-### i18n 正式方案
+### i18n 轻量方案
 
-- [ ] 迁移到 react-i18next
-- [ ] 运行时语言切换
-- [ ] 支持更多语言（日语、韩语等）
+**基础设施**
+
+- [x] 新建 `src/i18n/index.tsx` — `I18nProvider` 组件 + `useI18n()` hook + `getLocale()` 非 React 函数
+- [x] `I18nProvider` 读取 `themeStore.language`，提供 `locale` 对象和 `t(key)` 函数
+- [x] `useI18n()` 返回 `{ t, locale }`，`t("key")` 查 locale 表，key 不存在时 fallback 到 en
+- [x] `getLocale()` 非 React 函数供 `tools.ts`/`contextBuilder.ts`/`llmClient.ts` 使用
+- [x] `isZh()` 改为函数：基于当前 locale 判断
+
+**翻译文件**
+
+- [x] 新建 `src/i18n/locales/zh.ts` — 提取所有中文字符串，~155 key
+- [x] 新建 `src/i18n/locales/en.ts` — 提取所有英文字符串
+- [x] 新建 `src/i18n/locales/ja.ts` — AI 生成日语翻译
+- [x] 新建 `src/i18n/locales/ko.ts` — AI 生成韩语翻译
+- [x] key 结构：点分路径，如 `"common.confirm"`, `"menu.newFile"`, `"ai.send"`
+
+**迁移（157 处 t() + 20 处 des() + 7 个数据驱动结构）**
+
+- [x] `App.tsx` — 包裹 `I18nProvider`，替换 `t()` 调用（2 处）
+- [x] `SettingsPanel.tsx` — 替换 `t()`（28 处）+ `isZh`（1 处 provider label）
+- [x] `AISidebar.tsx` — 替换 `t()`（28 处）+ `isZh`（2 处 compact prompt）
+- [x] `SelectionAIPanel.tsx` — 替换 `t()`（20 处）+ `isZh`（6 处 preset/tone/language label）
+- [x] `HamburgerMenu.tsx` — 替换 `t()`（14 处）
+- [x] `SearchBar.tsx` — 替换 `t()`（12 处）
+- [x] `llmClient.ts` — 替换 `t()`（10 处）+ Mock 中文关键词检测改 i18n key
+- [x] `ContextView.tsx` — 替换 `t()`（8 处）
+- [x] `FileTree.tsx` — 替换 `t()`（8 处）
+- [x] `UpdateDialog.tsx` — 替换 `t()`（7 处）
+- [x] `ErrorBoundary.tsx` — 替换 `t()`（5 处）
+- [x] `ConfirmCloseDialog.tsx` — 替换 `t()`（4 处）
+- [x] `TabBar.tsx` — 替换 `t()`（4 处）
+- [x] `OutlineSidebar.tsx` — 替换 `t()`（3 处）
+- [x] `tools.ts` — 替换 `des()`（~20 处）+ `t()`（1 处）+ `isZh`（~25 处 inline）
+- [x] `contextBuilder.ts` — 替换 `isZh`（5 处 inline）
+- [x] `shortcuts.ts` — 替换 `label: { zh, en }`（17 项）→ i18n key
+- [x] `toolbarTooltip.ts` — 替换 inline `isZh ? zh : en`（10 处）→ i18n key
+- [x] `Editor.tsx` — 替换 `SLASH_MD_MAP` zh key（16 项）+ `isZh`（1 处）
+- [x] `SlashCommandMenu.tsx` — 替换 `descZh/descEn`（3 项）+ `isZh`（3 处）
+- [x] `aiSelectionStore.ts` — 替换 `label/labelEn`（10 项）
+- [x] `modelPricing.json` — 替换 `label/labelZh`（7 项 provider）
+- [x] `tabStore.ts` — 替换 `t()`（1 处，动态 import）
+- [x] 修复 SettingsPanel 5 处硬编码英文（"Mock", "API Endpoint", "API Token", "Model", "None"）
+
+**语言切换**
+
+- [x] `themeStore` 新增 `language: string`（默认 `"system"`，可选 `"zh"/"en"/"ja"/"ko"`）
+- [x] `settings.ts` 持久化 `language` 字段
+- [x] SettingsPanel「外观」新增 Language 下拉选择（系统默认 / 简体中文 / English / 日本語 / 한국어）
+- [x] 语言切换后立即生效，无需重启
+
+**README 多语言**
+
+- [x] 新建 `README.ja.md`（AI 生成日语版，后续社区校正）
+- [x] 新建 `README.ko.md`（AI 生成韩语版，后续社区校正）
+- [x] `README.md` 语言行改为：中文 | English | 日本語 | 한국어
+- [x] `README.zh-CN.md` 语言行改为：中文 | English | 日本語 | 한국어
+
+**清理**
+
+- [x] 删除 `src/lib/i18n.ts`
+- [x] 删除所有 `import { t, isZh } from "../../lib/i18n"` 和 `import { t } from "./i18n"`
 
 ### 无障碍（a11y）
 
-- [ ] 键盘导航完善
-- [ ] 屏幕阅读器支持
+**Dialog 无障碍（最高优先级）**
+
+- [x] ConfirmCloseDialog：添加 `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
+- [x] ConfirmCloseDialog：实现焦点捕获（Tab/Shift+Tab 循环在 dialog 内）
+- [x] ConfirmCloseDialog：打开时自动聚焦主操作按钮
+- [x] ConfirmCloseDialog：关闭时恢复焦点到触发元素
+- [x] UpdateDialog：添加 `role="status"` / `aria-live="polite"`
+- [x] UpdateDialog："更新可用"状态支持 Escape 关闭
+
+**TabBar 键盘导航**
+
+- [x] 容器添加 `role="tablist"`, `aria-label`
+- [x] 每个 tab 添加 `role="tab"`, `tabIndex`, `aria-selected`
+- [x] Arrow Left/Right 切换 tab，Home/End 跳首尾
+- [x] 关闭按钮添加 `aria-label`
+
+**aria-label 批量添加（~30+ 图标按钮）**
+
+- [x] TitleBar：最小化/最大化/关闭/菜单/大纲/AI/设置（7 个）
+- [x] TabBar：关闭按钮
+- [x] SearchBar：上/下/关闭按钮
+- [x] StatusBar：模式切换按钮
+- [x] AISidebar：滚到底部按钮
+- [x] 其他 icon-only 按钮
+
+**全局焦点指示器**
+
+- [x] `index.css` 添加 `focus-visible` 环形样式，跟随主题 CSS 变量
+- [x] 所有交互元素 `:focus-visible` 有视觉反馈
+
+**HamburgerMenu 键盘导航**
+
+- [x] 添加 `role="menu"`, `role="menuitem"`
+- [x] Arrow Up/Down 导航，Enter/Space 选择
+- [x] 子菜单 Arrow Right 展开，Escape 关闭
+- [x] 打开时焦点移到第一个菜单项，关闭时恢复
+
+**SettingsPanel 无障碍**
+
+- [x] 切换按钮添加 `aria-pressed`
+- [x] `<label>` 添加 `htmlFor` 关联
+- [x] 导航区添加 `aria-label`
+
+**FileTree & OutlineSidebar 键盘导航**
+
+- [x] 添加 `role="tree"`, `role="treeitem"`, `aria-expanded`
+- [x] Arrow Up/Down 移动焦点，Arrow Right 展开，Arrow Left 折叠
+- [x] Enter 打开文件 / 跳转标题
+- [x] 实现漫游 TabIndex 模式
+
+**AI 侧栏 & 右键菜单**
+
+- [x] 聊天消息区添加 `role="log"`, `aria-live="polite"`
+- [x] Tool result `<details>` 添加 `aria-expanded`
+- [x] FileTree 右键菜单添加 `role="menu"`, `role="menuitem"`
+- [x] 右键菜单 Arrow 键导航，Escape 关闭
 
 ---
 

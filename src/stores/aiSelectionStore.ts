@@ -3,16 +3,16 @@ import { create } from "zustand";
 export type AIAction = "explain" | "translate" | "ask" | "polish";
 
 export const LANGUAGES = [
-  { code: "auto", label: "自动检测", labelEn: "Auto Detect" },
-  { code: "zh-CN", label: "中文（简体）", labelEn: "Chinese (Simplified)" },
-  { code: "zh-TW", label: "中文（繁体）", labelEn: "Chinese (Traditional)" },
-  { code: "en", label: "英语", labelEn: "English" },
-  { code: "ja", label: "日语", labelEn: "Japanese" },
-  { code: "ko", label: "韩语", labelEn: "Korean" },
-  { code: "fr", label: "法语", labelEn: "French" },
-  { code: "de", label: "德语", labelEn: "German" },
-  { code: "es", label: "西班牙语", labelEn: "Spanish" },
-  { code: "ru", label: "俄语", labelEn: "Russian" },
+  { code: "auto", label: "自动检测", labelEn: "Auto Detect", labelKey: "ai.lang.auto" },
+  { code: "zh-CN", label: "中文（简体）", labelEn: "Chinese (Simplified)", labelKey: "ai.lang.zhCN" },
+  { code: "zh-TW", label: "中文（繁体）", labelEn: "Chinese (Traditional)", labelKey: "ai.lang.zhTW" },
+  { code: "en", label: "英语", labelEn: "English", labelKey: "ai.lang.en" },
+  { code: "ja", label: "日语", labelEn: "Japanese", labelKey: "ai.lang.ja" },
+  { code: "ko", label: "韩语", labelEn: "Korean", labelKey: "ai.lang.ko" },
+  { code: "fr", label: "法语", labelEn: "French", labelKey: "ai.lang.fr" },
+  { code: "de", label: "德语", labelEn: "German", labelKey: "ai.lang.de" },
+  { code: "es", label: "西班牙语", labelEn: "Spanish", labelKey: "ai.lang.es" },
+  { code: "ru", label: "俄语", labelEn: "Russian", labelKey: "ai.lang.ru" },
 ] as const;
 
 export type LanguageCode = (typeof LANGUAGES)[number]["code"];

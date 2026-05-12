@@ -354,12 +354,9 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     );
     if (hasUnsaved) {
       const { showConfirmCloseDialog } = await import("../lib/closeDialog");
-      const { t } = await import("../lib/i18n");
+      const { t } = await import("../i18n/core");
       const wsName = state.workspaceRoot.replace(/\\/g, "/").split("/").filter(Boolean).pop() || state.workspaceRoot;
-      const message = t(
-        `「${wsName}」内有未保存的修改，是否保存？`,
-        `Workspace "${wsName}" has unsaved changes. Save them?`
-      );
+      const message = t("common.workspaceUnsaved", { wsName });
       const result = await showConfirmCloseDialog(message);
       if (result === "cancel") return false;
       if (result === "save") {

@@ -16,7 +16,8 @@ import { useUpdateStore } from "./stores/updateStore";
 import { useSearchStore } from "./stores/searchStore";
 import { useChatStore } from "./stores/chatStore";
 import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab, openFolder } from "./lib/fileOps";
-import { t } from "./lib/i18n";
+import { t } from "./i18n/core";
+import { I18nProvider } from "./i18n";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -38,6 +39,7 @@ function App() {
   const showOutline = useThemeStore((s) => s.showOutline);
   const showSettingsTab = useThemeStore((s) => s.showSettingsTab);
   const settingsTabActive = useThemeStore((s) => s.settingsTabActive);
+  const language = useThemeStore((s) => s.language);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -183,8 +185,8 @@ function App() {
         const needConfirm = active.isModified || (active.filePath === null && active.content.length > 0);
         if (needConfirm) {
           const message = active.filePath === null
-            ? t("草稿内容未保存，是否保存？", "Draft is unsaved. Save it?")
-            : t(`「${active.fileName}」有未保存的修改，是否保存？`, `"${active.fileName}" has unsaved changes. Save?`);
+            ? t("common.draftUnsaved")
+            : t("common.fileUnsaved", { fileName: active.fileName });
           confirmCloseTab(message).then((result) => {
             if (result === "cancel") return;
             if (result === "save") {
@@ -252,6 +254,7 @@ function App() {
   }, []);
 
   return (
+    <I18nProvider language={language}>
     <div
       className="h-full w-full flex flex-col overflow-hidden"
       data-app-theme={resolveAppTheme(appTheme)}
@@ -275,6 +278,7 @@ function App() {
       <ConfirmCloseDialog />
       <UpdateDialog />
     </div>
+    </I18nProvider>
   );
 }
 

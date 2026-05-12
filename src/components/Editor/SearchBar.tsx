@@ -1,8 +1,10 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useSearchStore } from "../../stores/searchStore";
-import { t } from "../../lib/i18n";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 
 export default function SearchBar() {
+  useT();
   const visible = useSearchStore((s) => s.visible);
   const showReplace = useSearchStore((s) => s.showReplace);
   const query = useSearchStore((s) => s.query);
@@ -73,7 +75,7 @@ export default function SearchBar() {
     matchCount < 0
       ? ""
       : matchCount === 0
-        ? t("无结果", "No results")
+        ? t("editor.search.noResults")
         : `${currentMatch > 0 ? currentMatch : 0}/${matchCount}`;
 
   const hasInvalidRegex = regexp && query && matchCount === 0;
@@ -88,14 +90,14 @@ export default function SearchBar() {
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           onKeyDown={handleSearchKeyDown}
-          placeholder={t("搜索...", "Find...")}
+          placeholder={t("editor.search.placeholder")}
           spellCheck={false}
         />
         <span className="min-w-[48px] text-center text-[11px] text-moflow-text-secondary whitespace-nowrap shrink-0">{matchLabel}</span>
         <button
           className="flex items-center justify-center min-w-6 h-6 px-1 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text disabled:opacity-35 disabled:cursor-not-allowed"
           onClick={findPrev}
-          title={t("上一个 (Shift+Enter)", "Previous (Shift+Enter)")}
+          title={t("editor.search.previous")}
           disabled={matchCount <= 0}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -105,7 +107,7 @@ export default function SearchBar() {
         <button
           className="flex items-center justify-center min-w-6 h-6 px-1 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text disabled:opacity-35 disabled:cursor-not-allowed"
           onClick={findNext}
-          title={t("下一个 (Enter)", "Next (Enter)")}
+          title={t("editor.search.next")}
           disabled={matchCount <= 0}
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -115,21 +117,21 @@ export default function SearchBar() {
         <button
           className={`flex items-center justify-center min-w-6 h-6 px-1 border-none rounded cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 ${caseSensitive ? "bg-moflow-accent text-white hover:not-disabled:opacity-85" : "bg-transparent text-moflow-text-secondary hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text"}`}
           onClick={toggleCaseSensitive}
-          title={t("区分大小写", "Match Case")}
+          title={t("editor.search.matchCase")}
         >
           Aa
         </button>
         <button
           className={`flex items-center justify-center min-w-6 h-6 px-1 border-none rounded cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 ${regexp ? "bg-moflow-accent text-white hover:not-disabled:opacity-85" : "bg-transparent text-moflow-text-secondary hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text"}`}
           onClick={toggleRegexp}
-          title={t("正则表达式", "Use Regular Expression")}
+          title={t("editor.search.regexp")}
         >
           .*
         </button>
         <button
           className="flex items-center justify-center min-w-6 h-6 px-1 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 hover:bg-moflow-bg-secondary hover:text-moflow-text ml-0.5"
           onClick={closeSearch}
-          title={t("关闭 (Escape)", "Close (Escape)")}
+          title={t("editor.search.close")}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -145,7 +147,7 @@ export default function SearchBar() {
             value={replaceText}
             onChange={(e) => setReplaceText(e.target.value)}
             onKeyDown={handleReplaceKeyDown}
-            placeholder={t("替换...", "Replace...")}
+            placeholder={t("editor.search.replacePlaceholder")}
             spellCheck={false}
           />
           <span className="min-w-[48px]" />
@@ -153,17 +155,17 @@ export default function SearchBar() {
             className="flex items-center justify-center h-6 px-1.5 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-medium font-inherit shrink-0 transition-[background-color,color] duration-100 hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text disabled:opacity-35 disabled:cursor-not-allowed"
             onClick={replaceCurrentMatch}
             disabled={matchCount <= 0}
-            title={t("替换当前", "Replace Current")}
+            title={t("editor.search.replaceCurrent")}
           >
-            {t("替换", "Replace")}
+            {t("editor.search.replace")}
           </button>
           <button
             className="flex items-center justify-center h-6 px-1.5 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-medium font-inherit shrink-0 transition-[background-color,color] duration-100 hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text disabled:opacity-35 disabled:cursor-not-allowed"
             onClick={replaceAllMatches}
             disabled={matchCount <= 0}
-            title={t("全部替换", "Replace All")}
+            title={t("editor.search.replaceAll")}
           >
-            {t("全部", "All")}
+            {t("editor.search.all")}
           </button>
         </div>
       )}

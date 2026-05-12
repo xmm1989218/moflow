@@ -1,17 +1,19 @@
-const isZh = typeof navigator !== "undefined" && navigator.language?.startsWith("zh");
+import { t } from "../i18n/core";
 
-export const toolbarTooltipMap: Record<string, string> = {
-  bold: isZh ? "加粗" : "Bold",
-  italic: isZh ? "斜体" : "Italic",
-  strikethrough: isZh ? "删除线" : "Strikethrough",
-  code: isZh ? "行内代码" : "Inline Code",
-  latex: isZh ? "数学公式" : "Math",
-  link: isZh ? "链接" : "Link",
-  highlight: isZh ? "高亮" : "Highlight",
-  explain: isZh ? "AI 解释" : "AI Explain",
-  translate: isZh ? "AI 翻译" : "AI Translate",
-  polish: isZh ? "AI 改写" : "AI Rewrite",
-  ask: isZh ? "AI 提问" : "AI Ask",
-};
+export function getToolbarTooltipMap(): Record<string, string> {
+  return {
+    bold: t("toolbar.bold"),
+    italic: t("toolbar.italic"),
+    strikethrough: t("toolbar.strikethrough"),
+    code: t("toolbar.code"),
+    latex: t("toolbar.latex"),
+    link: t("toolbar.link"),
+    highlight: t("toolbar.highlight"),
+    explain: t("toolbar.explain"),
+    translate: t("toolbar.translate"),
+    polish: t("toolbar.polish"),
+    ask: t("toolbar.ask"),
+  };
+}
 
 export const BUILT_IN_TOOLTIP_KEYS = ["bold", "italic", "strikethrough", "code", "latex", "link"];

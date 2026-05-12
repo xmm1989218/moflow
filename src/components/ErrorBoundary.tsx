@@ -1,5 +1,6 @@
 import { Component, useState, type ErrorInfo, type ReactNode } from "react";
-import { t } from "../lib/i18n";
+import { t } from "../i18n/core";
+import { useT } from "../i18n/useT";
 
 interface Props {
   children: ReactNode;
@@ -71,10 +72,10 @@ export default class ErrorBoundary extends Component<Props, State> {
         }}>
           <div style={{ fontSize: "40px", marginBottom: "16px" }}>⚠️</div>
           <h2 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
-            {t("应用发生错误", "Something went wrong")}
+            {t("common.error.somethingWentWrong")}
           </h2>
           <p style={{ fontSize: "13px", color: "var(--ui-text-secondary)", marginBottom: "16px" }}>
-            {this.state.error?.message ?? t("未知错误", "Unknown error")}
+            {this.state.error?.message ?? t("common.error.unknown")}
           </p>
           <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
             <button
@@ -89,7 +90,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 fontSize: "13px",
               }}
             >
-              {t("重试", "Retry")}
+              {t("common.retry")}
             </button>
             <button
               onClick={this.handleReload}
@@ -103,7 +104,7 @@ export default class ErrorBoundary extends Component<Props, State> {
                 fontSize: "13px",
               }}
             >
-              {t("重新加载", "Reload")}
+              {t("common.reload")}
             </button>
           </div>
           {this.state.errorInfo && <ErrorDetails errorInfo={this.state.errorInfo} />}
@@ -116,6 +117,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 }
 
 function ErrorDetails({ errorInfo }: { errorInfo: ErrorInfo }) {
+  useT();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -131,7 +133,7 @@ function ErrorDetails({ errorInfo }: { errorInfo: ErrorInfo }) {
           padding: "4px 0",
         }}
       >
-        {expanded ? t("收起详情 ▲", "Hide details ▲") : t("展开详情 ▼", "Show details ▼")}
+        {expanded ? t("common.hideDetails") : t("common.showDetails")}
       </button>
       {expanded && (
         <pre style={{

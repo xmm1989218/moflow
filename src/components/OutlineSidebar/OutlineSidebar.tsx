@@ -3,7 +3,8 @@ import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useSearchStore } from "../../stores/searchStore";
 import { buildOutlineTree, type OutlineItem } from "../../lib/outlineTree";
-import { t } from "../../lib/i18n";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 import FileTree from "../FileTree/FileTree";
 
 function OutlineNode({
@@ -76,6 +77,7 @@ function OutlineNode({
 }
 
 export default function OutlineSidebar() {
+  useT();
   const outlineWidth = useThemeStore((s) => s.outlineWidth);
   const setOutlineWidth = useThemeStore((s) => s.setOutlineWidth);
   const leftPanelTab = useThemeStore((s) => s.leftPanelTab);
@@ -214,21 +216,21 @@ export default function OutlineSidebar() {
           onClick={() => setLeftPanelTab("files")}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h5l2 2h5v8H2V3z" /></svg>
-          {t("文件", "Files")}
+          {t("outline.files")}
         </button>
         <button
           className={`flex items-center gap-1 px-3 h-full border-none bg-none text-[13px] cursor-pointer transition-[color] duration-100 ${leftPanelTab === "outline" ? "text-moflow-text font-semibold" : "text-moflow-text-secondary hover:text-moflow-text"}`}
           onClick={() => setLeftPanelTab("outline")}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 2h12M2 6h8M2 10h10M2 14h6" /></svg>
-          {t("大纲", "Outline")}
+          {t("outline.outline")}
         </button>
       </div>
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-1 min-h-0 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-sm [&::-webkit-scrollbar-thumb]:bg-moflow-scrollbar-thumb [&::-webkit-scrollbar-track]:bg-moflow-scrollbar-track">
         {leftPanelTab === "files" ? (
           <FileTree />
         ) : flatList.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-moflow-text-secondary text-[13px] opacity-60 p-5 text-center">{t("无标题", "No headings")}</div>
+          <div className="flex items-center justify-center h-full text-moflow-text-secondary text-[13px] opacity-60 p-5 text-center">{t("outline.noHeadings")}</div>
         ) : (
           <ul className="list-none m-0 p-0">
             {tree.map((item) => (

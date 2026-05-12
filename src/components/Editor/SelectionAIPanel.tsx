@@ -8,86 +8,42 @@ import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClien
 import { buildSystemPrompt } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
-import { t, isZh } from "../../lib/i18n";
-import { mdSyntaxZh, mdSyntaxEn } from "../../lib/markdownSyntax";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 import MessageContent from "../AISidebar/MessageContent";
 
 function getLangLabel(code: LanguageCode): string {
   const lang = LANGUAGES.find((l) => l.code === code);
-  return lang ? (isZh ? lang.label : lang.labelEn) : code;
+  return lang ? t(lang.labelKey) : code;
 }
 
 const REWRITE_PRESETS = [
-  { key: "polish", zh: "润色", en: "Polish" },
-  { key: "expand", zh: "扩写", en: "Expand" },
-  { key: "shorten", zh: "缩写", en: "Shorten" },
+  { key: "polish", i18nKey: "ai.rewrite.preset.polish" },
+  { key: "expand", i18nKey: "ai.rewrite.preset.expand" },
+  { key: "shorten", i18nKey: "ai.rewrite.preset.shorten" },
 ] as const;
 
 const TONE_OPTIONS = [
-  { key: "professional", zh: "更专业", en: "More professional" },
-  { key: "academic", zh: "更学术", en: "More academic" },
-  { key: "formal", zh: "更正式", en: "More formal" },
-  { key: "casual", zh: "更轻松", en: "More casual" },
-  { key: "literary", zh: "更有文采", en: "More literary" },
-  { key: "internet", zh: "更有网感", en: "More internet-savvy" },
+  { key: "professional", i18nKey: "ai.rewrite.tone.professional" },
+  { key: "academic", i18nKey: "ai.rewrite.tone.academic" },
+  { key: "formal", i18nKey: "ai.rewrite.tone.formal" },
+  { key: "casual", i18nKey: "ai.rewrite.tone.casual" },
+  { key: "literary", i18nKey: "ai.rewrite.tone.literary" },
+  { key: "internet", i18nKey: "ai.rewrite.tone.internet" },
 ] as const;
 
 function getRewritePrompt(key: string, selectedText: string): string {
-  const mdHint = `\n\n${mdSyntaxZh}\n\n请特别注意：数学公式请使用 LaTeX 语法（行内 $...$，独立 $$...$$），代码请用代码块包裹。`;
-  const mdHintEn = `\n\n${mdSyntaxEn}\n\nPlease note: math formulas must use LaTeX syntax (inline $...$, display $$...$$), code must be wrapped in code blocks.`;
-  const prompts: Record<string, [string, string]> = {
-    polish: [
-      `请润色以下文字，使其更加流畅自然。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出润色后的结果：\n\n${selectedText}`,
-      `Polish the following text to make it more fluent and natural. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
-    ],
-    expand: [
-      `请扩写以下文字，增加更多细节和丰富内容。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出扩写后的结果：\n\n${selectedText}`,
-      `Expand the following text with more details and richer content. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
-    ],
-    shorten: [
-      `请缩写以下文字，使其更加简洁精炼，保留核心要点。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出缩写后的结果：\n\n${selectedText}`,
-      `Shorten the following text to be more concise while keeping the key points. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
-    ],
-    professional: [
-      `请将以下文字改写为更专业的表达，使用行业术语和规范用语。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite in a more professional tone using industry terminology. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
-    ],
-    academic: [
-      `请将以下文字改写为更学术化的表达，使用学术语言和严谨论述。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite in a more academic tone with scholarly language. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
-    ],
-    formal: [
-      `请将以下文字改写为更正式的表达，适合商务或公文场景。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite in a more formal tone suitable for business contexts. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
-    ],
-    casual: [
-      `请将以下文字改写为更轻松活泼的表达，口语化、亲切自然。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite in a more casual and friendly tone. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
-    ],
-    literary: [
-      `请将以下文字改写得更有文采，修辞优美、意境深远。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite with more literary flair and elegant rhetoric. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
-    ],
-    internet: [
-      `请将以下文字改写得更有网感，适合社交媒体传播，简洁有力、有梗有趣。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
-      `Rewrite with an internet-savvy style for social media, concise and engaging. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`,
-    ],
-  };
-  const pair = prompts[key];
-  if (!pair) return selectedText;
-  return t(pair[0], pair[1]);
+  const mdHint = `\n\n${t("ai.mdSyntax")}\n\n${t("ai.rewrite.mdNote")}`;
+  return t(`ai.rewrite.prompt.${key}`, { mdHint, selectedText });
 }
 
 function getCustomRewritePrompt(instruction: string, selectedText: string): string {
-  const mdHint = `\n\n${mdSyntaxZh}\n\n请特别注意：数学公式请使用 LaTeX 语法（行内 $...$，独立 $$...$$），代码请用代码块包裹。`;
-  const mdHintEn = `\n\n${mdSyntaxEn}\n\nPlease note: math formulas must use LaTeX syntax (inline $...$, display $$...$$), code must be wrapped in code blocks.`;
-  return t(
-    `请根据以下要求改写文字：${instruction}。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。${mdHint}\n只输出改写后的结果：\n\n${selectedText}`,
-    `Rewrite the following text according to this instruction: ${instruction}. This is a Markdown editor, use Markdown formatting where appropriate.${mdHintEn}\nOutput only the result:\n\n${selectedText}`
-  );
+  const mdHint = `\n\n${t("ai.mdSyntax")}\n\n${t("ai.rewrite.mdNote")}`;
+  return t("ai.rewrite.prompt.custom", { instruction, mdHint, selectedText });
 }
 
 function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDismiss: () => void }) {
+  useT();
   const aiConfig = useThemeStore((s) => s.aiConfig);
   const activeFileId = useTabStore((s) => s.activeFileId);
   const docContent = useTabStore((s) => {
@@ -157,8 +113,8 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
           return;
         }
         const msg = e instanceof TimeoutError
-          ? t("请求超时", "Request timed out")
-          : `${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`;
+          ? t("ai.error.timeout")
+          : `${t("ai.error.requestFailed")}: ${e instanceof Error ? e.message : String(e)}`;
         setRewriteError(msg);
         setIsStreaming(false);
         abortRef.current = null;
@@ -221,11 +177,11 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
       {isStreaming ? (
         <div className="flex items-center gap-2 px-3 py-4 text-moflow-text-secondary text-[13px] justify-center">
           <span className="inline-block w-1.5 h-1.5 rounded-full bg-moflow-accent animate-rewrite-pulse" />
-          {t("AI 正在改写...", "AI rewriting...")}
+          {t("ai.rewrite.rewriting")}
         </div>
       ) : rewriteError ? (
         <div className="px-3 py-2.5 text-red-500 text-xs leading-normal">
-          ❌ {rewriteError}
+          ? {rewriteError}
         </div>
       ) : null}
       {!isStreaming && !rewriteError && (
@@ -237,7 +193,7 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
                 value={rewriteInput}
                 onChange={handleRewriteInputChange}
                 onKeyDown={handleRewriteInputKeyDown}
-                placeholder={t("输入改写要求…", "Enter rewrite instruction…")}
+                placeholder={t("ai.rewrite.placeholder")}
                 autoFocus
                 rows={1}
               />
@@ -261,7 +217,7 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
                 className="px-2.5 py-1 rounded-xl border border-moflow-border bg-moflow-bg-secondary text-moflow-text-secondary text-xs font-[inherit] cursor-pointer transition-all duration-150 whitespace-nowrap hover:border-moflow-accent hover:text-moflow-accent hover:bg-moflow-bg"
                 onClick={() => handlePresetClick(p.key)}
               >
-                {isZh ? p.zh : p.en}
+                {t(p.i18nKey)}
               </button>
             ))}
             <div className="relative" ref={toneMenuRef}>
@@ -269,7 +225,7 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
                 className="inline-flex items-center gap-0.5 px-2.5 py-1 rounded-xl border border-moflow-border bg-moflow-bg-secondary text-moflow-text-secondary text-xs font-[inherit] cursor-pointer transition-all duration-150 whitespace-nowrap hover:border-moflow-accent hover:text-moflow-accent hover:bg-moflow-bg"
                 onClick={() => setShowToneMenu(!showToneMenu)}
               >
-                {t("更改语气", "Change tone")}
+                {t("ai.rewrite.changeTone")}
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M6 9l6 6 6-6" />
                 </svg>
@@ -282,7 +238,7 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
                       className="block w-full py-1.5 px-3 border-none rounded-[5px] bg-transparent text-moflow-text text-xs font-[inherit] text-left cursor-pointer transition-colors duration-100 hover:bg-moflow-bg-secondary hover:text-moflow-accent"
                       onClick={() => handleToneClick(opt.key)}
                     >
-                      {isZh ? opt.zh : opt.en}
+                      {t(opt.i18nKey)}
                     </button>
                   ))}
                 </div>
@@ -300,7 +256,7 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
               className="px-2.5 py-1 rounded-xl border border-moflow-border bg-moflow-bg-secondary text-moflow-text-secondary text-xs font-[inherit] cursor-pointer transition-all duration-150 whitespace-nowrap hover:border-moflow-accent hover:text-moflow-accent hover:bg-moflow-bg"
               onClick={() => handlePresetClick(p.key)}
             >
-              {isZh ? p.zh : p.en}
+              {t(p.i18nKey)}
             </button>
           ))}
         </div>
@@ -310,6 +266,7 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
 }
 
 export default function SelectionAIPanel() {
+  useT();
   const activeAction = useAISelectionStore((s) => s.activeAction);
   const selectedText = useAISelectionStore((s) => s.selectedText);
   const selectionCoords = useAISelectionStore((s) => s.selectionCoords);
@@ -386,9 +343,9 @@ export default function SelectionAIPanel() {
         }
         if (e instanceof TimeoutError) {
           console.error(`[SelectionAIPanel] Request timeout: ${e.message}`);
-          setResult((prev) => prev + `\n\n❌ ${t("请求超时", "Request timed out")}`);
+          setResult((prev) => prev + `\n\n|?${t("ai.error.timeout")}`);
         } else {
-          setResult((prev) => prev + `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`);
+          setResult((prev) => prev + `\n\n|?${t("ai.error.requestFailed")}: ${e instanceof Error ? e.message : String(e)}`);
         }
       } finally {
         setIsStreaming(false);
@@ -401,11 +358,11 @@ export default function SelectionAIPanel() {
   useEffect(() => {
     if (activeAction === "polish") return;
     if (activeAction === "explain" && selectedText) {
-      const prompt = t(`请用简洁的语言解释以下内容。这是一款 Markdown 编辑器的解释功能，请合理使用 Markdown 格式使解释更清晰：\n\n${mdSyntaxZh}\n\n${selectedText}`, `Briefly explain the following. This is a Markdown editor's explain feature, use Markdown formatting to make the explanation clearer:\n\n${mdSyntaxEn}\n\n${selectedText}`);
+      const prompt = t("ai.selection.prompt.explain", { mdSyntax: t("ai.mdSyntax"), selectedText });
       queueMicrotask(() => doLLMRequest(prompt));
     } else if (activeAction === "translate" && selectedText) {
       const targetLabel = getLangLabel(targetLang);
-      const prompt = t(`请将以下内容翻译为${targetLabel}，只输出翻译结果，不要添加任何解释：\n\n${selectedText}`, `Translate the following to ${targetLabel}, output only the translation:\n\n${selectedText}`);
+      const prompt = t("ai.selection.prompt.translate", { targetLabel, selectedText });
       queueMicrotask(() => doLLMRequest(prompt));
     }
   }, [activeAction, targetLang, selectedText, doLLMRequest]);
@@ -498,7 +455,7 @@ export default function SelectionAIPanel() {
     } catch (e) {
       if (e instanceof TimeoutError) {
         console.error(`[SelectionAIPanel] Request timeout: ${e.message}`);
-        appendStreamingContent(activeFileId, `\n\n❌ ${t("请求超时", "Request timed out")}`);
+        appendStreamingContent(activeFileId, `\n\n|?${t("ai.error.timeout")}`);
       } else if (e instanceof DOMException && e.name === "AbortError") {
         const content = useChatStore.getState().streamingContentMap[activeFileId];
         if (content) {
@@ -508,7 +465,7 @@ export default function SelectionAIPanel() {
       } else {
         appendStreamingContent(
           activeFileId,
-          `\n\n❌ ${t("请求失败", "Request failed")}: ${e instanceof Error ? e.message : String(e)}`
+          `\n\n|?${t("ai.error.requestFailed")}: ${e instanceof Error ? e.message : String(e)}`
         );
         const content = useChatStore.getState().streamingContentMap[activeFileId] ?? "";
         if (content) {
@@ -529,10 +486,7 @@ export default function SelectionAIPanel() {
     const question = inputValue.trim();
     setInputValue("");
 
-    const userContent = t(
-      `关于以下文本：\n${selectedText}\n\n用户问题：${question}`,
-      `Regarding the following text:\n${selectedText}\n\nQuestion: ${question}`
-    );
+    const userContent = t("ai.selection.prompt.ask", { selectedText, question });
 
     sendToSidebar(userContent);
     dismissPanel();
@@ -545,13 +499,10 @@ export default function SelectionAIPanel() {
     setFollowUpValue("");
 
     const actionLabel = activeAction === "translate"
-      ? t("翻译", "Translation")
-      : t("解释", "Explanation");
+      ? t("ai.selection.translation")
+      : t("ai.selection.explanation");
 
-    const userContent = t(
-      `选中文本：\n${selectedText}\n\n${actionLabel}结果：\n${lastResult}\n\n追问：${question}`,
-      `Selected text:\n${selectedText}\n\n${actionLabel}:\n${lastResult}\n\nFollow-up: ${question}`
-    );
+    const userContent = t("ai.selection.prompt.followUp", { selectedText, actionLabel, lastResult, question });
 
     sendToSidebar(userContent);
     dismissPanel();
@@ -599,7 +550,7 @@ export default function SelectionAIPanel() {
             >
               {LANGUAGES.filter((l) => l.code === "auto" || l.code !== targetLang).map((l) => (
                 <option key={l.code} value={l.code}>
-                  {isZh ? l.label : l.labelEn}
+                  {t(l.labelKey)}
                 </option>
               ))}
             </select>
@@ -620,7 +571,7 @@ export default function SelectionAIPanel() {
             >
               {LANGUAGES.filter((l) => l.code !== "auto" && l.code !== sourceLang).map((l) => (
                 <option key={l.code} value={l.code}>
-                  {isZh ? l.label : l.labelEn}
+                  {t(l.labelKey)}
                 </option>
               ))}
             </select>
@@ -644,10 +595,10 @@ export default function SelectionAIPanel() {
             <MessageContent content={result} />
           ) : (
             <span className="text-moflow-text-secondary font-normal text-xs">
-              {isStreaming ? t("思考中...", "Thinking...") : ""}
+              {isStreaming ? t("ai.selection.thinking") : ""}
             </span>
           )}
-          {isStreaming && <span className="text-moflow-accent font-normal" style={{ animation: "moflow-selection-ai-blink 0.8s infinite" }}>▌</span>}
+          {isStreaming && <span className="text-moflow-accent font-normal" style={{ animation: "moflow-selection-ai-blink 0.8s infinite" }}>▊</span>}
         </div>
       )}
 
@@ -659,7 +610,7 @@ export default function SelectionAIPanel() {
             value={followUpValue}
             onChange={(e) => setFollowUpValue(e.target.value)}
             onKeyDown={handleFollowUpKeyDown}
-            placeholder={t("继续追问...", "Follow up...")}
+            placeholder={t("ai.selection.followUp")}
           />
           <button
             className="flex items-center justify-center w-7 h-7 rounded-md border-none bg-moflow-accent text-white cursor-pointer shrink-0 transition-colors duration-150 hover:not-disabled:opacity-85 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -682,7 +633,7 @@ export default function SelectionAIPanel() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleAskKeyDown}
-            placeholder={t("对选中内容提问...", "Ask about selected text...")}
+            placeholder={t("ai.selection.askPlaceholder")}
             autoFocus
           />
           <button

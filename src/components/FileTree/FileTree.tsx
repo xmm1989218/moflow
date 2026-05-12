@@ -4,7 +4,8 @@ import { readDir, mkdir, writeFile, remove, rename as renameFile } from "@tauri-
 import { useTabStore } from "../../stores/tabStore";
 import { loadFileByPath } from "../../lib/fileOps";
 import { invoke } from "@tauri-apps/api/core";
-import { t } from "../../lib/i18n";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 
 interface FileEntry {
   name: string;
@@ -184,11 +185,14 @@ export default function FileTree() {
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [dirContents, setDirContents] = useState<Record<string, FileEntry[]>>({});
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const focusedMenuIndexRef = useRef(0);
+  const menuItemsRef = useRef<(HTMLButtonElement | null)[]>([]);
   const [renaming, setRenaming] = useState<{ path: string; name: string; isDir: boolean } | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [creating, setCreating] = useState<{ parentPath: string; type: "file" | "folder" } | null>(null);
   const [createValue, setCreateValue] = useState("");
   const [currentVersion, setCurrentVersion] = useState(cacheVersion);
+  useT();
   const renameInputRef = useRef<HTMLInputElement>(null);
   const createInputRef = useRef<HTMLInputElement>(null);
 
@@ -251,6 +255,10 @@ export default function FileTree() {
 
   useEffect(() => {
     if (!contextMenu) return;
+    focusedMenuIndexRef.current = 0;
+    requestAnimationFrame(() => {
+      menuItemsRef.current[0]?.focus();
+    });
     const close = () => setContextMenu(null);
     document.addEventListener("click", close);
     document.addEventListener("contextmenu", close);
@@ -334,8 +342,8 @@ export default function FileTree() {
 
   const handleDelete = useCallback(async (entry: FileEntry) => {
     const confirmMsg = entry.isDirectory
-      ? t(`确定删除文件夹「${entry.name}」及其所有内容？`, `Delete folder "${entry.name}" and all its contents?`)
-      : t(`确定删除「${entry.name}」？`, `Delete "${entry.name}"?`);
+      ? t("fileTree.confirmDeleteFolder", { name: entry.name })
+      : t("fileTree.confirmDeleteFile", { name: entry.name });
     if (!window.confirm(confirmMsg)) return;
 
     try {
@@ -361,6 +369,38 @@ export default function FileTree() {
       console.error("Delete failed:", e);
     }
   }, [refreshDir]);
+
+  const getContextMenuItems = useCallback((entry: FileEntry) => {
+    const items: { label: string; action: () => void; danger?: boolean }[] = [];
+    if (entry.isDirectory) {
+      items.push(
+        { label: t("fileTree.newFile"), action: () => handleNewFile(entry.path, "file") },
+        { label: t("fileTree.newFolder"), action: () => handleNewFile(entry.path, "folder") },
+      );
+    }
+    items.push({ label: t("fileTree.rename"), action: () => handleRenameStart(entry) });
+    items.push({ label: t("fileTree.delete"), action: () => handleDelete(entry), danger: true });
+    return items;
+  }, [handleNewFile, handleRenameStart, handleDelete]);
+
+  const handleMenuKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const items = getContextMenuItems(contextMenu!.entry);
+    if (e.key === "Escape") {
+      setContextMenu(null);
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      focusedMenuIndexRef.current = (focusedMenuIndexRef.current + 1) % items.length;
+      menuItemsRef.current[focusedMenuIndexRef.current]?.focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      focusedMenuIndexRef.current = (focusedMenuIndexRef.current - 1 + items.length) % items.length;
+      menuItemsRef.current[focusedMenuIndexRef.current]?.focus();
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      items[focusedMenuIndexRef.current]?.action();
+      setContextMenu(null);
+    }
+  }, [contextMenu, getContextMenuItems]);
 
   const renderTree = (dirPath: string, depth: number): React.ReactNode => {
     const entries = dirContents[dirPath];
@@ -437,7 +477,7 @@ export default function FileTree() {
         <svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
           <path d="M2 3h5l2 2h5v8H2V3z" />
         </svg>
-        <span>{t("未打开目录", "No folder open")}</span>
+        <span>{t("fileTree.noFolderOpen")}</span>
         <button
           className="px-3 py-1 text-[12px] bg-moflow-accent/10 text-moflow-accent border border-moflow-accent/30 rounded hover:bg-moflow-accent/20 cursor-pointer transition-[background-color] duration-100"
           onClick={async () => {
@@ -451,7 +491,7 @@ export default function FileTree() {
             setCurrentVersion(cacheVersion);
           }}
         >
-          {t("打开目录", "Open Folder")}
+          {t("fileTree.openFolder")}
         </button>
       </div>
     );
@@ -484,56 +524,63 @@ export default function FileTree() {
         )}
       </ul>
 
-      {contextMenu && (
-        <div
-          className="fixed bg-ui-menu-bg border border-ui-border rounded-lg shadow-menu p-1 z-[2000] animate-menu-fadein min-w-[160px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {contextMenu.entry.isDirectory && (
-            <>
-              <button
-                className="flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left hover:bg-ui-menu-hover"
-                onClick={() => {
-                  handleNewFile(contextMenu.entry.path, "file");
-                  setContextMenu(null);
-                }}
-              >
-                {t("新建文件", "New File")}
-              </button>
-              <button
-                className="flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left hover:bg-ui-menu-hover"
-                onClick={() => {
-                  handleNewFile(contextMenu.entry.path, "folder");
-                  setContextMenu(null);
-                }}
-              >
-                {t("新建文件夹", "New Folder")}
-              </button>
-              <div className="h-px bg-ui-border mx-2 my-1" />
-            </>
-          )}
-          <button
-            className="flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left hover:bg-ui-menu-hover"
-            onClick={() => {
-              handleRenameStart(contextMenu.entry);
-              setContextMenu(null);
-            }}
+      {contextMenu && (() => {
+        const menuItems = getContextMenuItems(contextMenu.entry);
+        const normalItems = menuItems.filter((item) => !item.danger);
+        const dangerItems = menuItems.filter((item) => item.danger);
+        let refIndex = 0;
+        return (
+          <div
+            role="menu"
+            className="fixed bg-ui-menu-bg border border-ui-border rounded-lg shadow-menu p-1 z-[2000] animate-menu-fadein min-w-[160px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={handleMenuKeyDown}
           >
-            {t("重命名", "Rename")}
-          </button>
-          <div className="h-px bg-ui-border mx-2 my-1" />
-          <button
-            className="flex items-center w-full py-1.5 px-3 border-none bg-none text-red-500 text-[13px] cursor-pointer rounded text-left hover:bg-ui-menu-hover"
-            onClick={() => {
-              handleDelete(contextMenu.entry);
-              setContextMenu(null);
-            }}
-          >
-            {t("删除", "Delete")}
-          </button>
-        </div>
-      )}
+            {normalItems.map((item) => {
+              const idx = refIndex++;
+              return (
+                <button
+                  key={item.label}
+                  ref={(el) => { menuItemsRef.current[idx] = el; }}
+                  role="menuitem"
+                  className="flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left hover:bg-ui-menu-hover"
+                  tabIndex={-1}
+                  onClick={() => {
+                    item.action();
+                    setContextMenu(null);
+                  }}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+            {dangerItems.length > 0 && (
+              <>
+                <div className="h-px bg-ui-border mx-2 my-1" />
+                {dangerItems.map((item) => {
+                  const idx = refIndex++;
+                  return (
+                    <button
+                      key={item.label}
+                      ref={(el) => { menuItemsRef.current[idx] = el; }}
+                      role="menuitem"
+                      className="flex items-center w-full py-1.5 px-3 border-none bg-none text-red-500 text-[13px] cursor-pointer rounded text-left hover:bg-ui-menu-hover"
+                      tabIndex={-1}
+                      onClick={() => {
+                        item.action();
+                        setContextMenu(null);
+                      }}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -3,6 +3,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useThemeStore } from "../../stores/themeStore";
 import TabBar from "../TabBar/TabBar";
 import { getShortcutDisplay, getShortcutLabel } from "../../lib/shortcuts";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 
 const HamburgerMenu = lazy(() => import("../HamburgerMenu/HamburgerMenu"));
 
@@ -16,6 +18,7 @@ export default function TitleBar() {
   const openSettingsTab = useThemeStore((s) => s.openSettingsTab);
   const [isMaximized, setIsMaximized] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  useT();
 
   useEffect(() => {
     appWindow.isMaximized().then(setIsMaximized);
@@ -41,7 +44,8 @@ export default function TitleBar() {
         <button
           className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-10 px-2 transition-[background-color] duration-150"
           onClick={() => setMenuOpen((v) => !v)}
-          title="Menu"
+          aria-label={t("titleBar.menu")}
+          title={t("titleBar.menu")}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="3" y1="6" x2="21" y2="6" />
@@ -53,14 +57,16 @@ export default function TitleBar() {
         <button
           className={`flex items-center justify-center border-none bg-none cursor-pointer h-10 px-2.5 rounded transition-[background-color] duration-150 gap-1 text-[11px] font-bold tracking-wide leading-none ${showAISidebar ? "text-ui-accent bg-ui-menu-hover" : "text-ui-titlebar-text hover:bg-ui-hover"}`}
           onClick={toggleAISidebar}
-          title={`AI Assistant (${getShortcutDisplay("aiSidebar")})`}
+          aria-label={`${t("titleBar.aiAssistant")} (${getShortcutDisplay("aiSidebar")})`}
+          title={`${t("titleBar.aiAssistant")} (${getShortcutDisplay("aiSidebar")})`}
         >
           <span>AI</span>
         </button>
         <button
           className={`flex items-center justify-center border-none bg-none cursor-pointer h-10 px-2.5 rounded transition-[background-color] duration-150 ${showOutline ? "text-ui-accent bg-ui-menu-hover" : "text-ui-titlebar-text hover:bg-ui-hover"}`}
           onClick={toggleOutline}
-          title={`Outline (${getShortcutDisplay("outline")})`}
+          aria-label={`${t("titleBar.outline")} (${getShortcutDisplay("outline")})`}
+          title={`${t("titleBar.outline")} (${getShortcutDisplay("outline")})`}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <line x1="8" y1="6" x2="21" y2="6" />
@@ -84,6 +90,7 @@ export default function TitleBar() {
         <button
           className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-10 px-2 transition-[background-color] duration-150 hover:bg-ui-hover px-2.5"
           onClick={openSettingsTab}
+          aria-label={`${getShortcutLabel("settings")} (${getShortcutDisplay("settings")})`}
           title={`${getShortcutLabel("settings")} (${getShortcutDisplay("settings")})`}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -94,7 +101,8 @@ export default function TitleBar() {
         <button
           className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-[46px] px-0 transition-[background-color] duration-150 hover:bg-ui-hover"
           onClick={() => appWindow.minimize()}
-          title="Minimize"
+          aria-label={t("titleBar.minimize")}
+          title={t("titleBar.minimize")}
         >
           <svg width="12" height="12" viewBox="0 0 12 12">
             <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" />
@@ -103,7 +111,8 @@ export default function TitleBar() {
         <button
           className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-[46px] px-0 transition-[background-color] duration-150 hover:bg-ui-hover"
           onClick={handleToggleMaximize}
-          title={isMaximized ? "Restore" : "Maximize"}
+          aria-label={isMaximized ? t("titleBar.restore") : t("titleBar.maximize")}
+          title={isMaximized ? t("titleBar.restore") : t("titleBar.maximize")}
         >
           {isMaximized ? (
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
@@ -119,7 +128,8 @@ export default function TitleBar() {
         <button
           className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-[46px] px-0 transition-[background-color] duration-150 hover:bg-[#e81123]! hover:text-white!"
           onClick={() => appWindow.close()}
-          title="Close"
+          aria-label={t("titleBar.close")}
+          title={t("titleBar.close")}
         >
           <svg width="12" height="12" viewBox="0 0 12 12">
             <line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" strokeWidth="1.5" />

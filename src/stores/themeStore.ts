@@ -3,10 +3,12 @@ import {
   writeSettings,
   type AIConfig,
   type EditorTheme as EditorThemeType,
+  type SupportedLanguage as SupportedLanguageType,
 } from "../lib/settings";
 
 export type AppTheme = "system" | "light" | "dark";
 export type EditorTheme = EditorThemeType;
+export type SupportedLanguage = SupportedLanguageType;
 
 export const EDITOR_THEMES: { id: EditorTheme; label: string }[] = [
   { id: "github", label: "GitHub Light" },
@@ -35,6 +37,7 @@ function persistSettings(get: () => ThemeState) {
     outlineWidth: s.outlineWidth,
     aiConfig: s.aiConfig,
     proxyUrl: s.proxyUrl,
+    language: s.language,
   });
 }
 
@@ -47,6 +50,7 @@ interface ThemeState {
   autoSave: boolean;
   aiConfig: AIConfig;
   proxyUrl: string;
+  language: SupportedLanguage;
   showSettingsTab: boolean;
   settingsTabActive: boolean;
   showOutline: boolean;
@@ -63,6 +67,7 @@ interface ThemeState {
   toggleAutoSave: () => void;
   setAIConfig: (config: AIConfig) => void;
   setProxyUrl: (v: string) => void;
+  setLanguage: (lang: SupportedLanguage) => void;
   openSettingsTab: () => void;
   closeSettingsTab: () => void;
   activateSettingsTab: () => void;
@@ -79,6 +84,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   autoSave: false,
   aiConfig: { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" },
   proxyUrl: "",
+  language: "system",
   showSettingsTab: false,
   settingsTabActive: false,
   showOutline: false,
@@ -128,6 +134,11 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   setProxyUrl: (proxyUrl) => {
     set({ proxyUrl });
+    persistSettings(get);
+  },
+
+  setLanguage: (language) => {
+    set({ language });
     persistSettings(get);
   },
 

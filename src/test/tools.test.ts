@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { executeTool, fileToolDefinitions, projectToolDefinitions, networkToolDefinitions, getToolDefinitions, WEBFETCH_LIMIT } from '../lib/tools'
+import { executeTool, getFileToolDefinitions, getProjectToolDefinitions, getNetworkToolDefinitions, getToolDefinitions, WEBFETCH_LIMIT } from '../lib/tools'
 import type { ToolContext } from '../lib/tools'
 
 const sampleDoc = `# Introduction
@@ -42,6 +42,7 @@ const docCtx: ToolContext = { docContent: sampleDoc }
 describe('tools', () => {
   describe('tool definitions', () => {
     it('fileToolDefinitions has 3 tools', () => {
+      const fileToolDefinitions = getFileToolDefinitions()
       expect(fileToolDefinitions).toHaveLength(3)
       const names = fileToolDefinitions.map((d) => d.function.name)
       expect(names).toContain('outline')
@@ -50,6 +51,7 @@ describe('tools', () => {
     })
 
     it('projectToolDefinitions has 3 tools', () => {
+      const projectToolDefinitions = getProjectToolDefinitions()
       expect(projectToolDefinitions).toHaveLength(3)
       const names = projectToolDefinitions.map((d) => d.function.name)
       expect(names).toContain('find')
@@ -58,6 +60,7 @@ describe('tools', () => {
     })
 
     it('networkToolDefinitions has 1 tool', () => {
+      const networkToolDefinitions = getNetworkToolDefinitions()
       expect(networkToolDefinitions).toHaveLength(1)
       expect(networkToolDefinitions[0].function.name).toBe('webfetch')
     })

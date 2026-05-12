@@ -7,7 +7,7 @@
 <p align="center">A minimalist desktop Markdown editor with a focus on writing experience.</p>
 
 <p align="center">
-  <a href="./README.zh-CN.md">中文</a> | English
+  <a href="./README.zh-CN.md">中文</a> | English | <a href="./README.ja.md">日本語</a> | <a href="./README.ko.md">한국어</a>
 </p>
 
 [![MoFlow Screenshot](docs/cover.png)](https://github.com/xmm1989218/moflow)
@@ -30,6 +30,8 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **Multi-tab** — Open and switch between multiple files with instant tab switching, auto-save, and preserved scroll/cursor/undo per tab
 - **Source mode** — CodeMirror 6 powered source editing with markdown syntax highlighting; shared undo history with WYSIWYG mode
 - **Dual theme** — Light and dark themes with smooth switching
+- **i18n** — Multi-language support (简体中文, English, 日本語, 한국어) with runtime switching, no restart needed
+- **Accessibility** — WAI-ARIA patterns, keyboard navigation, focus management across all interactive components
 - **Export** — HTML and PDF export
 - **AI Sidebar** — Integrated AI chat with context management, auto-compact, and usage tracking
 - **AI Tool-Calling** — AI can actively explore documents via tools (outline, grep, read_lines, read_section) and fetch web content instead of relying on truncated context

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { useThemeStore } from "../../stores/themeStore";
 import { getProviderModels } from "../../lib/modelInfo";
-import { t, isZh } from "../../lib/i18n";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 
 const COMMANDS = [
-  { id: "new", label: "/new", descZh: "清空对话", descEn: "Clear chat" },
-  { id: "compact", label: "/compact", descZh: "压缩对话历史", descEn: "Compress chat history" },
-  { id: "models", label: "/models", descZh: "切换模型", descEn: "Switch model" },
+  { id: "new", label: "/new", desc: "ai.slash.new" },
+  { id: "compact", label: "/compact", desc: "ai.slash.compact" },
+  { id: "models", label: "/models", desc: "ai.slash.models" },
 ];
 
 export interface SlashCommandMenuHandle {
@@ -23,6 +24,7 @@ interface SlashCommandMenuProps {
 
 const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProps>(
   function SlashCommandMenu({ input, inputRef, onSelectCommand, onSelectModel, onClose }, ref) {
+    useT();
     const [highlightIndex, setHighlightIndex] = useState(0);
     const [phase, setPhase] = useState<"commands" | "models">("commands");
     const menuRef = useRef<HTMLDivElement>(null);
@@ -52,13 +54,13 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
       ? filteredCommands.map((c) => ({
           id: c.id,
           label: c.label,
-          desc: isZh ? c.descZh : c.descEn,
+          desc: t(c.desc),
           disabled: c.id === "models" && !hasModels,
         }))
       : models.map((m) => ({
           id: m.id,
           label: m.id,
-          desc: m.id === config.model ? (isZh ? "当前" : "current") : "",
+          desc: m.id === config.model ? t("ai.slash.currentModel") : "",
           disabled: false,
         }));
 
@@ -183,14 +185,14 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
               }}
             >
               <span className="text-[13px] font-medium text-moflow-text whitespace-nowrap">{c.label}</span>
-              <span className="text-[11px] text-moflow-text-secondary whitespace-nowrap">{isZh ? c.descZh : c.descEn}</span>
+              <span className="text-[11px] text-moflow-text-secondary whitespace-nowrap">{t(c.desc)}</span>
             </div>
           );
         })}
         {phase === "models" && (
           <>
             <div className="flex items-center justify-between py-1.5 px-2.5 text-[11px] font-semibold text-moflow-text-secondary border-b border-moflow-border sticky top-0 bg-moflow-bg z-1">
-              <span>{t("选择模型", "Select Model")}</span>
+              <span>{t("ai.slash.selectModel")}</span>
               <button
                 className="flex items-center justify-center w-5 h-5 rounded border-none bg-transparent text-moflow-text-secondary cursor-pointer hover:bg-moflow-bg-secondary hover:text-moflow-text"
                 onClick={() => setPhase("commands")}

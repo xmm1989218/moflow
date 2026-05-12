@@ -1,5 +1,7 @@
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 
 const CodeIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -23,6 +25,7 @@ export default function StatusBar() {
     const tab = s.files.find((f) => f.id === s.activeFileId);
     return tab?.mode ?? "wysiwyg";
   });
+  useT();
 
   const setMode = (m: "wysiwyg" | "source") => {
     if (activeFileId) useTabStore.getState().updateTabMeta(activeFileId, { mode: m });
@@ -37,7 +40,9 @@ export default function StatusBar() {
           <button
             onClick={() => setMode(mode === "wysiwyg" ? "source" : "wysiwyg")}
             className="bg-none border border-ui-border rounded text-ui-text-secondary px-[5px] cursor-pointer flex items-center justify-center h-[18px] leading-none"
-            title={mode === "wysiwyg" ? "Switch to Source Mode" : "Switch to WYSIWYG Mode"}
+            aria-label={mode === "source" ? t("statusBar.switchToWysiwyg") : t("statusBar.switchToSource")}
+            aria-pressed={mode === "source"}
+            title={mode === "wysiwyg" ? t("statusBar.switchToSource") : t("statusBar.switchToWysiwyg")}
           >
             {mode === "wysiwyg" ? <CodeIcon /> : <EyeIcon />}
           </button>
@@ -46,7 +51,7 @@ export default function StatusBar() {
       <div className="flex items-center gap-3">
         <span>UTF-8</span>
         <span>Markdown</span>
-        {autoSave && <span>Auto Save</span>}
+        {autoSave && <span>{t("statusBar.autoSave")}</span>}
       </div>
     </div>
   );

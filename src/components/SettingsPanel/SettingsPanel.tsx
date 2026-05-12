@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { useThemeStore, EDITOR_THEMES, type EditorTheme } from "../../stores/themeStore";
+import { useThemeStore, EDITOR_THEMES, type EditorTheme, type SupportedLanguage } from "../../stores/themeStore";
 import { useUpdateStore } from "../../stores/updateStore";
 import { getLLMClient } from "../../lib/llmClient";
 import { getProviders, getProviderInfo, getProviderModels } from "../../lib/modelInfo";
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import type { AIConfig } from "../../lib/settings";
-import { t, isZh } from "../../lib/i18n";
+import { t } from "../../i18n/core";
+import { useT } from "../../i18n/useT";
 
 type Section = "appearance" | "ai" | "proxy" | "about";
 
@@ -33,54 +34,73 @@ const sectionIcons: Record<Section, React.JSX.Element> = {
   ),
 };
 
-const sections: { id: Section; label: string }[] = [
-  { id: "appearance", label: t("外观", "Appearance") },
-  { id: "ai", label: "AI" },
-  { id: "proxy", label: t("代理", "Proxy") },
-  { id: "about", label: t("关于", "About") },
+const LANGUAGES: { id: SupportedLanguage; label: string }[] = [
+  { id: "system", label: "" },
+  { id: "zh", label: "简体中文" },
+  { id: "en", label: "English" },
+  { id: "ja", label: "日本語" },
+  { id: "ko", label: "한국어" },
 ];
 
 function AppearanceSection() {
+  useT();
   const appTheme = useThemeStore((s) => s.appTheme);
   const editorTheme = useThemeStore((s) => s.editorTheme);
   const autoSave = useThemeStore((s) => s.autoSave);
   const showStatusBar = useThemeStore((s) => s.showStatusBar);
+  const language = useThemeStore((s) => s.language);
   const setAppTheme = useThemeStore((s) => s.setAppTheme);
   const setEditorTheme = useThemeStore((s) => s.setEditorTheme);
   const toggleAutoSave = useThemeStore((s) => s.toggleAutoSave);
   const toggleStatusBar = useThemeStore((s) => s.toggleStatusBar);
+  const setLanguage = useThemeStore((s) => s.setLanguage);
 
   return (
     <div className="max-w-[720px] w-full">
-      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">{t("外观", "Appearance")}</h3>
+      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">{t("settings.section.appearance")}</h3>
 
       <div className="flex flex-col mb-5">
-        <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("应用主题", "App Theme")}</label>
+        <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("settings.appearance.appTheme")}</label>
         <div className="flex border border-ui-border rounded overflow-hidden max-w-[460px]">
           <button
             className={`flex-1 py-1.5 px-3 text-[13px] font-inherit border-none bg-ui-bg text-ui-text-secondary cursor-pointer transition-all duration-150 not-last:border-r not-last:border-ui-border${appTheme === "system" ? " bg-ui-bg-secondary text-ui-text font-semibold" : " hover:bg-ui-bg-secondary"}`}
             onClick={() => setAppTheme("system")}
           >
-            {t("跟随系统", "System")}
+            {t("settings.appearance.system")}
           </button>
           <button
             className={`flex-1 py-1.5 px-3 text-[13px] font-inherit border-none bg-ui-bg text-ui-text-secondary cursor-pointer transition-all duration-150 not-last:border-r not-last:border-ui-border${appTheme === "light" ? " bg-ui-bg-secondary text-ui-text font-semibold" : " hover:bg-ui-bg-secondary"}`}
             onClick={() => setAppTheme("light")}
           >
-            {t("浅色", "Light")}
+            {t("settings.appearance.light")}
           </button>
           <button
             className={`flex-1 py-1.5 px-3 text-[13px] font-inherit border-none bg-ui-bg text-ui-text-secondary cursor-pointer transition-all duration-150${appTheme === "dark" ? " bg-ui-bg-secondary text-ui-text font-semibold" : " hover:bg-ui-bg-secondary"}`}
             onClick={() => setAppTheme("dark")}
           >
-            {t("深色", "Dark")}
+            {t("settings.appearance.dark")}
           </button>
         </div>
       </div>
 
       <div className="flex flex-col mb-5">
-        <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("编辑器主题", "Editor Theme")}</label>
+        <label htmlFor="settings-language" className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("settings.appearance.language")}</label>
         <select
+          id="settings-language"
+          className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none cursor-pointer focus:border-ui-accent"
+          value={language}
+          onChange={(e) => setLanguage(e.target.value as SupportedLanguage)}
+        >
+          {LANGUAGES.map((l) => (
+            <option key={l.id} value={l.id}>{l.id === "system" ? t("settings.appearance.languageSystem") : l.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="flex flex-col mb-5">
+        <label htmlFor="settings-editor-theme" className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("settings.appearance.editorTheme")}</label>
+        <select
+          id="settings-editor-theme"
           className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none cursor-pointer focus:border-ui-accent"
           value={editorTheme}
           onChange={(e) => setEditorTheme(e.target.value as EditorTheme)}
@@ -92,8 +112,10 @@ function AppearanceSection() {
       </div>
 
       <div className="flex flex-row items-center justify-between mb-5">
-        <label className="block text-[13px] font-medium text-ui-text-secondary mb-0">{t("自动保存", "Auto Save")}</label>
+        <label htmlFor="settings-auto-save" className="block text-[13px] font-medium text-ui-text-secondary mb-0">{t("settings.appearance.autoSave")}</label>
         <button
+          id="settings-auto-save"
+          aria-pressed={autoSave}
           className={`w-9 h-5 rounded-full border border-ui-border bg-ui-input-bg cursor-pointer relative transition-[background-color,border-color] duration-200 shrink-0${autoSave ? " bg-ui-accent border-ui-accent" : ""}`}
           onClick={toggleAutoSave}
         >
@@ -102,8 +124,10 @@ function AppearanceSection() {
       </div>
 
       <div className="flex flex-row items-center justify-between mb-5">
-        <label className="block text-[13px] font-medium text-ui-text-secondary mb-0">{t("显示状态栏", "Show Status Bar")}</label>
+        <label htmlFor="settings-show-status-bar" className="block text-[13px] font-medium text-ui-text-secondary mb-0">{t("settings.appearance.showStatusBar")}</label>
         <button
+          id="settings-show-status-bar"
+          aria-pressed={showStatusBar}
           className={`w-9 h-5 rounded-full border border-ui-border bg-ui-input-bg cursor-pointer relative transition-[background-color,border-color] duration-200 shrink-0${showStatusBar ? " bg-ui-accent border-ui-accent" : ""}`}
           onClick={toggleStatusBar}
         >
@@ -115,6 +139,7 @@ function AppearanceSection() {
 }
 
 function AISection() {
+  useT();
   const aiConfig = useThemeStore((s) => s.aiConfig);
   const setAIConfig = useThemeStore((s) => s.setAIConfig);
   const [draft, setDraft] = useState<AIConfig>({ ...aiConfig });
@@ -196,22 +221,22 @@ function AISection() {
 
   return (
     <div className="max-w-[720px] w-full">
-      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">AI</h3>
+      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">{t("settings.section.ai")}</h3>
 
       <div className="flex flex-col mb-5">
-        <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("模式", "Mode")}</label>
+        <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("settings.ai.mode")}</label>
         <div className="flex border border-ui-border rounded overflow-hidden max-w-[460px]">
           <button
             className={`flex-1 py-1.5 px-3 text-[13px] font-inherit border-none bg-ui-bg text-ui-text-secondary cursor-pointer transition-all duration-150 not-last:border-r not-last:border-ui-border${draft.mode === "mock" ? " bg-ui-bg-secondary text-ui-text font-semibold" : " hover:bg-ui-bg-secondary"}`}
             onClick={() => handleModeChange("mock")}
           >
-            Mock
+            {t("settings.ai.mock")}
           </button>
           <button
             className={`flex-1 py-1.5 px-3 text-[13px] font-inherit border-none bg-ui-bg text-ui-text-secondary cursor-pointer transition-all duration-150${draft.mode === "real" ? " bg-ui-bg-secondary text-ui-text font-semibold" : " hover:bg-ui-bg-secondary"}`}
             onClick={() => handleModeChange("real")}
           >
-            {t("真实 API", "Real API")}
+            {t("settings.ai.realApi")}
           </button>
         </div>
       </div>
@@ -219,23 +244,25 @@ function AISection() {
       {draft.mode === "real" && (
         <>
           <div className="flex flex-col mb-5">
-            <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("服务商", "Provider")}</label>
+            <label htmlFor="settings-ai-provider" className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("settings.ai.provider")}</label>
             <select
+              id="settings-ai-provider"
               className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none cursor-pointer focus:border-ui-accent"
               value={draft.providerId}
               onChange={(e) => handleProviderChange(e.target.value)}
             >
               {providerList.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {isZh ? p.labelZh : p.label}
+                  {t("provider." + p.id)}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="flex flex-col mb-5">
-            <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">API Endpoint</label>
+            <label htmlFor="settings-ai-endpoint" className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("settings.ai.apiEndpoint")}</label>
             <input
+              id="settings-ai-endpoint"
               className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary"
               type="text"
               value={draft.apiEndpoint}
@@ -245,9 +272,10 @@ function AISection() {
           </div>
 
           <div className="flex flex-col mb-5">
-            <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">API Token</label>
+            <label htmlFor="settings-ai-token" className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("settings.ai.apiToken")}</label>
             <div className="flex gap-1.5 max-w-[460px]">
               <input
+                id="settings-ai-token"
                 className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary flex-1"
                 type={showToken ? "text" : "password"}
                 value={draft.apiToken}
@@ -277,24 +305,26 @@ function AISection() {
           </div>
 
           <div className="flex flex-col mb-5">
-            <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">Model</label>
+            <label htmlFor="settings-ai-model" className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("settings.ai.model")}</label>
             {modelInputMode === "select" && currentModels.length > 0 ? (
               <div className="flex gap-1.5 max-w-[460px]">
                 <select
+                  id="settings-ai-model"
                   className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none cursor-pointer focus:border-ui-accent flex-1"
                   value={currentModels.some((m) => m.id === draft.model) ? draft.model : ""}
                   onChange={(e) => handleModelSelect(e.target.value)}
                 >
-                  <option value="" disabled>{t("选择模型", "Select model")}</option>
+                  <option value="" disabled>{t("settings.ai.selectModel")}</option>
                   {currentModels.map((m) => (
                     <option key={m.id} value={m.id}>{m.id}</option>
                   ))}
-                  <option value="__custom__">{t("手动输入...", "Custom input...")}</option>
+                  <option value="__custom__">{t("settings.ai.customInput")}</option>
                 </select>
               </div>
             ) : (
               <div className="flex gap-1.5 max-w-[460px]">
                 <input
+                  id="settings-ai-model"
                   className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary flex-1"
                   type="text"
                   value={draft.model}
@@ -306,7 +336,7 @@ function AISection() {
                     className="flex items-center justify-center w-[30px] h-[30px] rounded border border-ui-border bg-ui-bg text-ui-text-secondary cursor-pointer shrink-0 hover:bg-ui-bg-secondary hover:text-ui-text"
                     onClick={() => setModelInputMode("select")}
                     type="button"
-                    title={t("返回选择", "Back to select")}
+                    title={t("settings.ai.backToSelect")}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M19 12H5" />
@@ -324,13 +354,13 @@ function AISection() {
               onClick={handleTest}
               disabled={testing || !draft.apiEndpoint || !draft.apiToken || !draft.model}
             >
-              {testing ? t("测试中...", "Testing...") : t("测试连接", "Test Connection")}
+              {testing ? t("settings.ai.testing") : t("settings.ai.testConnection")}
             </button>
             {testResult === "success" && (
-              <span className="text-[13px] text-[#22c55e]">{t("连接成功", "Connected")}</span>
+              <span className="text-[13px] text-[#22c55e]">{t("settings.ai.connected")}</span>
             )}
             {testResult === "error" && (
-              <span className="text-[13px] text-[#ef4444]">{t("连接失败", "Connection Failed")}</span>
+              <span className="text-[13px] text-[#ef4444]">{t("settings.ai.connectionFailed")}</span>
             )}
           </div>
         </>
@@ -354,6 +384,7 @@ function stripProxyPrefix(url: string): string {
 }
 
 function ProxySection() {
+  useT();
   const currentProxyUrl = useThemeStore((s) => s.proxyUrl);
   const [draftType, setDraftType] = useState<ProxyType>(parseProxyType(currentProxyUrl));
   const [draftHost, setDraftHost] = useState(stripProxyPrefix(currentProxyUrl));
@@ -370,7 +401,7 @@ function ProxySection() {
         useThemeStore.getState().setProxyUrl("");
         await invoke("set_proxy", { proxyUrl: null });
         if (currentProxyUrl) {
-          setToast(t("代理已关闭，重启后完全生效", "Proxy disabled. Restart the app for full effect."));
+          setToast(t("settings.proxy.disabledRestart"));
           setTimeout(() => setToast(null), 5000);
         }
       } catch (e) {
@@ -383,7 +414,7 @@ function ProxySection() {
 
     const host = draftHost.trim();
     if (!host) {
-      setError(t("请输入代理地址", "Please enter a proxy address"));
+      setError(t("settings.proxy.enterAddress"));
       return;
     }
 
@@ -397,7 +428,7 @@ function ProxySection() {
       const wasUrl = currentProxyUrl;
 
       if (!wasUrl || wasUrl !== fullUrl) {
-        setToast(t("代理设置已保存，LLM 请求需重启应用后生效", "Proxy saved. Restart the app for LLM requests to use the new proxy."));
+        setToast(t("settings.proxy.savedRestart"));
       }
       setTimeout(() => setToast(null), 5000);
     } catch (e) {
@@ -409,22 +440,23 @@ function ProxySection() {
 
   return (
     <div className="max-w-[720px] w-full">
-      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">{t("代理", "Proxy")}</h3>
+      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">{t("settings.section.proxy")}</h3>
 
       <div className="flex flex-col mb-5">
-        <label className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("代理地址", "Proxy Address")}</label>
+        <label htmlFor="settings-proxy-host" className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("settings.proxy.address")}</label>
         <div className="flex gap-1.5 items-center max-w-[460px]">
           <select
             className="py-1.5 px-2 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none cursor-pointer shrink-0 min-w-[80px] focus:border-ui-accent"
             value={draftType}
             onChange={(e) => setDraftType(e.target.value as ProxyType)}
           >
-            <option value="none">None</option>
-            <option value="http">HTTP</option>
-            <option value="https">HTTPS</option>
-            <option value="socks5">SOCKS5</option>
+            <option value="none">{t("settings.proxy.type.none")}</option>
+            <option value="http">{t("settings.proxy.type.http")}</option>
+            <option value="https">{t("settings.proxy.type.https")}</option>
+            <option value="socks5">{t("settings.proxy.type.socks5")}</option>
           </select>
           <input
+            id="settings-proxy-host"
             className="max-w-[460px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary flex-1 max-w-none disabled:opacity-40 disabled:cursor-not-allowed"
             type="text"
             value={draftHost}
@@ -437,7 +469,7 @@ function ProxySection() {
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? t("保存中...", "Saving...") : t("保存", "Save")}
+            {saving ? t("settings.proxy.saving") : t("settings.proxy.save")}
           </button>
         </div>
       </div>
@@ -449,6 +481,7 @@ function ProxySection() {
 }
 
 function AboutSection() {
+  useT();
   const [version, setVersion] = useState("");
   const checkUpdate = useUpdateStore((s) => s.checkUpdate);
 
@@ -458,7 +491,7 @@ function AboutSection() {
 
   return (
     <div className="max-w-[720px] w-full">
-      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">{t("关于", "About")}</h3>
+      <h3 className="text-sm font-semibold text-ui-text m-0 pb-2 border-b border-ui-border mb-5">{t("settings.section.about")}</h3>
 
       <div className="flex flex-col items-center gap-1 pt-8">
         <img className="w-20 h-20 rounded-2xl mb-3" src="/icon.png" alt="MoFlow" />
@@ -469,7 +502,7 @@ function AboutSection() {
           className="py-1.5 px-5 rounded border border-ui-border bg-ui-bg text-ui-text text-[13px] font-inherit cursor-pointer transition-all duration-150 hover:bg-ui-bg-secondary hover:border-ui-accent"
           onClick={() => checkUpdate(true)}
         >
-          {t("检查更新", "Check for Updates")}
+          {t("settings.about.checkUpdates")}
         </button>
       </div>
     </div>
@@ -477,11 +510,18 @@ function AboutSection() {
 }
 
 export default function SettingsPanel() {
+  useT();
   const [activeSection, setActiveSection] = useState<Section>("appearance");
+  const sections: { id: Section; label: string }[] = [
+    { id: "appearance", label: t("settings.section.appearance") },
+    { id: "ai", label: t("settings.section.ai") },
+    { id: "proxy", label: t("settings.section.proxy") },
+    { id: "about", label: t("settings.section.about") },
+  ];
 
   return (
     <div className="flex h-full bg-ui-bg flex-1 min-w-0">
-      <nav className="w-40 shrink-0 p-3 px-1.5 border-r border-ui-border flex flex-col gap-px">
+      <nav aria-label={t("common.settings")} className="w-40 shrink-0 p-3 px-1.5 border-r border-ui-border flex flex-col gap-px">
         {sections.map((s) => (
           <button
             key={s.id}

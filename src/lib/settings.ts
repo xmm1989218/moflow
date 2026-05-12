@@ -3,6 +3,8 @@ import { readFile, writeFile, exists, remove } from "@tauri-apps/plugin-fs";
 
 export type EditorTheme = "github" | "github-dark" | "nord" | "nord-dark" | "catppuccin-latte" | "catppuccin-mocha";
 
+export type SupportedLanguage = "system" | "zh" | "en" | "ja" | "ko";
+
 export interface AIConfig {
   mode: "mock" | "real";
   providerId: string;
@@ -30,6 +32,7 @@ export interface AppSettings {
   outlineWidth: number;
   aiConfig: AIConfig;
   proxyUrl: string;
+  language: SupportedLanguage;
 }
 
 export const defaultSettings: AppSettings = {
@@ -41,6 +44,7 @@ export const defaultSettings: AppSettings = {
   outlineWidth: 240,
   aiConfig: { ...defaultAIConfig },
   proxyUrl: "",
+  language: "system",
 };
 
 export async function readSettings(): Promise<AppSettings> {
@@ -60,6 +64,7 @@ export async function readSettings(): Promise<AppSettings> {
       aiConfig: { ...defaultAIConfig, ...(parsed.aiConfig || {}) },
       proxyUrl: parsed.proxyUrl ?? "",
       outlineWidth: parsed.outlineWidth ?? 240,
+      language: parsed.language ?? "system",
     };
     return settings;
   } catch {

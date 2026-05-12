@@ -396,6 +396,15 @@ html, body, #root {
   background-color: var(--ui-text-secondary);
 }
 
+:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible) {
+  outline: none;
+}
+
 @keyframes moflow-dialog-in {
   from { opacity: 0; transform: scale(0.95) translateY(-8px); }
   to { opacity: 1; transform: scale(1) translateY(0); }

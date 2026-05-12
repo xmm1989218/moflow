@@ -1,5 +1,37 @@
 # Changelog
 
+## v0.8.0 (2026-05-12)
+
+### New Features
+
+- **Lightweight i18n system** — Self-built i18n with no external dependencies, supporting 4 languages with runtime switching
+  - `I18nProvider` + `useT()` hook for React reactivity; `t()` / `isZh()` / `getLocale()` for non-React code
+  - 4 locale files: `zh.ts` (简体中文), `en.ts` (English), `ja.ts` (日本語), `ko.ts` (한국어) — ~318 keys each
+  - Migrated all 157 `t()` call sites, 20 `des()` call sites, and 7 data-driven translation structures from `t("zh", "en")` pattern to `t("key")` pattern
+  - Language setting persisted in settings; language dropdown in Settings → Appearance (系统默认 / 简体中文 / English / 日本語 / 한국어)
+  - Language switch takes effect immediately without restart
+  - `useT()` hook uses `useSyncExternalStore` to trigger re-render on language change
+  - `toolbarTooltipMap` → `getToolbarTooltipMap()`, tool definitions → factory functions — all module-level `t()` calls converted to lazy evaluation
+  - README translations: `README.ja.md`, `README.ko.md`
+
+- **Accessibility (a11y) improvements** — WAI-ARIA patterns, keyboard navigation, and focus management across all components
+  - **ConfirmCloseDialog**: `role="dialog"`, `aria-modal`, focus trap (Tab/Shift+Tab cycle), auto-focus on open, focus restore on close
+  - **UpdateDialog**: `role="status"` / `role="alert"`, `aria-live="polite"`, Escape to dismiss "available" state
+  - **TabBar**: WAI-ARIA Tabs pattern (`role="tablist"`, `role="tab"`, `aria-selected`), roving tabIndex, Arrow/Home/End keyboard nav
+  - **HamburgerMenu**: `role="menu"`, `role="menuitem"`, Arrow Up/Down nav, Enter/Space select, Escape close, focus management
+  - **FileTree**: `role="tree"`, `role="treeitem"`, `aria-expanded`, Arrow/Enter keyboard nav; context menu `role="menu"`/`role="menuitem"` with keyboard nav
+  - **OutlineSidebar**: `role="tree"`, `role="treeitem"`, keyboard navigation
+  - **AISidebar**: `role="log"`, `aria-live="polite"` on messages, `aria-expanded` on details, `aria-label` on scroll button
+  - **TitleBar/StatusBar**: `aria-label` on all icon-only buttons, `aria-pressed` on toggles
+  - **SettingsPanel**: `aria-pressed` on toggles, `htmlFor`/`id` on labels, `aria-label` on nav
+  - **Global `:focus-visible`** ring using `--ui-accent` CSS variable
+
+### Bug Fixes
+
+- **Language switch not working** — `initLang()` in `core.ts` used `currentLang === "en"` as init check, which conflicted with user selecting English (would override back to `detectLanguage()`). Fixed by using `null` initial value with `ensureLang()` that only initializes once
+- **Components not re-rendering on language change** — `t()` from `core.ts` is a module-level function with no React reactivity. Added `useT()` hook with `useSyncExternalStore` to subscribe to language changes
+- **Module-level `t()` calls evaluated once** — `toolbarTooltipMap`, tool definitions, and `sections` array were evaluated at module init. Converted to factory functions / moved inside components
+
 ## v0.7.5 (2026-05-12)
 
 ### New Features
