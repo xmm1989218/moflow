@@ -3,6 +3,20 @@ import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { replaceAll, getHTML } from "@milkdown/utils";
 import { EditorStatus, editorViewCtx, parserCtx } from "@milkdown/core";
 import { Slice } from "prosemirror-model";
+
+function replaceAllNoHistory(markdown: string) {
+  return (ctx: Ctx) => {
+    const view = ctx.get(editorViewCtx);
+    const doc = ctx.get(parserCtx)(markdown);
+    if (!doc) return;
+    const { state } = view;
+    view.dispatch(
+      state.tr
+        .replace(0, state.doc.content.size, new Slice(doc.content, 0, 0))
+        .setMeta("addToHistory", false)
+    );
+  };
+}
 import { TextSelection } from "prosemirror-state";
 import type { Ctx } from "@milkdown/kit/ctx";
 import { LanguageDescription, LanguageSupport, StreamLanguage } from "@codemirror/language";
@@ -158,6 +172,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
   const savedSelectionRef = useRef<{ from: number; to: number } | null>(null);
   const savedScrollRef = useRef<number>(0);
   const contentAtSwitchRef = useRef<string | null>(null);
+  const skipHistoryRef = useRef(false);
 
   useEffect(() => {
     modeRef.current = mode;
@@ -461,6 +476,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
             if (ed?.status !== EditorStatus.Created) return;
             ed.action((c) => { c.get(commandsCtx).call(undoCommand.key); });
             if (modeRef.current === "source") {
+              skipHistoryRef.current = true;
               const md = crepeRef.current?.getMarkdown() ?? syncedContentRef.current;
               useTabStore.getState().updateTabContent(tabId, md);
             }
@@ -470,6 +486,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
             if (ed?.status !== EditorStatus.Created) return;
             ed.action((c) => { c.get(commandsCtx).call(redoCommand.key); });
             if (modeRef.current === "source") {
+              skipHistoryRef.current = true;
               const md = crepeRef.current?.getMarkdown() ?? syncedContentRef.current;
               useTabStore.getState().updateTabContent(tabId, md);
             }
@@ -512,7 +529,12 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
 
     if (content === syncedContentRef.current) return;
 
-    editor.action(replaceAll(content, false));
+    if (modeRef.current === "source" && !skipHistoryRef.current) {
+      editor.action(replaceAll(content, false));
+    } else {
+      editor.action(replaceAllNoHistory(content));
+    }
+    skipHistoryRef.current = false;
     syncedContentRef.current = content;
   }, [content, loading, getEditor, setGetEditorHTML, tabId]);
 
