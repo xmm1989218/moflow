@@ -782,9 +782,11 @@ export default function AISidebar() {
     if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       const textarea = e.currentTarget as HTMLTextAreaElement;
       const { selectionStart, selectionEnd } = textarea;
+      const isFirstLine = input.substring(0, selectionStart).indexOf("\n") === -1;
+      const isLastLine = input.substring(selectionEnd).indexOf("\n") === -1;
 
       if (e.key === "ArrowUp") {
-        if (selectionStart === 0 && selectionEnd === 0) {
+        if (isFirstLine && selectionStart === selectionEnd) {
           e.preventDefault();
           const history = getUserHistory();
           if (history.length === 0) return;
@@ -803,20 +805,17 @@ export default function AISidebar() {
       }
 
       if (e.key === "ArrowDown") {
-        if (historyIndexRef.current !== -1) {
-          const len = input.length;
-          if (selectionStart === len && selectionEnd === len) {
-            e.preventDefault();
-            const history = getUserHistory();
-            if (historyIndexRef.current > 0) {
-              historyIndexRef.current--;
-              setInput(history[historyIndexRef.current]);
-            } else {
-              historyIndexRef.current = -1;
-              setInput(draftInputRef.current);
-            }
-            return;
+        if (historyIndexRef.current !== -1 && isLastLine && selectionStart === selectionEnd) {
+          e.preventDefault();
+          const history = getUserHistory();
+          if (historyIndexRef.current > 0) {
+            historyIndexRef.current--;
+            setInput(history[historyIndexRef.current]);
+          } else {
+            historyIndexRef.current = -1;
+            setInput(draftInputRef.current);
           }
+          return;
         }
       }
     }
