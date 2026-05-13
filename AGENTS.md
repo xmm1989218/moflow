@@ -40,6 +40,7 @@ src/                    # Frontend (React + TypeScript)
                           AISidebar.css — sidebar layout + chat bubble styles (trimmed)
                           MessageContent.css — Markdown element selectors (retained)
                           ContextView.tsx — context inspection panel
+                          PermissionBar.tsx — inline permission consent bar (allow/always/deny)
     ConfirmCloseDialog/ # Unsaved changes dialog (Tailwind, no CSS file)
     Editor/             # Milkdown editor wrapper + SelectionAIPanel
                           Editor.css — ProseMirror/Crepe/CodeMirror DOM overrides (retained)
@@ -50,11 +51,12 @@ src/                    # Frontend (React + TypeScript)
     StatusBar/          # Bottom status bar (Tailwind, no CSS file)
     TabBar/             # Tab management (file tabs + settings tab) (Tailwind, no CSS file)
     TitleBar/           # Custom frameless title bar (gear button) (Tailwind, no CSS file)
-  index.css             # Global styles + @theme block (71 CSS vars → Tailwind namespace)
+  index.css             # Global styles + @theme block (73 CSS vars → Tailwind namespace)
                           Keyframes, animations, shadows, scrollbar styles
   stores/
     appStore.ts         # Re-exports from tabStore, themeStore, etc.
     chatStore.ts        # AI chat state (streamingContentMap, contextMap, cleanupIncompleteToolCalls)
+    permissionStore.ts  # Session permission rules (per-chatKey, alwaysAllow cascade)
     aiSelectionStore.ts # Selection AI panel state
     searchStore.ts      # Find & replace state (per-tab editorViewMap)
     sessionStore.ts     # Session persistence (workspaceRoot)
@@ -78,9 +80,10 @@ src/                    # Frontend (React + TypeScript)
     modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
     llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling)
     shortcuts.ts        # Centralized shortcut registry (getShortcutDisplay, getShortcutLabel)
-    settings.ts         # App settings persistence (proxyUrl derived proxy state)
+    settings.ts         # App settings persistence (proxyUrl derived proxy state, permissions)
     exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
     themeCSS.ts         # Dynamic theme CSS generation
+    permission.ts       # Permission engine (wildcard matching, evaluateWithSession, generateAlwaysPattern)
     tools.ts            # AI tool definitions + execution (outline, grep, read_lines, read_section, webfetch, find, glob, ls)
     types.ts            # Shared types (ToolCall, ToolDefinition, ChatMessage)
     updater.ts          # Auto-update with proxy support
@@ -139,4 +142,8 @@ src-tauri/              # Backend (Rust + Tauri)
 - Opening a new directory auto-closes current workspace first (with unsaved confirm)
 - Shortcuts centralized in `src/lib/shortcuts.ts`, platform-aware display (Ctrl vs ⌘)
 - 8 AI tools: outline/read_lines/read_section/grep/find/glob/ls/webfetch; `getToolDefinitions(needsDocTools, workspaceRoot)` combines by mode
-- `isPathAllowed(path, workspaceRoot)` for all file-reading tools — security boundary
+- Permission system: `checkPathAccess()` replaces `isPathAllowed()` — workspace-internal paths auto-allow, workspace-external paths evaluate via permission engine (session rules > global rules > default `ask`); `allowFsScope()` extends Tauri FS scope on allow
+- `executeTool` signature: `(name, args, signal, ctx, onPermission?)` — `onPermission` callback shows PermissionBar UI for external path access
+- Permission keys: `external_path` (file read), `execute` (skill script, v0.9.0), `edit` (file write, reserved); three actions: allow/ask/deny; wildcard patterns (`*`, `?`, `**`)
+- Session rules stored per `chatKey` in `permissionStore`; `/new` and tab/workspace close clear session rules
+- Theme variables include `--moflow-warn`/`--moflow-warn-text` per editor theme (for PermissionBar "always allow" button)

@@ -604,7 +604,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.8.5 — 权限系统
+## v0.8.5 — 权限系统 ✅
 
 - [x] 权限模块（通配符匹配 + 三级存储 + 求值逻辑 + edit 预留）
 - [x] 内置 tool 外部路径访问：硬拒绝 → ask 内联确认条
