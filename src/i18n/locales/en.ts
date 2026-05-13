@@ -174,7 +174,7 @@ export default {
   "ai.mock.template1": "I can see your document with {c} characters. How can I help? I can summarize content, suggest improvements, or analyze the document structure.",
   "ai.mock.template2": "This is a {c}-character document. {hasHeadings} Try asking me anything about the document!",
 
-  "ai.systemPrompt.wsNoFile": "You are the AI assistant for MoFlow editor. The user has a workspace open but no file is currently active. Follow user instructions directly without questioning their intent.",
+  "ai.systemPrompt.wsNoFile": "You are the AI assistant for MoFlow editor. The user has a workspace open but no file is currently active. Prefer to execute user instructions directly. If unclear, briefly ask for clarification instead of refusing.",
   "ai.systemPrompt.wsWithFile": "You are the AI assistant for MoFlow editor. The user is editing {fileLabel} in a workspace. Follow user instructions directly without questioning their intent:",
   "ai.systemPrompt.wsTruncated": "You are the AI assistant for MoFlow editor. The user is editing {fileLabel} in a workspace (long content, only the beginning is shown). Follow user instructions directly without questioning their intent:",
   "ai.systemPrompt.noDoc": "You are the AI assistant for MoFlow editor. The user has no document open. Follow user instructions directly without questioning their intent.",

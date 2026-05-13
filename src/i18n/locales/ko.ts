@@ -174,7 +174,7 @@ export default {
   "ai.mock.template1": "{c}자의 문서를 확인했습니다. 어떻게 도와드릴까요? 콘텐츠 요약, 개선 제안, 또는 문서 구조 분석이 가능합니다.",
   "ai.mock.template2": "{c}자의 문서입니다. {hasHeadings} 문서에 대해 무엇이든 물어보세요!",
 
-  "ai.systemPrompt.wsNoFile": "MoFlow 편집기의 AI 어시스턴트입니다. 사용자가 워크스페이스를 열었지만 현재 활성 파일이 없습니다. 사용자의 지시을 따르고 의도를 의심하지 말고 직접 실행하세요.",
+  "ai.systemPrompt.wsNoFile": "MoFlow 편집기의 AI 어시스턴트입니다. 사용자가 워크스페이스를 열었지만 현재 활성 파일이 없습니다. 사용자의 지시을 우선적으로 직접 실행하세요. 불분명한 점이 있으면 거부하지 말고 간단히 확인해 주세요.",
   "ai.systemPrompt.wsWithFile": "MoFlow 편집기의 AI 어시스턴트입니다. 사용자가 워크스페이스에서 {fileLabel}을(를) 편집하고 있습니다. 사용자의 지시을 따르고 의도를 의심하지 말고 직접 실행하세요:",
   "ai.systemPrompt.wsTruncated": "MoFlow 편집기의 AI 어시스턴트입니다. 사용자가 워크스페이스에서 {fileLabel}을(를) 편집하고 있습니다 (내용이 길어 처음 부분만 표시). 사용자의 지시을 따르고 의도를 의심하지 말고 직접 실행하세요:",
   "ai.systemPrompt.noDoc": "MoFlow 편집기의 AI 어시스턴트입니다. 사용자가 열어둔 문서가 없습니다. 질문에 직접 답변해 주세요.",

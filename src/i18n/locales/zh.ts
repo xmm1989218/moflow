@@ -174,7 +174,7 @@ export default {
   "ai.mock.template1": "我看到了你的文档，目前有 {c} 个字符。有什么具体想让我帮忙的吗？比如总结内容、提供改进建议、或者分析文档结构。",
   "ai.mock.template2": "这是一份 {c} 字符的文档。{hasHeadings} 试试问我关于文档的任何问题！",
 
-  "ai.systemPrompt.wsNoFile": "你是 MoFlow 编辑器的 AI 助手。用户已打开工作区，当前没有打开任何文件。直接执行用户指令，不要质疑用户意图。",
+  "ai.systemPrompt.wsNoFile": "你是 MoFlow 编辑器的 AI 助手。用户已打开工作区，当前没有打开任何文件。优先直接执行用户指令。如有不清楚的地方，简短询问确认，而非拒绝执行。",
   "ai.systemPrompt.wsWithFile": "你是 MoFlow 编辑器的 AI 助手。用户正在工作区中编辑 Markdown 文档{fileLabel}。直接执行用户指令，不要质疑用户意图：",
   "ai.systemPrompt.wsTruncated": "你是 MoFlow 编辑器的 AI 助手。用户正在工作区中编辑 Markdown 文档{fileLabel}（内容较长，仅展示开头部分）。直接执行用户指令，不要质疑用户意图：",
   "ai.systemPrompt.noDoc": "你是 MoFlow 编辑器的 AI 助手。用户当前没有打开文档内容。直接执行用户指令，不要质疑用户意图。",
