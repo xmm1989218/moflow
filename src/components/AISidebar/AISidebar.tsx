@@ -212,6 +212,8 @@ export default function AISidebar() {
   const [showContext, setShowContext] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [toolCallStatus, setToolCallStatus] = useState<{ name: string; args: Record<string, unknown> } | null>(null);
+  const historyIndexRef = useRef(-1);
+  const draftInputRef = useRef("");
   const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
   const resolvePermissionRef = useRef<((action: PermissionAction) => void) | null>(null);
   useT();
@@ -516,6 +518,7 @@ export default function AISidebar() {
     }
 
     setInput("");
+    historyIndexRef.current = -1;
     const userMsg = addMessage(chatKey, { role: "user", content: text });
     await appendMessage(chatKey, userMsg);
 
@@ -753,6 +756,17 @@ export default function AISidebar() {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
+  const getUserHistory = useCallback((): string[] => {
+    const msgs = useChatStore.getState().messagesMap[chatKey] ?? [];
+    const history: string[] = [];
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      if (msgs[i].role === "user") {
+        history.push(msgs[i].content);
+      }
+    }
+    return history;
+  }, [chatKey]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (slashMenuVisible && slashMenuRef.current) {
       const handled = slashMenuRef.current.handleKeyDown(e);
@@ -762,6 +776,53 @@ export default function AISidebar() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+      return;
+    }
+
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      const textarea = e.currentTarget as HTMLTextAreaElement;
+      const { selectionStart, selectionEnd } = textarea;
+
+      if (e.key === "ArrowUp") {
+        if (selectionStart === 0 && selectionEnd === 0) {
+          e.preventDefault();
+          const history = getUserHistory();
+          if (history.length === 0) return;
+
+          if (historyIndexRef.current === -1) {
+            draftInputRef.current = input;
+            historyIndexRef.current = 0;
+          } else if (historyIndexRef.current < history.length - 1) {
+            historyIndexRef.current++;
+          } else {
+            return;
+          }
+          setInput(history[historyIndexRef.current]);
+          return;
+        }
+      }
+
+      if (e.key === "ArrowDown") {
+        if (historyIndexRef.current !== -1) {
+          const len = input.length;
+          if (selectionStart === len && selectionEnd === len) {
+            e.preventDefault();
+            const history = getUserHistory();
+            if (historyIndexRef.current > 0) {
+              historyIndexRef.current--;
+              setInput(history[historyIndexRef.current]);
+            } else {
+              historyIndexRef.current = -1;
+              setInput(draftInputRef.current);
+            }
+            return;
+          }
+        }
+      }
+    }
+
+    if (historyIndexRef.current !== -1 && e.key.length === 1) {
+      historyIndexRef.current = -1;
     }
   };
 
