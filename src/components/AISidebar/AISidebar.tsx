@@ -1,19 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useChatStore, type Message, COMPACT_TAIL_TURNS } from "../../stores/chatStore";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
+import { usePermissionStore } from "../../stores/permissionStore";
 import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClient";
 import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
 import { getToolDefinitions, executeTool, WEBFETCH_LIMIT } from "../../lib/tools";
-import type { ToolContext } from "../../lib/tools";
+import type { ToolContext, OnPermissionCallback } from "../../lib/tools";
+import type { PermissionRequest, PermissionAction } from "../../lib/permission";
 import { useShallow } from "zustand/react/shallow";
 import SlashCommandMenu from "./SlashCommandMenu";
 import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
 import MessageContent from "./MessageContent";
 import ContextView from "./ContextView";
+import PermissionBar from "./PermissionBar";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 import "./AISidebar.css";
@@ -156,7 +159,7 @@ function ToolResultBlock({ msg, messages }: { msg: Message; messages: Message[] 
     <div className="moflow-ai-tool-result">
       <details aria-expanded={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
         <summary className="moflow-ai-tool-result-summary">
-          <span className="moflow-ai-tool-result-icon">??</span>
+          <span className="moflow-ai-tool-result-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
           <span className="moflow-ai-tool-args-text">{argsLabel}</span>
         </summary>
         <pre className="moflow-ai-tool-result-content">{msg.content}</pre>
@@ -209,6 +212,8 @@ export default function AISidebar() {
   const [showContext, setShowContext] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [toolCallStatus, setToolCallStatus] = useState<{ name: string; args: Record<string, unknown> } | null>(null);
+  const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
+  const resolvePermissionRef = useRef<((action: PermissionAction) => void) | null>(null);
   useT();
 
   useEffect(() => {
@@ -455,6 +460,40 @@ export default function AISidebar() {
     }
   };
 
+  const onPermission: OnPermissionCallback = useCallback((request: PermissionRequest) => {
+    return new Promise<PermissionAction>((resolve) => {
+      setPermissionRequest(request);
+      resolvePermissionRef.current = resolve;
+    });
+  }, []);
+
+  const handlePermissionAllow = useCallback(() => {
+    resolvePermissionRef.current?.("allow");
+    resolvePermissionRef.current = null;
+    setPermissionRequest(null);
+  }, []);
+
+  const handlePermissionAlwaysAllow = useCallback(() => {
+    if (permissionRequest) {
+      const { permissionKey, input, alwaysPatterns } = permissionRequest;
+      const pattern = alwaysPatterns[0] ?? input;
+      usePermissionStore.getState().addSessionRule(chatKey, {
+        permissionKey,
+        pattern,
+        action: "allow",
+      });
+    }
+    resolvePermissionRef.current?.("allow");
+    resolvePermissionRef.current = null;
+    setPermissionRequest(null);
+  }, [chatKey, permissionRequest]);
+
+  const handlePermissionDeny = useCallback(() => {
+    resolvePermissionRef.current?.("deny");
+    resolvePermissionRef.current = null;
+    setPermissionRequest(null);
+  }, []);
+
   const handleSend = async () => {
     const text = input.trim();
     if (!text || isStreaming) return;
@@ -494,7 +533,13 @@ export default function AISidebar() {
     const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsDocTools, workspaceRoot, activeFileName);
     const tools = getToolDefinitions(needsDocTools, workspaceRoot);
 
-    const toolCtx: ToolContext = { workspaceRoot: workspaceRoot ?? undefined, docContent };
+    const toolCtx: ToolContext = {
+      workspaceRoot: workspaceRoot ?? undefined,
+      docContent,
+      permissions: useThemeStore.getState().permissions,
+      sessionRules: usePermissionStore.getState().sessionRules[chatKey] ?? [],
+      chatKey,
+    };
 
     try {
       const client = getLLMClient(aiConfig);
@@ -600,7 +645,7 @@ export default function AISidebar() {
 
           let toolResult: string;
           try {
-            toolResult = await executeTool(tc.name, args, controller.signal, toolCtx);
+            toolResult = await executeTool(tc.name, args, controller.signal, toolCtx, onPermission);
           } catch (e) {
             toolResult = `|?${t("ai.error.toolExecution")}: ${e instanceof Error ? e.message : String(e)}`;
           }
@@ -651,6 +696,11 @@ export default function AISidebar() {
       setStreaming(false);
       abortRef.current = null;
       clearStreamingContent(chatKey);
+      if (resolvePermissionRef.current) {
+        resolvePermissionRef.current("deny");
+        resolvePermissionRef.current = null;
+      }
+      setPermissionRequest(null);
     }
   };
 
@@ -659,6 +709,7 @@ export default function AISidebar() {
 
     if (id === "new") {
       clearMessages(chatKey);
+      usePermissionStore.getState().clearSessionRules(chatKey);
       return;
     }
 
@@ -723,7 +774,7 @@ export default function AISidebar() {
         </div>
         <div className="moflow-ai-messages flex items-center justify-center">
           <div className="moflow-ai-empty">
-            <div className="moflow-ai-empty-icon">??</div>
+            <div className="moflow-ai-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
             <p>{t("ai.empty.openDoc")}</p>
           </div>
         </div>
@@ -754,7 +805,7 @@ export default function AISidebar() {
           </div>
         ) : messages.length === 0 && !streamingContent ? (
           <div className="moflow-ai-empty">
-            <div className="moflow-ai-empty-icon">??</div>
+            <div className="moflow-ai-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
             <p>{t("ai.empty.prompt")}</p>
           </div>
         ) : null}
@@ -810,6 +861,14 @@ export default function AISidebar() {
 
       {!showContext && (
       <div className="moflow-ai-input-area">
+        {permissionRequest && (
+          <PermissionBar
+            request={permissionRequest}
+            onAllow={handlePermissionAllow}
+            onAlwaysAllow={handlePermissionAlwaysAllow}
+            onDeny={handlePermissionDeny}
+          />
+        )}
         <div className="moflow-ai-input-wrap relative">
           <textarea
             ref={inputRef}
@@ -819,7 +878,7 @@ export default function AISidebar() {
             onKeyDown={handleKeyDown}
             placeholder={t("ai.input.placeholder")}
             rows={2}
-            disabled={isStreaming}
+            disabled={isStreaming || !!permissionRequest}
           />
           {isStreaming ? (
             <button className="moflow-ai-action-btn moflow-ai-action-stop" onClick={handleStop}>

@@ -604,30 +604,67 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.9.0 — 性能优化
+## v0.8.5 — 权限系统
 
-- [ ] 大文件编辑性能
-- [ ] 内存占用优化
-- [ ] 优化 AI 提示词，让输出更加精简且关键
-- [ ] 环境变量配置（方便 skill 等使用）
+- [x] 权限模块（通配符匹配 + 三级存储 + 求值逻辑 + edit 预留）
+- [x] 内置 tool 外部路径访问：硬拒绝 → ask 内联确认条
+- [x] `executeTool` 签名改造（新增 `onPermission` 回调）
+- [x] 内联确认条 UI 组件（输入框上方，允许/始终允许/拒绝）
+- [x] session 规则管理（按 chatKey 隔离，始终允许写入，同模式级联自动通过）
 
 ---
 
-## v1.0.0 — 正式版（插件 & Skill 系统）
+## v0.9.0 — Skill 系统
 
-### 插件系统
+### Skill 定义规范
 
-- [ ] 可扩展插件 API 架构设计
-- [ ] 自定义 system prompt 模板
+- [ ] 遵循 Agent Skills 开放标准（agentskills.io）
+- [ ] Skill 目录结构（SKILL.md + scripts/ + references/ + assets/）
+- [ ] SKILL.md frontmatter 解析（name/description/license/compatibility/metadata/allowed-tools）
+- [ ] Skill 存放路径：{appDataDir}/skills/\<name\>/
+- [ ] 三层渐进加载（Discovery → Activation → Execution）
 
-### Skill 市场与 Skill 管理
+### Skill 运行时
 
-- [ ] Skill 定义规范（名称、描述、图标、system prompt 模板、工具权限声明）
-- [ ] Skill 管理界面（安装、卸载、启用/禁用、配置）
-- [ ] Skill 市场（浏览、搜索、一键安装；支持本地 skill + 远程仓库）
-- [ ] Skill 运行时（加载 skill 的 system prompt + 工具集，按 skill 限定可用工具范围）
-- [ ] Skill 对话模式（选择 skill 后进入专属对话，独立上下文）
-- [ ] 内置 skill 示例（翻译助手、代码审查、文档润色等）
+- [ ] Skill 发现：启动时扫描 skills/ 目录，读取所有 SKILL.md 的 name + description
+- [ ] `skill` tool 注册：description 中动态注入可用 skill 列表，AI 调用 skill({name}) 加载 SKILL.md body
+- [ ] `execute` tool：执行已激活 Skill 的 scripts/ 下脚本，自动匹配解释器（.py→python3, .js→node, .sh→bash），Rust 侧子进程执行 + 环境变量继承 + 30s 超时 + 路径安全校验
+- [ ] getToolDefinitions 改造：始终追加 skill tool + execute tool
+- [ ] Skill 激活状态管理（activeSkillsMap，按 chatKey 隔离）
+
+### 环境变量配置
+
+- [ ] Settings Panel 新增「环境变量」导航项，支持 KV 对增删改（name + value）
+- [ ] 保存时将 KV 对设为应用进程环境变量（Rust 侧 + JS 侧均可访问）
+- [ ] Skill 脚本执行时自动继承环境变量
+
+### Skill 管理界面
+
+- [ ] Settings Panel 新增「Skill」导航项
+- [ ] Skill 列表页（已安装 skill 展示，启用/禁用切换，SKILL.md 预览）
+- [ ] 内置 skill 示例（3 个 prompt-only skill，随应用首次启动自动创建）
+
+---
+
+## v0.9.5 — AI 提示词优化
+
+- [ ] Selection AI 去掉全量文档（explain/translate/rewrite 不再发送完整文档）
+- [ ] Markdown 语法块精简（~550 chars → ~200 chars）
+- [ ] 工具说明去重（system prompt 不再重复 tools 参数中的描述）
+- [ ] Claude max_tokens 动态计算（替代硬编码 4096）
+- [ ] Token 估算改进（fallback 模式包含 tool_calls/reasoningContent）
+- [ ] translate 提示词补齐 Markdown 格式提示
+- [ ] API Token 输入框改为 type="password"
+
+---
+
+## v1.0.0 — 正式版（Skill 市场）
+
+### Skill 市场
+
+- [ ] Skill 市场浏览界面（搜索、分类、排序）
+- [ ] 一键安装（从 GitHub 仓库下载 skill 到本地）
+- [ ] Skill 版本管理与更新
 - [ ] 社区 skill 分享（GitHub 仓库作为 skill 源，约定目录结构）
 
 ---
@@ -648,6 +685,12 @@ Enable the AI to actively explore the document instead of relying on truncated c
 ### 编辑器
 
 - [ ] Vim keybindings 模式
+
+### AI 模式
+
+- [ ] 只读模式（edit: deny，AI 只能分析不能改文档）
+- [ ] 审查模式（execute: deny，AI 只能用内置 tool，不能执行脚本）
+- [ ] 自定义模式（用户自定义权限预设）
 
 ### 修复
 

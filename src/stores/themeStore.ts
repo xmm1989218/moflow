@@ -5,6 +5,8 @@ import {
   type EditorTheme as EditorThemeType,
   type SupportedLanguage as SupportedLanguageType,
 } from "../lib/settings";
+import type { Permissions } from "../lib/permission";
+import { DEFAULT_PERMISSIONS } from "../lib/permission";
 
 export type AppTheme = "system" | "light" | "dark";
 export type EditorTheme = EditorThemeType;
@@ -38,6 +40,7 @@ function persistSettings(get: () => ThemeState) {
     aiConfig: s.aiConfig,
     proxyUrl: s.proxyUrl,
     language: s.language,
+    permissions: s.permissions,
   });
 }
 
@@ -51,6 +54,7 @@ interface ThemeState {
   aiConfig: AIConfig;
   proxyUrl: string;
   language: SupportedLanguage;
+  permissions: Permissions;
   showSettingsTab: boolean;
   settingsTabActive: boolean;
   showOutline: boolean;
@@ -68,6 +72,7 @@ interface ThemeState {
   setAIConfig: (config: AIConfig) => void;
   setProxyUrl: (v: string) => void;
   setLanguage: (lang: SupportedLanguage) => void;
+  setPermissions: (p: Permissions) => void;
   openSettingsTab: () => void;
   closeSettingsTab: () => void;
   activateSettingsTab: () => void;
@@ -85,6 +90,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   aiConfig: { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" },
   proxyUrl: "",
   language: "system",
+  permissions: { ...DEFAULT_PERMISSIONS },
   showSettingsTab: false,
   settingsTabActive: false,
   showOutline: false,
@@ -139,6 +145,11 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   setLanguage: (language) => {
     set({ language });
+    persistSettings(get);
+  },
+
+  setPermissions: (permissions) => {
+    set({ permissions });
     persistSettings(get);
   },
 

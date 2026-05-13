@@ -1,5 +1,6 @@
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, writeFile, exists, remove } from "@tauri-apps/plugin-fs";
+import { DEFAULT_PERMISSIONS } from "./permission";
 
 export type EditorTheme = "github" | "github-dark" | "nord" | "nord-dark" | "catppuccin-latte" | "catppuccin-mocha";
 
@@ -33,6 +34,7 @@ export interface AppSettings {
   aiConfig: AIConfig;
   proxyUrl: string;
   language: SupportedLanguage;
+  permissions: import("./permission").Permissions;
 }
 
 export const defaultSettings: AppSettings = {
@@ -45,6 +47,7 @@ export const defaultSettings: AppSettings = {
   aiConfig: { ...defaultAIConfig },
   proxyUrl: "",
   language: "system",
+  permissions: { ...DEFAULT_PERMISSIONS },
 };
 
 export async function readSettings(): Promise<AppSettings> {
@@ -65,6 +68,7 @@ export async function readSettings(): Promise<AppSettings> {
       proxyUrl: parsed.proxyUrl ?? "",
       outlineWidth: parsed.outlineWidth ?? 240,
       language: parsed.language ?? "system",
+      permissions: { ...DEFAULT_PERMISSIONS, ...(parsed.permissions || {}) },
     };
     return settings;
   } catch {

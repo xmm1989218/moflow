@@ -4,10 +4,18 @@ import { readTextFile, readDir, exists, stat } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import { buildOutline } from "./contextBuilder";
 import { t } from "../i18n/core";
+import type { PermissionAction, PermissionRequest } from "./permission";
+import { evaluateWithSession, generateAlwaysPattern, DEFAULT_PERMISSIONS } from "./permission";
+import type { Permissions } from "./permission";
+
+export type OnPermissionCallback = (request: PermissionRequest) => Promise<PermissionAction>;
 
 export interface ToolContext {
   workspaceRoot?: string;
   docContent: string;
+  permissions?: Permissions;
+  sessionRules?: import("./permission").PermissionRule[];
+  chatKey?: string;
 }
 
 const MAX_TOOL_RESULT_CHARS = 30 * 1024;
@@ -21,10 +29,69 @@ function truncateResult(text: string): string {
   return text.slice(0, MAX_TOOL_RESULT_CHARS) + "\n...[truncated]";
 }
 
-function isPathAllowed(path: string, workspaceRoot: string): boolean {
+function isPathInsideWorkspace(path: string, workspaceRoot: string): boolean {
   const normalizedPath = path.replace(/\\/g, "/");
   const normalizedRoot = workspaceRoot.replace(/\\/g, "/").replace(/\/$/, "");
   return normalizedPath.startsWith(normalizedRoot + "/") || normalizedPath === normalizedRoot;
+}
+
+function isAbsolutePath(p: string): boolean {
+  if (/^[A-Za-z]:[\\/]/.test(p)) return true;
+  if (p.startsWith("/")) return true;
+  return false;
+}
+
+async function resolveAbsolutePath(path: string, workspaceRoot: string): Promise<string> {
+  if (isAbsolutePath(path)) return path;
+  return join(workspaceRoot, path);
+}
+
+async function allowFsScope(absPath: string): Promise<void> {
+  try {
+    await invoke("allow_paths", { paths: [absPath] });
+  } catch { /* ignore if scope already allows */ }
+}
+
+async function checkPathAccess(
+  absPath: string,
+  workspaceRoot: string | undefined,
+  ctx: ToolContext,
+  onPermission?: OnPermissionCallback
+): Promise<{ allowed: boolean; error?: string }> {
+  if (!workspaceRoot) {
+    return { allowed: false, error: t("ai.tool.error.noWorkspace") };
+  }
+
+  if (isPathInsideWorkspace(absPath, workspaceRoot)) {
+    return { allowed: true };
+  }
+
+  const permissions = ctx.permissions ?? DEFAULT_PERMISSIONS;
+  const sessionRules = ctx.sessionRules ?? [];
+  const action = evaluateWithSession(sessionRules, permissions.external_path, "external_path", absPath);
+
+  if (action === "allow") {
+    await allowFsScope(absPath);
+    return { allowed: true };
+  }
+  if (action === "deny") return { allowed: false, error: t("ai.tool.error.pathDenied") };
+
+  if (!onPermission) {
+    return { allowed: false, error: t("ai.tool.error.pathOutsideWorkspace") };
+  }
+
+  const alwaysPattern = generateAlwaysPattern("external_path", absPath);
+  const userAction = await onPermission({
+    permissionKey: "external_path",
+    input: absPath,
+    alwaysPatterns: [alwaysPattern],
+  });
+
+  if (userAction === "allow") {
+    await allowFsScope(absPath);
+    return { allowed: true };
+  }
+  return { allowed: false, error: t("ai.tool.error.pathDenied") };
 }
 
 function makeOutlineTool(): ToolDefinition {
@@ -243,7 +310,8 @@ export function getToolDefinitions(needsDocTools: boolean, workspaceRoot?: strin
 
 async function resolveContent(
   path: string | undefined,
-  ctx: ToolContext
+  ctx: ToolContext,
+  onPermission?: OnPermissionCallback
 ): Promise<{ content: string; absPath?: string; error?: string }> {
   if (!path) {
     return { content: ctx.docContent };
@@ -253,9 +321,10 @@ async function resolveContent(
     return { content: "", error: t("ai.tool.error.noWorkspace") };
   }
 
-  const absPath = await join(ctx.workspaceRoot, path);
-  if (!isPathAllowed(absPath, ctx.workspaceRoot)) {
-    return { content: "", error: t("ai.tool.error.pathOutsideWorkspace") };
+  const absPath = await resolveAbsolutePath(path, ctx.workspaceRoot);
+  const { allowed, error } = await checkPathAccess(absPath, ctx.workspaceRoot, ctx, onPermission);
+  if (!allowed) {
+    return { content: "", error: error ?? t("ai.tool.error.pathOutsideWorkspace") };
   }
 
   if (!(await exists(absPath))) {
@@ -462,10 +531,11 @@ async function toolGlob(pattern: string, workspaceRoot: string): Promise<string>
   return results.join("\n") + suffix;
 }
 
-async function toolLs(dirPath: string | undefined, workspaceRoot: string): Promise<string> {
-  const absDir = dirPath ? await join(workspaceRoot, dirPath) : workspaceRoot;
-  if (!isPathAllowed(absDir, workspaceRoot)) {
-    return t("ai.tool.error.pathOutsideWorkspace");
+async function toolLs(dirPath: string | undefined, workspaceRoot: string, ctx: ToolContext, onPermission?: OnPermissionCallback): Promise<string> {
+  const absDir = dirPath ? await resolveAbsolutePath(dirPath, workspaceRoot) : workspaceRoot;
+  const { allowed, error } = await checkPathAccess(absDir, workspaceRoot, ctx, onPermission);
+  if (!allowed) {
+    return error ?? t("ai.tool.error.pathOutsideWorkspace");
   }
   if (!(await exists(absDir))) {
     return t("ai.tool.error.dirNotFound", { path: dirPath ?? "/" });
@@ -520,32 +590,33 @@ export async function executeTool(
   name: string,
   args: Record<string, unknown>,
   signal: AbortSignal,
-  ctx: ToolContext
+  ctx: ToolContext,
+  onPermission?: OnPermissionCallback
 ): Promise<string> {
   try {
     let result: string;
 
     switch (name) {
       case "outline": {
-        const { content, error } = await resolveContent(args.path as string | undefined, ctx);
+        const { content, error } = await resolveContent(args.path as string | undefined, ctx, onPermission);
         if (error) return error;
         result = toolOutline(content);
         break;
       }
       case "read": {
-        const { content, error } = await resolveContent(args.path as string | undefined, ctx);
+        const { content, error } = await resolveContent(args.path as string | undefined, ctx, onPermission);
         if (error) return error;
         result = toolRead(content, args.offset as number | undefined, args.limit as number | undefined);
         break;
       }
       case "read_section": {
-        const { content, error } = await resolveContent(args.path as string | undefined, ctx);
+        const { content, error } = await resolveContent(args.path as string | undefined, ctx, onPermission);
         if (error) return error;
         result = toolReadSection(String(args.heading ?? ""), content);
         break;
       }
       case "grep": {
-        const { content, error } = await resolveContent(args.path as string | undefined, ctx);
+        const { content, error } = await resolveContent(args.path as string | undefined, ctx, onPermission);
         if (error) return error;
         result = toolGrep(String(args.pattern ?? ""), content);
         break;
@@ -568,7 +639,7 @@ export async function executeTool(
         if (!ctx.workspaceRoot) {
           return t("ai.tool.error.noWorkspaceLs");
         }
-        result = await toolLs(args.path as string | undefined, ctx.workspaceRoot);
+        result = await toolLs(args.path as string | undefined, ctx.workspaceRoot, ctx, onPermission);
         break;
       }
       case "webfetch": {

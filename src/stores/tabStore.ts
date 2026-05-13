@@ -140,6 +140,9 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     if (!state.workspaceRoot) {
       import("../lib/chatPersistence").then(({ removeChat }) => removeChat(id));
       useChatStore.getState().deleteChat(id);
+      import("./permissionStore").then(({ usePermissionStore }) => {
+        usePermissionStore.getState().clearSessionRules(id);
+      });
     }
     state.getEditorHTMLMap.delete(id);
     state.editorActionMap.delete(id);
@@ -369,6 +372,8 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     const { removeChat } = await import("../lib/chatPersistence");
     removeChat(chatKey);
     useChatStore.getState().deleteChat(chatKey);
+    const { usePermissionStore } = await import("./permissionStore");
+    usePermissionStore.getState().clearSessionRules(chatKey);
 
     for (const tab of wsTabs) {
       if (tab.filePath === null) {
