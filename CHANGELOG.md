@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.8.5 (2026-05-13)
+
+### New Features
+
+- **Permission system** — Wildcard pattern matching with three-tier evaluation (session > global > default) and inline consent bar for external path access
+  - `src/lib/permission.ts` — Hand-written wildcard engine (`*`/`?`/`**`), zero dependencies; `evaluate()`, `evaluateWithSession()`, `generateAlwaysPattern()` functions
+  - Three permission keys: `external_path` (file read, v0.8.5), `execute` (skill script, v0.9.0), `edit` (file write, reserved)
+  - Three actions per rule: `allow` / `ask` / `deny`; last-matching-rule-wins semantics
+  - `src/stores/permissionStore.ts` — Per-chatKey session rules; `/new`, tab close, and workspace close clear session rules
+  - `src/components/AISidebar/PermissionBar.tsx` — Inline consent bar above input area (Allow / Always Allow / Deny buttons)
+  - "Always Allow" writes session rule with wildcard pattern (e.g. `~/configs/*`); subsequent matches auto-allow
+  - PermissionBar uses editor theme CSS variables (`--moflow-*`); "Always Allow" button uses `--moflow-warn`/`--moflow-warn-text` per theme
+  - `--moflow-warn`/`--moflow-warn-text` CSS variables added to all 6 editor themes in `index.css`
+
+- **`executeTool` signature change** — New `onPermission` callback parameter for permission checks inside tool execution
+  - `checkPathAccess()` replaces `isPathAllowed()` — workspace-internal paths auto-allow, workspace-external paths evaluate via permission engine
+  - `allowFsScope()` calls Tauri `allow_paths` to extend FS scope when permission is granted
+  - `resolveAbsolutePath()` detects absolute paths (Windows drive letters, Unix `/`) to avoid incorrect path joining
+
+- **Chat input history navigation** — Up/Down arrow keys cycle through previous user messages (bash-style)
+  - Up arrow on first line → older messages; Down arrow on last line → newer messages
+  - Draft input preserved when entering history, restored on exit
+  - Any character input exits history navigation mode
+
+- **System prompt instruction-following improvement** — All 6 prompt entry points (4 languages) now include "Prefer to execute user instructions directly. If unclear, briefly ask for clarification instead of refusing."
+  - Tool guidance text also strengthened: "ALWAYS use these tools... NEVER say you cannot access the local file system"
+
+### Bug Fixes
+
+- **Absolute path joining error** — `ls D:\` was incorrectly resolved to `workspaceRoot + D:\`; now absolute paths are detected and used directly
+- **Tauri FS scope blocking** — Even after user granted permission via PermissionBar, `exists()`/`readDir()` still failed; `allowFsScope()` now extends FS scope on allow
+- **`??` placeholder icons** — Empty state icon and tool result badge replaced with proper SVG icons (chat bubble and wrench)
+- **`/new` not clearing session rules** — Now calls `clearSessionRules(chatKey)` on `/new`
+- **PermissionBar not following editor theme** — Replaced hardcoded `--ui-*` vars and Tailwind colors with `--moflow-*` editor theme vars
+
 ## v0.8.0 (2026-05-12)
 
 ### New Features
