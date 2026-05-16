@@ -3,8 +3,8 @@ export type PermissionAction = "allow" | "ask" | "deny";
 export type PermissionRules = PermissionAction | Record<string, PermissionAction>;
 
 export interface Permissions {
-  external_path: PermissionRules;
-  run_skill_script: PermissionRules;
+  externalPath: PermissionRules;
+  runSkillScript: PermissionRules;
   edit: PermissionRules;
 }
 
@@ -15,15 +15,15 @@ export interface PermissionRule {
 }
 
 export interface PermissionRequest {
-  permissionKey: "external_path" | "run_skill_script" | "edit";
+  permissionKey: "externalPath" | "runSkillScript" | "edit";
   input: string;
   alwaysPatterns: string[];
   detail?: string;
 }
 
 export const DEFAULT_PERMISSIONS: Permissions = {
-  external_path: { "*": "ask" },
-  run_skill_script: { "*": "ask" },
+  externalPath: { "*": "ask" },
+  runSkillScript: { "*": "ask" },
   edit: { "*": "ask" },
 };
 
@@ -31,12 +31,12 @@ function escapeRegex(str: string): string {
   return str.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 }
 
-function wildcardToRegex(pattern: string, key: "external_path" | "run_skill_script" | "edit"): RegExp {
+function wildcardToRegex(pattern: string, key: "externalPath" | "runSkillScript" | "edit"): RegExp {
   const normalized = pattern.replace(/\\/g, "/");
 
   let regexStr = escapeRegex(normalized);
 
-  if (key === "external_path" || key === "edit") {
+  if (key === "externalPath" || key === "edit") {
     regexStr = regexStr
       .replace(/\{\{GLOBSTAR\}\}/g, "{{GLOBSTAR_PLACEHOLDER}}")
       .replace(/\*/g, "[^/]*")
@@ -60,7 +60,7 @@ function wildcardToRegex(pattern: string, key: "external_path" | "run_skill_scri
 export function wildcardMatch(
   pattern: string,
   input: string,
-  key: "external_path" | "run_skill_script" | "edit"
+  key: "externalPath" | "runSkillScript" | "edit"
 ): boolean {
   const normalizedInput = input.replace(/\\/g, "/");
   const regex = wildcardToRegex(pattern, key);
@@ -70,8 +70,9 @@ export function wildcardMatch(
 export function evaluate(
   rules: PermissionRules,
   input: string,
-  key: "external_path" | "run_skill_script" | "edit"
+  key: "externalPath" | "runSkillScript" | "edit"
 ): PermissionAction {
+  if (!rules) return "ask";
   if (typeof rules === "string") {
     return rules;
   }
@@ -90,7 +91,7 @@ export function evaluate(
 export function evaluateWithSession(
   sessionRules: PermissionRule[],
   globalRules: PermissionRules,
-  key: "external_path" | "run_skill_script" | "edit",
+  key: "externalPath" | "runSkillScript" | "edit",
   input: string
 ): PermissionAction {
   let lastSessionAction: PermissionAction | null = null;
@@ -105,10 +106,10 @@ export function evaluateWithSession(
 }
 
 export function generateAlwaysPattern(
-  key: "external_path" | "run_skill_script" | "edit",
+  key: "externalPath" | "runSkillScript" | "edit",
   input: string
 ): string {
-  if (key === "run_skill_script") {
+  if (key === "runSkillScript") {
     return input;
   }
 

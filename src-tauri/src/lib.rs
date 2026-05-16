@@ -773,6 +773,7 @@ async fn execute_script(
     args: Vec<String>,
     env_vars: Option<HashMap<String, String>>,
     timeout_secs: Option<u64>,
+    cwd: Option<String>,
 ) -> Result<String, String> {
     let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(30));
     let script_dir = std::path::Path::new(&script_path)
@@ -783,16 +784,15 @@ async fn execute_script(
         return Err(format!("Script not found: {}", script_path));
     }
 
-    let filename = std::path::Path::new(&script_path)
-        .file_name()
-        .ok_or_else(|| "Script path has no filename".to_string())?
-        .to_string_lossy()
-        .to_string();
+    let work_dir = cwd
+        .as_deref()
+        .and_then(|c| if std::path::Path::new(c).exists() { Some(c.to_string()) } else { None })
+        .unwrap_or_else(|| script_dir.to_string_lossy().to_string());
 
     let mut cmd = tokio::process::Command::new("bun");
-    cmd.arg(&filename)
+    cmd.arg(&script_path)
         .args(&args)
-        .current_dir(script_dir)
+        .current_dir(&work_dir)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
 

@@ -676,7 +676,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.9.3 — Write/Edit Tool & Skill 调用优化
+## v0.9.3 — Write/Edit Tool & Skill 调用优化 ✅
 
 ### Write Tool（文件写入能力）
 
@@ -700,11 +700,41 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ### Skill 调用 Prompt 优化
 
-- [ ] `run_skill_script` 硬停机制（`skillScriptExecuted` flag + 拦截逻辑 + 动态移除 tool schema）
-- [ ] `run_skill_script` tool description 简化（行为约束移至 system prompt）
-- [ ] `SKILL_INSTRUCTION` 拆分为 `SKILL_BASE` + `SKILL_SCRIPT`（按条件拼接）
-- [ ] `<available_skills>` XML 紧凑化（行内属性）
-- [ ] `<available_env_vars>` 精简（行内属性，保留 desc）
+- [x] `<available_skills>` XML 紧凑化（行内属性）
+- [x] `<available_env_vars>` 精简（行内属性，保留 desc）
+
+### Tool 显示与命名统一
+
+- [x] 工具名重命名：`read_section` → `readSection`、`run_skill_script` → `runSkillScript`、`external_path` → `externalPath`（8 文件 ~35 处）
+- [x] `formatToolArgs` 为 `read`/`readSection`/`grep`/`outline` 加结构化参数显示（path 在前无前缀，其余 `key=val`）
+- [x] Prompt 中 `read_lines` → `read` 统一
+- [x] i18n key 命名统一（工具名全驼峰，`formatToolArgs` 自然对齐）
+
+### Tool 轮次配置化
+
+- [x] `MAX_TOOL_ROUNDS` 从硬编码 10 → store 可配置 `maxToolRounds`（默认 20，Settings AI 面板可调 1-50）
+- [x] AISection 改为 draft + Save 模式（不再即时保存）
+- [x] maxToolRounds 输入框去掉上下箭头（`type="text"` + `inputMode="numeric"`）
+
+### UI 修复
+
+- [x] 错误状态工具结果改为 `<details>` 可折叠（GenericToolResult、EditToolResult、ReadToolGroup）
+- [x] `permission.ts evaluate()` 加 `if (!rules) return "ask"` 防御 undefined 崩溃
+- [x] ContextView 工具调用参数不再截断（去 30 字符限制）
+
+### Tool 结果精简
+
+- [x] `toolWrite` 返回 `"File written successfully."`（去掉路径/预览/字符数/`---`）
+- [x] `toolEdit` 返回 `"Edit applied successfully."` 或 `"... (N replacements)"`（去掉路径/diff/`---`）
+- [x] `EditToolResult` 重构：从 `item.info.args` 构建 diff 显示，不再解析 `msg.content` 的 `---` 分隔符
+
+### Skill 调用重构
+
+- [x] `runSkillScript` script 参数改为 `skillName/scriptName` 格式（如 `markdown-to-ppt/convert.js`），移除暴力遍历 fallback
+- [x] `toolSkill` 返回脚本名加 skill 前缀（`- markdown-to-ppt/convert.js` 替代 `- convert.js`）
+- [x] `runSkillScript` tool description 更新为新格式说明
+- [x] `executeSkillScript` 新增 `cwd` 参数，默认 activeFile 目录（回退 workspaceRoot）
+- [x] Rust `execute_script` 新增 `cwd: Option<String>` 参数
 
 ---
 
@@ -745,6 +775,9 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] AI 回复插入文档（聊天消息「插入」按钮，回复内容插入编辑器光标处）
 - [ ] 对话导出（Markdown / JSON）
 - [ ] 聊天历史搜索
+- [ ] `runSkillScript` 硬停机制（`skillScriptExecuted` flag + 拦截逻辑 + 动态移除 tool schema）
+- [ ] `runSkillScript` tool description 简化（行为约束移至 system prompt）
+- [ ] `SKILL_INSTRUCTION` 拆分为 `SKILL_BASE` + `SKILL_SCRIPT`（按条件拼接）
 
 ### 编辑器
 

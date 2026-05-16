@@ -92,7 +92,7 @@ function ToolCallChip({ name, args }: { name: string; args: string }) {
     const parsed = JSON.parse(args || "{}");
     const vals = Object.values(parsed).join(", ");
     if (vals) {
-      label += `(${vals.length > 30 ? vals.slice(0, 30) + "…" : vals})`;
+      label += `(${vals})`;
     } else {
       label += "()";
     }

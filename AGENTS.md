@@ -57,6 +57,7 @@ src/                    # Frontend (React + TypeScript)
     appStore.ts         # Re-exports from tabStore, themeStore, etc.
     chatStore.ts        # AI chat state (streamingContentMap, contextMap, cleanupIncompleteToolCalls)
     permissionStore.ts  # Session permission rules (per-chatKey, alwaysAllow cascade)
+    skillStore.ts       # Skill discovery, remote registry, install/update/uninstall
     aiSelectionStore.ts # Selection AI panel state
     searchStore.ts      # Find & replace state (per-tab editorViewMap)
     sessionStore.ts     # Session persistence (workspaceRoot)
@@ -84,14 +85,15 @@ src/                    # Frontend (React + TypeScript)
     exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
     themeCSS.ts         # Dynamic theme CSS generation
     permission.ts       # Permission engine (wildcard matching, evaluateWithSession, generateAlwaysPattern)
-    tools.ts            # AI tool definitions + execution (outline, grep, read_lines, read_section, webfetch, find, glob, ls) — descriptions hardcoded English, no i18n
-    types.ts            # Shared types (ToolCall, ToolDefinition, ChatMessage)
+    tools.ts            # AI tool definitions + execution (outline, read, readSection, grep, find, glob, ls, webfetch, write, edit, skill, runSkillScript) — descriptions hardcoded English, no i18n
+    skillManager.ts     # Skill discovery, SKILL.md parsing, script execution (cwd support)
+    types.ts            # Shared types (ToolCall, ToolDefinition, ChatMessage, SkillMeta)
     updater.ts          # Auto-update with proxy support
   App.tsx               # Root component
   main.tsx              # Entry point
 
 src-tauri/              # Backend (Rust + Tauri)
-  src/lib.rs            # Commands (toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests), ProxyState, CancelState, icon fix
+  src/lib.rs            # Commands (toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, execute_script, fetch_skill_registry), ProxyState, CancelState, icon fix
   src/main.rs           # Entry point
   tauri.conf.json       # Tauri config (window: [] for manual creation, bundle, security)
   Cargo.toml            # Rust dependencies (reqwest+socks, tokio, tokio-util, htmd, url)
@@ -111,6 +113,7 @@ src-tauri/              # Backend (Rust + Tauri)
 - CSS custom properties (`--ui-*`, `--moflow-*`) defined per theme in `index.css`, registered in `@theme` block for Tailwind namespace (e.g. `bg-ui-bg`, `text-moflow-text`)
 - Zustand for state management
 - Tauri plugins (dialog, fs) for native operations
+- `settings.json` keys must use camelCase (e.g. `externalPath`, `runSkillScript`, `maxToolRounds`), not snake_case
 
 ## Architecture Notes
 
@@ -142,9 +145,11 @@ src-tauri/              # Backend (Rust + Tauri)
 - `closeWorkspace` only closes workspace-related tabs (files under workspaceRoot), preserves other tabs; returns `false` if user cancels unsaved dialog
 - Opening a new directory auto-closes current workspace first (with unsaved confirm)
 - Shortcuts centralized in `src/lib/shortcuts.ts`, platform-aware display (Ctrl vs ⌘)
-- 8 AI tools: outline/read_lines/read_section/grep/find/glob/ls/webfetch; `getToolDefinitions(needsDocTools, workspaceRoot)` combines by mode
+- 12 AI tools: outline/read/readSection/grep/find/glob/ls/webfetch/write/edit/skill/runSkillScript; `getToolDefinitions(needsDocTools, workspaceRoot, activeFilePath)` combines by mode
 - Permission system: `checkPathAccess()` replaces `isPathAllowed()` — workspace-internal paths auto-allow, workspace-external paths evaluate via permission engine (session rules > global rules > default `ask`); `allowFsScope()` extends Tauri FS scope on allow
 - `executeTool` signature: `(name, args, signal, ctx, onPermission?)` — `onPermission` callback shows PermissionBar UI for external path access
-- Permission keys: `external_path` (file read), `execute` (skill script, v0.9.0), `edit` (file write, reserved); three actions: allow/ask/deny; wildcard patterns (`*`, `?`, `**`)
+- Permission keys: `externalPath` (file read), `runSkillScript` (skill script), `edit` (file write); three actions: allow/ask/deny; wildcard patterns (`*`, `?`, `**`)
 - Session rules stored per `chatKey` in `permissionStore`; `/new` and tab/workspace close clear session rules
 - Theme variables include `--moflow-warn`/`--moflow-warn-text` per editor theme (for PermissionBar "always allow" button)
+- `runSkillScript` script param requires `skillName/scriptName` format (e.g. `markdown-to-ppt/convert.js`); `executeSkillScript` accepts `cwd` param (activeFile dir > workspaceRoot); bun resolves `node_modules` from script's directory regardless of cwd
+- `toolWrite` returns `"File written successfully."`, `toolEdit` returns `"Edit applied successfully."` — minimal results to LLM; UI `EditToolResult` builds diff display from `item.info.args`

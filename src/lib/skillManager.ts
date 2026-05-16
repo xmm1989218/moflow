@@ -153,6 +153,7 @@ export async function executeSkillScript(
   script: string,
   args: string,
   envVars?: Record<string, string>,
+  cwd?: string,
 ): Promise<string> {
   const skillsDir = await getSkillsDir();
   const scriptPath = await join(skillsDir, skillName, "scripts", script);
@@ -168,5 +169,6 @@ export async function executeSkillScript(
     args: args ? args.split(/\s+/).filter(Boolean) : [],
     envVars: envVars ?? null,
     timeoutSecs: 30,
+    cwd: cwd ?? null,
   });
 }

@@ -154,10 +154,15 @@ function AISection() {
   useT();
   const aiConfig = useThemeStore((s) => s.aiConfig);
   const setAIConfig = useThemeStore((s) => s.setAIConfig);
+  const maxToolRounds = useThemeStore((s) => s.maxToolRounds);
+  const setMaxToolRounds = useThemeStore((s) => s.setMaxToolRounds);
   const [draft, setDraft] = useState<AIConfig>({ ...aiConfig });
+  const [draftMaxToolRounds, setDraftMaxToolRounds] = useState(maxToolRounds);
   const [showToken, setShowToken] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const currentProvider = getProviderInfo(draft.providerId);
   const currentModels = getProviderModels(draft.providerId);
   const isKnownModel = currentModels.some((m) => m.id === aiConfig.model);
@@ -167,9 +172,7 @@ function AISection() {
   const providerList = getProviders();
 
   const handleModeChange = (mode: "mock" | "real") => {
-    const newDraft = { ...draft, mode };
-    setDraft(newDraft);
-    setAIConfig(newDraft);
+    setDraft((d) => ({ ...d, mode }));
   };
 
   const handleProviderChange = (providerId: string) => {
@@ -178,16 +181,14 @@ function AISection() {
     const compatibility = info?.compatibility ?? "openai";
     const provider: "openai-compatible" | "claude-compatible" =
       compatibility === "claude" ? "claude-compatible" : "openai-compatible";
-    const newDraft = {
-      ...draft,
+    setDraft((d) => ({
+      ...d,
       providerId,
       provider,
-      apiEndpoint: info?.defaultEndpoint ?? draft.apiEndpoint,
+      apiEndpoint: info?.defaultEndpoint ?? d.apiEndpoint,
       model: models.length > 0 ? models[0].id : "",
-    };
-    setDraft(newDraft);
+    }));
     setModelInputMode(models.length > 0 ? "select" : "input");
-    setAIConfig(newDraft);
   };
 
   const handleModelSelect = (modelId: string) => {
@@ -196,15 +197,11 @@ function AISection() {
       setDraft((d) => ({ ...d, model: "" }));
       return;
     }
-    const newDraft = { ...draft, model: modelId };
-    setDraft(newDraft);
-    setAIConfig(newDraft);
+    setDraft((d) => ({ ...d, model: modelId }));
   };
 
   const handleFieldChange = (field: keyof AIConfig, value: string) => {
-    const newDraft = { ...draft, [field]: value };
-    setDraft(newDraft);
-    setAIConfig(newDraft);
+    setDraft((d) => ({ ...d, [field]: value }));
   };
 
   const handleTest = async () => {
@@ -230,6 +227,22 @@ function AISection() {
       setTesting(false);
     }
   };
+
+  const handleSave = async () => {
+    const clamped = Math.max(1, Math.min(50, draftMaxToolRounds));
+    setDraftMaxToolRounds(clamped);
+    setSaving(true);
+    try {
+      setAIConfig(draft);
+      setMaxToolRounds(clamped);
+      setToast(t("settings.ai.saved"));
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const canSave = draft.mode === "mock" || (draft.apiEndpoint && draft.apiToken && draft.model);
 
   return (
     <div className="max-w-[720px] w-full">
@@ -377,6 +390,34 @@ function AISection() {
           </div>
         </>
       )}
+
+      <div className="mt-5">
+        <label htmlFor="settings-ai-max-tool-rounds" className="block text-[13px] font-medium text-ui-text-secondary mb-1.5">{t("settings.ai.maxToolRounds")}</label>
+        <input
+          id="settings-ai-max-tool-rounds"
+          type="text"
+          inputMode="numeric"
+          className="max-w-[120px] px-2.5 py-1.5 rounded border border-ui-border bg-ui-input-bg text-ui-text text-[13px] font-inherit outline-none transition-colors duration-150 focus:border-ui-accent"
+          value={draftMaxToolRounds}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (!isNaN(v) && v >= 1 && v <= 50) setDraftMaxToolRounds(v);
+            else if (e.target.value === "") setDraftMaxToolRounds(1);
+          }}
+        />
+      </div>
+
+      <div className="flex items-center gap-3 mt-6">
+        <button
+          className="py-1.5 px-5 rounded border-none bg-ui-accent text-white text-[13px] font-inherit cursor-pointer transition-[background-color] duration-150 hover:bg-ui-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={handleSave}
+          disabled={saving || !canSave}
+        >
+          {saving ? t("settings.ai.saving") : t("settings.ai.save")}
+        </button>
+      </div>
+
+      {toast && <div className="mt-3 py-2 px-3 rounded bg-ui-bg-secondary border border-ui-border text-ui-text text-[13px] animate-menu-fadein">{toast}</div>}
     </div>
   );
 }

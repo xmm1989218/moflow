@@ -1,5 +1,49 @@
 # Changelog
 
+## v0.9.3 (2026-05-17)
+
+### New Features
+
+- **Write Tool** — AI can create or overwrite files
+  - `makeWriteTool()` — tool definition with path + content parameters, supports absolute and relative paths
+  - `toolWrite()` — execution logic: path resolution (workspace > activeFile dir > absolute), `edit` permission check, `allowFsScope`, `writeFile`, auto-create parent directories, sync open tab content
+  - `getToolDefinitions` now includes write tool when workspaceRoot or activeFilePath is available
+  - `WS_FILE_TOOLS` / `DOC_FILE_TOOLS` prompt instructions updated for write tool
+
+- **Edit Tool** — AI can make targeted text replacements in existing files
+  - `makeEditTool()` — tool definition with path + old_string + new_string + replace_all parameters
+  - `toolEdit()` — exact match + trailing-whitespace fuzzy match; multiple matches prompt replace_all; no match returns surrounding context hint
+  - `resolvePathAndCheckWritePermission()` — shared path resolution + permission check for write/edit
+  - `syncTabContent()` — shared tab content sync for write/edit
+
+### Improvements
+
+- **Skill call refactoring** — `runSkillScript` script parameter now requires `skillName/scriptName` format (e.g. `markdown-to-ppt/convert.js`), eliminating ambiguous brute-force fallback when two skills have same-named scripts
+  - `toolSkill` now returns script names with skill prefix (`- markdown-to-ppt/convert.js` instead of `- convert.js`)
+  - `executeSkillScript` passes `cwd` parameter (activeFile directory preferred, workspaceRoot fallback) so scripts can use relative file paths
+  - Rust `execute_script` accepts `cwd: Option<String>` parameter
+
+- **Tool result simplification** — write/edit tool results are now minimal strings (`"File written successfully."` / `"Edit applied successfully."`), since the LLM already has the tool call args; removed preview, path, diff, and `---` separator from results
+  - `EditToolResult` UI component now builds diff display from `item.info.args.old_string/new_string` instead of parsing `msg.content` for `---` separator
+
+- **Tool naming unification** — `read_section` → `readSection`, `run_skill_script` → `runSkillScript`, `external_path` → `externalPath` (8 files, ~35 places)
+  - `formatToolArgs` structured display for read/readSection/grep/outline — path first, `key=val` for rest
+  - Prompt `read_lines` → `read` unified in contextBuilder
+  - i18n key naming aligned with camelCase tool names
+
+- **Tool rounds configurable** — `MAX_TOOL_ROUNDS` from hardcoded 10 → store configurable `maxToolRounds` (default 20, range 1-50, Settings AI panel)
+  - AISection refactored to draft + Save mode (no instant save)
+  - maxToolRounds input: `type="text"` + `inputMode="numeric"` (no spinner arrows)
+
+- **`<available_skills>` / `<available_env_vars>` XML compacted** — Single-line attribute format saves ~120 tokens
+
+- **Error state collapsible** — GenericToolResult, EditToolResult, ReadToolGroup all use `<details>` for error states
+
+### Bug Fixes
+
+- **`permission.ts evaluate()` undefined guard** — Added `if (!rules) return "ask"` to prevent crash on undefined rules
+- **ContextView tool call params truncation** — Removed 30-char limit on tool args display
+
 ## v0.9.2 (2026-05-16)
 
 ### Improvements

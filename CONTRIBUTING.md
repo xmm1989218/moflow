@@ -58,16 +58,21 @@ bun run lint
 src/                    # Frontend (React + TypeScript)
   components/
     AISidebar/          # AI chat sidebar (doCompact, auto-compact, UsageBadge)
-    ConfirmCloseDialog/ # Unsaved changes dialog
+                          AISidebar.css — sidebar layout + chat bubble styles (trimmed)
+                          MessageContent.css — Markdown element selectors (retained)
+                          ContextView.tsx — context inspection panel
+                          PermissionBar.tsx — inline permission consent bar (allow/always/deny)
+    ConfirmCloseDialog/ # Unsaved changes dialog (Tailwind, no CSS file)
     Editor/             # Milkdown editor wrapper + SelectionAIPanel
+                          Editor.css — ProseMirror/Crepe/CodeMirror DOM overrides (retained)
     FileTree/           # Workspace file tree (lazy-load, right-click menu, new/rename/delete)
-    HamburgerMenu/      # Hamburger menu
+    HamburgerMenu/      # Hamburger menu (Tailwind, no CSS file)
     OutlineSidebar/     # Outline tree + Files tab (dual-tab header, shared resize handle)
-    SettingsPanel/      # Settings tab (appearance, AI, proxy, about)
-    StatusBar/          # Bottom status bar
-    TabBar/             # Tab management (file tabs + settings tab)
-    TitleBar/           # Custom frameless title bar (gear button)
-    UpdateDialog/       # Update notification toast
+    SettingsPanel/      # Settings tab (appearance, AI, proxy, about) (Tailwind, no CSS file)
+    StatusBar/          # Bottom status bar (Tailwind, no CSS file)
+    TabBar/             # Tab management (file tabs + settings tab) (Tailwind, no CSS file)
+    TitleBar/           # Custom frameless title bar (gear button) (Tailwind, no CSS file)
+  index.css             # Global styles + @theme block (73 CSS vars → Tailwind namespace)
   stores/
     appStore.ts         # Re-exports from tabStore, themeStore, etc.
     chatStore.ts        # AI chat state (streamingContentMap, contextMap, cleanupIncompleteToolCalls)
@@ -75,28 +80,40 @@ src/                    # Frontend (React + TypeScript)
     searchStore.ts      # Find & replace state (per-tab editorViewMap)
     sessionStore.ts     # Session persistence (workspaceRoot)
     tabStore.ts         # File tabs, workspaceRoot, getChatKey, closeWorkspace
-    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab, leftPanelTab
+    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab, leftPanelTab, language
+    permissionStore.ts  # Session permission rules (per-chatKey, alwaysAllow cascade)
+    skillStore.ts       # Skill discovery, remote registry, install/update/uninstall
     updateStore.ts      # Auto-update state
+  i18n/
+    core.ts             # Core i18n utilities (t, isZh, getLocale, setLanguage, resolveLanguage)
+    index.tsx           # I18nProvider component
+    useT.ts             # useT() hook for React reactivity on language change
+    locales/
+      zh.ts             # Chinese locale (~273 keys)
+      en.ts             # English locale (~273 keys, source of truth)
+      ja.ts             # Japanese locale (AI-generated)
+      ko.ts             # Korean locale (AI-generated)
   lib/
     chatPersistence.ts  # JSONL chat history (chatKey-based, safeFileName, append, load, repair)
-    contextBuilder.ts   # System prompt builder (workspaceRoot, activeFileName, dynamic maxContext)
+    contextBuilder.ts   # System prompt builder (workspaceRoot, activeFilePath, dynamic maxContext)
     modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
     llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling)
-    settings.ts         # App settings persistence (proxyUrl derived proxy state)
+    settings.ts         # App settings persistence (proxyUrl derived proxy state, permissions)
     exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
     fileOps.ts          # File read/write/open folder via Tauri FS plugin
-    i18n.ts             # Shared i18n helper (t() + isZh)
     imageManager.ts     # Image save/resolve (saveImageToFile, resolveImagePath)
     shortcuts.ts        # Centralized shortcut registry (getShortcutDisplay, getShortcutLabel)
     themeCSS.ts         # Dynamic theme CSS generation
-    tools.ts            # AI tool definitions + execution (outline, grep, read_lines, read_section, webfetch, find, glob, ls)
-    types.ts            # Shared types (ToolCall, ToolDefinition, ChatMessage)
+    permission.ts       # Permission engine (wildcard matching, evaluateWithSession, generateAlwaysPattern)
+    skillManager.ts     # Skill discovery, SKILL.md parsing, script execution
+    tools.ts            # AI tool definitions + execution (outline, read, readSection, grep, find, glob, ls, webfetch, write, edit, skill, runSkillScript)
+    types.ts            # Shared types (ToolCall, ToolDefinition, ChatMessage, SkillMeta)
     updater.ts          # Auto-update with proxy support
   App.tsx               # Root component
   main.tsx              # Entry point
 
 src-tauri/              # Backend (Rust + Tauri)
-  src/lib.rs            # Commands (toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests)
+  src/lib.rs            # Commands (toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, execute_script, fetch_skill_registry)
   src/main.rs           # Entry point
   tauri.conf.json       # Tauri config (window: [] for manual creation, bundle, security)
   Cargo.toml            # Rust dependencies (reqwest+socks, tokio, tokio-util, htmd, url)

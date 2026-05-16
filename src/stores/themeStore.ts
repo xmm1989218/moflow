@@ -42,6 +42,7 @@ function persistSettings(get: () => ThemeState) {
     language: s.language,
     permissions: s.permissions,
     envVars: s.envVars,
+    maxToolRounds: s.maxToolRounds,
   });
 }
 
@@ -57,6 +58,7 @@ interface ThemeState {
   language: SupportedLanguage;
   permissions: Permissions;
   envVars: Record<string, string>;
+  maxToolRounds: number;
   showSettingsTab: boolean;
   settingsTabActive: boolean;
   showOutline: boolean;
@@ -81,6 +83,7 @@ interface ThemeState {
   deactivateSettingsTab: () => void;
   setLeftPanelTab: (tab: "files" | "outline") => void;
   setEnvVars: (vars: Record<string, string>) => void;
+  setMaxToolRounds: (n: number) => void;
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
@@ -95,6 +98,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   language: "system",
   permissions: { ...DEFAULT_PERMISSIONS },
   envVars: {},
+  maxToolRounds: 20,
   showSettingsTab: false,
   settingsTabActive: false,
   showOutline: false,
@@ -179,6 +183,11 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   setEnvVars: (vars) => {
     set({ envVars: vars });
+    persistSettings(get);
+  },
+
+  setMaxToolRounds: (maxToolRounds) => {
+    set({ maxToolRounds });
     persistSettings(get);
   },
 }));

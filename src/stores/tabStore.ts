@@ -421,8 +421,9 @@ const defaultSettings = {
   aiConfig: { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" },
   proxyUrl: "",
   language: "system" as const,
-  permissions: { external_path: { "*": "ask" }, run_skill_script: { "*": "ask" }, edit: { "*": "ask" } },
+  permissions: { externalPath: { "*": "ask" }, runSkillScript: { "*": "ask" }, edit: { "*": "ask" } },
   envVars: {} as Record<string, string>,
+  maxToolRounds: 20,
 };
 
 const defaultAIConfig = { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" };
@@ -543,6 +544,7 @@ export async function initSession() {
     language: settings.language ?? "system",
     permissions: settings.permissions,
     envVars: settings.envVars ?? {},
+    maxToolRounds: settings.maxToolRounds ?? 20,
   });
 
   const { invoke } = await import("@tauri-apps/api/core");

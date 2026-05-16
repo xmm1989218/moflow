@@ -47,7 +47,7 @@ describe('tools', () => {
       const names = fileToolDefinitions.map((d) => d.function.name)
       expect(names).toContain('outline')
       expect(names).toContain('read')
-      expect(names).toContain('read_section')
+      expect(names).toContain('readSection')
     })
 
     it('projectToolDefinitions has 3 tools', () => {
@@ -156,9 +156,9 @@ describe('tools', () => {
       })
     })
 
-    describe('read_section', () => {
+    describe('readSection', () => {
       it('reads section content under heading', async () => {
-        const result = await executeTool('read_section', { heading: 'Methods' }, mockSignal, docCtx)
+        const result = await executeTool('readSection', { heading: 'Methods' }, mockSignal, docCtx)
         expect(result).toContain('Dataset')
         expect(result).toContain('Model Architecture')
         expect(result).toContain('Training')
@@ -166,13 +166,13 @@ describe('tools', () => {
       })
 
       it('reads subsection content', async () => {
-        const result = await executeTool('read_section', { heading: 'Dataset' }, mockSignal, docCtx)
+        const result = await executeTool('readSection', { heading: 'Dataset' }, mockSignal, docCtx)
         expect(result).toContain('large dataset')
         expect(result).not.toContain('Model Architecture')
       })
 
       it('returns available headings when not found', async () => {
-        const result = await executeTool('read_section', { heading: 'Nonexistent' }, mockSignal, docCtx)
+        const result = await executeTool('readSection', { heading: 'Nonexistent' }, mockSignal, docCtx)
         expect(result).toContain('Section not found')
         expect(result).toContain('Introduction')
       })

@@ -99,7 +99,7 @@ describe("contextBuilder", () => {
       expect(prompt).toContain("find:");
       expect(prompt).toContain("glob:");
       expect(prompt).toContain("ls:");
-      expect(prompt).toContain("read_lines:");
+      expect(prompt).toContain("read:");
     });
 
     it("workspace with no file shows workspace message", () => {

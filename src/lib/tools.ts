@@ -72,7 +72,7 @@ async function checkPathAccess(
 
   const permissions = ctx.permissions ?? DEFAULT_PERMISSIONS;
   const sessionRules = ctx.sessionRules ?? [];
-  const action = evaluateWithSession(sessionRules, permissions.external_path, "external_path", absPath);
+  const action = evaluateWithSession(sessionRules, permissions.externalPath, "externalPath", absPath);
 
   if (action === "allow") {
     await allowFsScope(absPath);
@@ -84,9 +84,9 @@ async function checkPathAccess(
     return { allowed: false, error: "Path is outside the workspace" };
   }
 
-  const alwaysPattern = generateAlwaysPattern("external_path", absPath);
+  const alwaysPattern = generateAlwaysPattern("externalPath", absPath);
   const userAction = await onPermission({
-    permissionKey: "external_path",
+    permissionKey: "externalPath",
     input: absPath,
     alwaysPatterns: [alwaysPattern],
   });
@@ -150,7 +150,7 @@ function makeReadSectionTool(): ToolDefinition {
   return {
     type: "function",
     function: {
-      name: "read_section",
+      name: "readSection",
       description: "Read content under a specific heading, until a same-level or higher-level heading. Heading must match exactly (without # prefix).",
       parameters: {
         type: "object",
@@ -394,14 +394,14 @@ async function resolveContent(
     if (!isCurrentFile) {
       const permissions = ctx.permissions ?? DEFAULT_PERMISSIONS;
       const sessionRules = ctx.sessionRules ?? [];
-      const action = evaluateWithSession(sessionRules, permissions.external_path, "external_path", absPath);
+      const action = evaluateWithSession(sessionRules, permissions.externalPath, "externalPath", absPath);
 
       if (action === "deny") return { content: "", error: "Access denied: permission not granted" };
       if (action === "ask") {
         if (!onPermission) return { content: "", error: "Access denied: permission not granted" };
-        const alwaysPattern = generateAlwaysPattern("external_path", absPath);
+        const alwaysPattern = generateAlwaysPattern("externalPath", absPath);
         const userAction = await onPermission({
-          permissionKey: "external_path",
+          permissionKey: "externalPath",
           input: absPath,
           alwaysPatterns: [alwaysPattern],
         });
@@ -769,10 +769,7 @@ async function toolWrite(
     await writeFile(absPath, new TextEncoder().encode(content));
     syncTabContent(absPath, content);
 
-    const previewLines = content.split("\n").slice(0, 20);
-    const preview = previewLines.join("\n");
-    const suffix = content.split("\n").length > 20 ? `\n... (${content.length} chars total)` : `\n(${content.length} chars)`;
-    return `File written: ${absPath}\n---\n${preview}${suffix}`;
+    return "File written successfully.";
   } catch (e) {
     return `Write error: ${e instanceof Error ? e.message : String(e)}`;
   }
@@ -855,11 +852,7 @@ async function toolEdit(
     syncTabContent(absPath, newContent);
 
     const countLabel = matches.length > 1 ? ` (${matches.length} replacements)` : "";
-    const diffLines: string[] = [];
-    for (const line of oldString.split("\n")) diffLines.push(`- ${line}`);
-    for (const line of newString.split("\n")) diffLines.push(`+ ${line}`);
-    const diff = diffLines.join("\n");
-    return `File edited: ${absPath}${countLabel}\n---\n${diff}`;
+    return `Edit applied successfully.${countLabel}`;
   } catch (e) {
     return `Edit error: ${e instanceof Error ? e.message : String(e)}`;
   }
@@ -889,14 +882,14 @@ export function makeRunSkillScriptTool(): ToolDefinition {
   return {
     type: "function",
     function: {
-      name: "run_skill_script",
-      description: "Run a .ts or .js script from a skill's scripts/ directory. You must first use the \"skill\" tool to load the skill before running its scripts. In args, use ${VAR_NAME} placeholders for environment variables — they will be resolved before execution. Available variables are listed when you load the skill. This tool only runs skill scripts, not shell commands. After a successful execution, you MUST report the output to the user and STOP. Do NOT retry or modify the command.",
+      name: "runSkillScript",
+      description: "Run a .ts or .js script from a skill's scripts/ directory. You must first use the \"skill\" tool to load the skill before running its scripts. The script parameter must be in skillName/scriptName format (e.g. 'markdown-to-ppt/convert.js'). In args, use ${VAR_NAME} placeholders for environment variables — they will be resolved before execution. Available variables are listed when you load the skill. This tool only runs skill scripts, not shell commands. After a successful execution, you MUST report the output to the user and STOP. Do NOT retry or modify the command.",
       parameters: {
         type: "object",
         properties: {
           script: {
             type: "string",
-            description: "Script filename (e.g. 'convert.js'). Must match a script listed when you loaded the skill.",
+            description: "Script name in skillName/scriptName format (e.g. 'markdown-to-ppt/convert.js'). Must match a script listed when you loaded the skill.",
           },
           args: {
             type: "string",
@@ -928,8 +921,8 @@ async function toolSkill(name: string): Promise<string> {
     const scripts = await listScriptFiles(name);
     const parts = [body];
     if (scripts.length > 0) {
-      parts.push("\n\nAvailable scripts (use with run_skill_script):");
-      for (const f of scripts) parts.push(`- ${f}`);
+      parts.push("\n\nAvailable scripts (use with runSkillScript):");
+      for (const f of scripts) parts.push(`- ${name}/${f}`);
     }
     const result = parts.join("\n");
     return result;
@@ -953,38 +946,44 @@ async function toolRunSkillScript(
   ctx: ToolContext,
   onPermission?: OnPermissionCallback,
 ): Promise<string> {
-  const enabledSkills = useSkillStore.getState().discoveredSkills.filter((s) => s.enabled && s.hasScripts);
-  let owningSkill = enabledSkills.find((s) => s.name === script.split("/")[0]);
-  if (!owningSkill) {
-    for (const s of enabledSkills) {
-      const scripts = await listScriptFiles(s.name);
-      if (scripts.includes(script)) {
-        owningSkill = s;
-        break;
-      }
-    }
-  }
-  if (!owningSkill) return `Script not found: ${script}. No enabled skill contains this script.`;
+  const slashIdx = script.indexOf("/");
+  if (slashIdx === -1) return `Invalid script format: "${script}". Must be skillName/scriptName (e.g. 'markdown-to-ppt/convert.js').`;
 
+  const skillName = script.slice(0, slashIdx);
+  const scriptName = script.slice(slashIdx + 1);
+
+  const skill = useSkillStore.getState().discoveredSkills.find((s) => s.name === skillName);
+  if (!skill) return `Unknown skill: ${skillName}`;
+  if (!skill.enabled) return `Skill disabled: ${skillName}`;
+
+  const scripts = await listScriptFiles(skillName);
+  if (!scripts.includes(scriptName)) return `Script not found: ${scriptName}. Available scripts: ${scripts.map((s) => `${skillName}/${s}`).join(", ")}`;
 
   const permissions = ctx.permissions ?? DEFAULT_PERMISSIONS;
   const sessionRules = ctx.sessionRules ?? [];
-  const action = evaluateWithSession(sessionRules, permissions.run_skill_script, "run_skill_script", owningSkill.name);
+  const action = evaluateWithSession(sessionRules, permissions.runSkillScript, "runSkillScript", skillName);
 
   if (action === "deny") {
-    return `Skill script execution for "${owningSkill.name}" was denied`;
+    return `Skill script execution for "${skillName}" was denied`;
   }
   if (action === "ask" && onPermission) {
-    const alwaysPattern = generateAlwaysPattern("run_skill_script", owningSkill.name);
+    const alwaysPattern = generateAlwaysPattern("runSkillScript", skillName);
     const userAction = await onPermission({
-      permissionKey: "run_skill_script",
-      input: owningSkill.name,
+      permissionKey: "runSkillScript",
+      input: skillName,
       alwaysPatterns: [alwaysPattern],
       detail: `${script} ${args}`.trim(),
     });
     if (userAction === "deny") {
-      return `Skill script execution for "${owningSkill.name}" was denied`;
+      return `Skill script execution for "${skillName}" was denied`;
     }
+  }
+
+  let cwd: string | undefined;
+  if (ctx.activeFilePath) {
+    cwd = await dirname(ctx.activeFilePath);
+  } else if (ctx.workspaceRoot) {
+    cwd = ctx.workspaceRoot;
   }
 
   try {
@@ -993,8 +992,8 @@ async function toolRunSkillScript(
     const mergedEnv: Record<string, string> = { ...envVars };
     if (ctx.workspaceRoot) mergedEnv.MOFLOW_WORKSPACE_ROOT = ctx.workspaceRoot;
     if (ctx.activeFilePath) mergedEnv.MOFLOW_ACTIVE_FILE = ctx.activeFilePath;
-    const result = await executeSkillScript(owningSkill.name, script, resolvedArgs, mergedEnv);
-    return truncateResult(result) + "\n\n[SUCCESS — Do NOT call run_skill_script again. Report this output to the user now.]";
+    const result = await executeSkillScript(skillName, scriptName, resolvedArgs, mergedEnv, cwd);
+    return truncateResult(result);
   } catch (e) {
     return `Script execution error: ${e instanceof Error ? e.message : String(e)}`;
   }
@@ -1023,7 +1022,7 @@ export async function executeTool(
         result = toolRead(content, args.offset as number | undefined, args.limit as number | undefined);
         break;
       }
-      case "read_section": {
+      case "readSection": {
         const { content, error } = await resolveContent(args.path as string | undefined, ctx, onPermission);
         if (error) return error;
         result = toolReadSection(String(args.heading ?? ""), content);
@@ -1072,7 +1071,7 @@ export async function executeTool(
         result = await toolSkill(String(args.name ?? ""));
         break;
       }
-      case "run_skill_script": {
+      case "runSkillScript": {
         result = await toolRunSkillScript(String(args.script ?? ""), String(args.args ?? ""), ctx, onPermission);
         break;
       }

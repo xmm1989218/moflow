@@ -14,10 +14,10 @@ export default function PermissionBar({ request, onAllow, onAlwaysAllow, onDeny 
 
   let label: string;
   switch (request.permissionKey) {
-    case "external_path":
+    case "externalPath":
       label = t("permission.accessPath", { path: request.input });
       break;
-    case "run_skill_script":
+    case "runSkillScript":
       label = t("permission.runSkillScript", { script: request.input });
       break;
     case "edit":

@@ -36,6 +36,7 @@ export interface AppSettings {
   language: SupportedLanguage;
   permissions: import("./permission").Permissions;
   envVars: Record<string, string>;
+  maxToolRounds: number;
 }
 
 export const defaultSettings: AppSettings = {
@@ -50,6 +51,7 @@ export const defaultSettings: AppSettings = {
   language: "system",
   permissions: { ...DEFAULT_PERMISSIONS },
   envVars: {},
+  maxToolRounds: 20,
 };
 
 export async function readSettings(): Promise<AppSettings> {
@@ -72,6 +74,7 @@ export async function readSettings(): Promise<AppSettings> {
       language: parsed.language ?? "system",
       permissions: { ...DEFAULT_PERMISSIONS, ...(parsed.permissions || {}) },
       envVars: parsed.envVars ?? {},
+      maxToolRounds: parsed.maxToolRounds ?? 20,
     };
     return settings;
   } catch {

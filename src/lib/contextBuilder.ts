@@ -48,8 +48,8 @@ export interface SystemPromptResult {
 
 const WS_FILE_TOOLS = [
   "- outline: Get document heading outline",
-  "- read_lines: Read a range of lines",
-  "- read_section: Read content under a heading",
+  "- read: Read a range of lines",
+  "- readSection: Read content under a heading",
   "- grep: Search lines matching a regex",
   "- find: Search files by name",
   "- glob: Match file paths by glob pattern",
@@ -60,8 +60,8 @@ const WS_FILE_TOOLS = [
 
 const DOC_FILE_TOOLS = [
   "- outline(path?): Get document heading outline",
-  "- read_lines(path?, offset?, limit?): Read a range of lines",
-  "- read_section(heading, path?): Read content under a heading",
+  "- read(path?, offset?, limit?): Read a range of lines",
+  "- readSection(heading, path?): Read content under a heading",
   "- grep(pattern, path?): Search matching lines",
   "- write(path, content): Create or overwrite a file",
   "- edit(path, old_string, new_string, replace_all?): Replace text in a file",
@@ -72,7 +72,7 @@ const WEBFETCH_INSTRUCTION = "You can use webfetch(url, format?) to access web p
 const SWITCH_NOTE = "Note: The user may switch files within the workspace. The content above is from the currently active file. If the user mentions other files, please use tools to view them.";
 
 const SKILL_INSTRUCTION = `# Skills
-Skills provide specialized capabilities. When a task matches a skill's description, first use the "skill" tool to load its instructions by name. After loading, if the skill includes scripts, use the "run_skill_script" tool to execute them. Always load the skill first before running any of its scripts. In run_skill_script args, use \${VAR_NAME} placeholders for environment variables. MoFlow resolves these before execution — you do NOT need to know their actual values. Available variables and their current values are listed below. After a script runs successfully, you MUST report the output to the user and STOP immediately. Do NOT make any additional run_skill_script calls. Do NOT retry with different arguments. Do NOT attempt to improve or modify the result unless the user explicitly asks.`;
+Skills provide specialized capabilities. When a task matches a skill's description, first use the "skill" tool to load its instructions by name. After loading, if the skill includes scripts, use the "runSkillScript" tool to execute them. Always load the skill first before running any of its scripts. In runSkillScript args, use \${VAR_NAME} placeholders for environment variables. MoFlow resolves these before execution — you do NOT need to know their actual values. Available variables and their current values are listed below. After a script runs successfully, you MUST report the output to the user and STOP immediately. Do NOT make any additional runSkillScript calls. Do NOT retry with different arguments. Do NOT attempt to improve or modify the result unless the user explicitly asks.`;
 
 function buildSkillInstruction(workspaceRoot?: string | null, activeFilePath?: string | null): string {
   const available = useSkillStore.getState().discoveredSkills.filter((s) => s.enabled);
@@ -83,18 +83,13 @@ function buildSkillInstruction(workspaceRoot?: string | null, activeFilePath?: s
     "<available_skills>",
     ...available
       .toSorted((a, b) => a.name.localeCompare(b.name))
-      .flatMap((s) => [
-        "  <skill>",
-        `    <name>${s.name}</name>`,
-        `    <description>${s.description}</description>`,
-        "  </skill>",
-      ]),
+      .map((s) => `  <skill name="${s.name}" description="${s.description}" />`),
     "</available_skills>",
   ].join("\n");
 
   const envVars: string[] = [];
-  if (workspaceRoot) envVars.push(`    <var>\n      <name>MOFLOW_WORKSPACE_ROOT</name>\n      <description>Current workspace root path</description>\n      <current_value>${workspaceRoot}</current_value>\n    </var>`);
-  if (activeFilePath) envVars.push(`    <var>\n      <name>MOFLOW_ACTIVE_FILE</name>\n      <description>Currently active file path</description>\n      <current_value>${activeFilePath}</current_value>\n    </var>`);
+  if (workspaceRoot) envVars.push(`  <var name="MOFLOW_WORKSPACE_ROOT" desc="Current workspace root path" value="${workspaceRoot}" />`);
+  if (activeFilePath) envVars.push(`  <var name="MOFLOW_ACTIVE_FILE" desc="Currently active file path" value="${activeFilePath}" />`);
 
   const envXml = envVars.length > 0
     ? "\n<available_env_vars>\n" + envVars.join("\n") + "\n</available_env_vars>"

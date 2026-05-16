@@ -31,6 +31,7 @@
   --color-moflow-accent-hover: var(--moflow-accent-hover);
   --color-moflow-warn: var(--moflow-warn);
   --color-moflow-warn-text: var(--moflow-warn-text);
+  --color-moflow-error: var(--moflow-error);
   --color-moflow-sidebar-bg: var(--moflow-sidebar-bg);
   --color-moflow-toolbar-bg: var(--moflow-toolbar-bg);
   --color-moflow-code-bg: var(--moflow-code-bg);
@@ -160,6 +161,7 @@
   --moflow-accent-hover: #0550ae;
   --moflow-warn: #eab308;
   --moflow-warn-text: #1f2328;
+  --moflow-error: #cf222e;
   --moflow-sidebar-bg: #f6f8fa;
   --moflow-toolbar-bg: #ffffff;
   --moflow-code-bg: #f6f8fa;
@@ -204,6 +206,7 @@
   --moflow-accent-hover: #79c0ff;
   --moflow-warn: #d29922;
   --moflow-warn-text: #0d1117;
+  --moflow-error: #f85149;
   --moflow-sidebar-bg: #161b22;
   --moflow-toolbar-bg: #0d1117;
   --moflow-code-bg: #161b22;
@@ -241,6 +244,7 @@
   --moflow-accent-hover: #81a1c1;
   --moflow-warn: #ebcb8b;
   --moflow-warn-text: #2e3440;
+  --moflow-error: #bf616a;
   --moflow-sidebar-bg: #e5e9f0;
   --moflow-toolbar-bg: #eceff4;
   --moflow-code-bg: #e5e9f0;
@@ -278,6 +282,7 @@
   --moflow-accent-hover: #81a1c1;
   --moflow-warn: #ebcb8b;
   --moflow-warn-text: #2e3440;
+  --moflow-error: #bf616a;
   --moflow-sidebar-bg: #3b4252;
   --moflow-toolbar-bg: #2e3440;
   --moflow-code-bg: #3b4252;
@@ -314,6 +319,7 @@
   --moflow-accent-hover: #2a6ef5;
   --moflow-warn: #df8e1d;
   --moflow-warn-text: #eff1f5;
+  --moflow-error: #d20f39;
   --moflow-sidebar-bg: #e6e9ef;
   --moflow-toolbar-bg: #eff1f5;
   --moflow-code-bg: #e6e9ef;
@@ -350,6 +356,7 @@
   --moflow-accent-hover: #74c7ec;
   --moflow-warn: #f9e2af;
   --moflow-warn-text: #1e1e2e;
+  --moflow-error: #f38ba8;
   --moflow-sidebar-bg: #181825;
   --moflow-toolbar-bg: #1e1e2e;
   --moflow-code-bg: #313244;

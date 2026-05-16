@@ -556,11 +556,11 @@
 }
 
 .moflow-ai-tool-error {
-  border-left: 3px solid var(--moflow-warn);
+  border-left: 3px solid var(--moflow-error);
 }
 
 .moflow-ai-tool-error-badge {
-  color: var(--moflow-warn);
+  color: var(--moflow-error);
   font-size: 11px;
   margin-left: 4px;
 }
@@ -571,7 +571,7 @@
   font-size: 12px;
   line-height: 1.4;
   font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", monospace;
-  color: var(--moflow-warn);
+color: var(--moflow-error);
   background-color: var(--moflow-bg-secondary);
   border-radius: 6px;
   white-space: pre-wrap;

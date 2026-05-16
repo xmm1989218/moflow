@@ -23,7 +23,6 @@ import { useT } from "../../i18n/useT";
 import "./AISidebar.css";
 
 const emptyMessages: Message[] = [];
-const MAX_TOOL_ROUNDS = 10;
 
 function UsageBadge({ tabId, providerId, model, onClick, active }: { tabId: string; providerId: string; model: string; onClick: () => void; active: boolean }) {
   const contextTokens = useChatStore((s) => s.contextTokensMap[tabId] ?? 0);
@@ -98,15 +97,15 @@ function ToolCallStatus({ name, args, completedReadStats }: { name: string; args
     const currentReads = completedReadStats.reads + (READ_TYPE_TOOLS.has(name) ? 1 : 0);
     const currentSearches = completedReadStats.searches + (SEARCH_TYPE_TOOLS.has(name) ? 1 : 0);
     const parts: string[] = [];
-    if (currentReads > 0) parts.push(`${currentReads} reads`);
-    if (currentSearches > 0) parts.push(`${currentSearches} searches`);
+    if (currentReads > 0) parts.push(`${currentReads} ${t("ai.toolLabel.reads")}`);
+    if (currentSearches > 0) parts.push(`${currentSearches} ${t("ai.toolLabel.searches")}`);
     const label = parts.join(" ");
 
     return (
       <div className="moflow-ai-tool-status">
         <span className="moflow-ai-tool-spinner" />
         <span className="moflow-ai-tool-status-icon"><ToolIcon type="read" /></span>
-        <span>Exploring · {label}</span>
+        <span>{t("ai.toolLabel.exploring")} · {label}</span>
       </div>
     );
   }
@@ -119,7 +118,7 @@ function ToolCallStatus({ name, args, completedReadStats }: { name: string; args
     case "read":
       text = t("ai.toolStatus.read");
       break;
-    case "read_section":
+    case "readSection":
       text = t("ai.toolStatus.readSection", { heading: String(args.heading) });
       break;
     case "grep":
@@ -138,16 +137,16 @@ function ToolCallStatus({ name, args, completedReadStats }: { name: string; args
       text = t("ai.toolStatus.webfetch", { url: String(args.url) });
       break;
     case "skill":
-      text = t("ai.toolStatus.skill") + `: ${args.name ?? ""}`;
+      text = `${t("ai.toolLabel.skill")} ${args.name ?? ""}`;
       break;
-    case "run_skill_script":
-      text = t("ai.toolStatus.runSkillScript") + `: ${args.script ?? ""}${args.args ? " " + String(args.args) : ""}`;
+    case "runSkillScript":
+      text = `${t("ai.toolLabel.runSkillScript")} ${args.script ?? ""}${args.args ? " " + String(args.args) : ""}`;
       break;
     case "write":
-      text = `Edit ${args.path ?? ""}`;
+      text = `${t("ai.toolLabel.write")} ${args.path ?? ""}`;
       break;
     case "edit":
-      text = `Edit ${args.path ?? ""}`;
+      text = `${t("ai.toolLabel.edit")} ${args.path ?? ""}`;
       break;
     default:
       text = t("ai.toolStatus.default", { name });
@@ -156,23 +155,48 @@ function ToolCallStatus({ name, args, completedReadStats }: { name: string; args
   return (
     <div className="moflow-ai-tool-status">
       <span className="moflow-ai-tool-spinner" />
-      <span className="moflow-ai-tool-status-icon"><ToolIcon type={name === "run_skill_script" ? "script" : name === "webfetch" ? "webfetch" : name === "skill" ? "skill" : READ_TOOLS.has(name) ? "read" : EDIT_TOOLS.has(name) ? "edit" : "generic"} /></span>
+      <span className="moflow-ai-tool-status-icon"><ToolIcon type={name === "runSkillScript" ? "script" : name === "webfetch" ? "webfetch" : name === "skill" ? "skill" : READ_TOOLS.has(name) ? "read" : EDIT_TOOLS.has(name) ? "edit" : "generic"} /></span>
       <span>{text}</span>
     </div>
   );
 }
 
 function formatToolArgs(name: string, args: Record<string, unknown>): string {
-  if (name === "write" || name === "edit") return `Edit ${args.path ?? ""}`;
-  if (name === "run_skill_script") return `Run ${args.script ?? ""}${args.args ? " " + String(args.args) : ""}`;
-  const displayName = name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, " ");
+  const labelKey = `ai.toolLabel.${name}`;
+  const label = t(labelKey) !== labelKey ? t(labelKey) : name.charAt(0).toUpperCase() + name.slice(1);
+  if (name === "write" || name === "edit") return `${label} ${args.path ?? ""}`;
+  if (name === "runSkillScript") return `${label} ${args.script ?? ""}${args.args ? " " + String(args.args) : ""}`;
+  if (name === "webfetch") return `${label} ${args.url ?? ""}`;
+  if (name === "skill") return `${label} ${args.name ?? ""}`;
+  if (name === "read") {
+    const parts = [label, args.path ?? ""];
+    if (args.offset != null) parts.push(`offset=${args.offset}`);
+    if (args.limit != null) parts.push(`limit=${args.limit}`);
+    return parts.join(" ");
+  }
+  if (name === "readSection") {
+    const parts = [label];
+    if (args.path) parts.push(String(args.path));
+    if (args.heading) parts.push(`heading=${args.heading}`);
+    return parts.join(" ");
+  }
+  if (name === "grep") {
+    const parts = [label];
+    if (args.path) parts.push(String(args.path));
+    if (args.pattern) parts.push(`pattern=${args.pattern}`);
+    return parts.join(" ");
+  }
+  if (name === "outline") {
+    if (args.path) return `${label} ${args.path}`;
+    return label;
+  }
   const entries = Object.entries(args);
-  if (entries.length === 0) return displayName;
+  if (entries.length === 0) return label;
   const parts = entries.map(([, v]) => String(v));
-  return `${displayName} ${parts.join(" ")}`;
+  return `${label} ${parts.join(" ")}`;
 }
 
-const READ_TOOLS = new Set(["outline", "read", "read_section", "grep", "find", "glob", "ls"]);
+const READ_TOOLS = new Set(["outline", "read", "readSection", "grep", "find", "glob", "ls"]);
 const EDIT_TOOLS = new Set(["write", "edit"]);
 
 function ToolIcon({ type }: { type: "read" | "edit" | "script" | "webfetch" | "skill" | "generic" }) {
@@ -231,7 +255,7 @@ interface ToolItem {
   isError: boolean;
 }
 
-const READ_TYPE_TOOLS = new Set(["outline", "read", "read_section"]);
+const READ_TYPE_TOOLS = new Set(["outline", "read", "readSection"]);
 const SEARCH_TYPE_TOOLS = new Set(["grep", "find", "glob", "ls"]);
 function buildReadLabel(items: ToolItem[]): string {
   let reads = 0;
@@ -243,8 +267,8 @@ function buildReadLabel(items: ToolItem[]): string {
     else reads++;
   }
   const parts: string[] = [];
-  if (reads > 0) parts.push(`${reads} reads`);
-  if (searches > 0) parts.push(`${searches} searches`);
+  if (reads > 0) parts.push(`${reads} ${t("ai.toolLabel.reads")}`);
+  if (searches > 0) parts.push(`${searches} ${t("ai.toolLabel.searches")}`);
   return parts.join(" ");
 }
 
@@ -257,13 +281,18 @@ function ReadToolGroup({ items }: { items: ToolItem[] }) {
       <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
         <summary className="moflow-ai-tool-group-summary">
           <span className="moflow-ai-tool-group-icon"><ToolIcon type="read" /></span>
-          <span>Explored · {label}</span>
+          <span>{t("ai.toolLabel.explored")} · {label}</span>
         </summary>
         <div className="moflow-ai-tool-group-items">
           {items.map((item) => (
             <div key={item.msg.id} className={`moflow-ai-tool-group-item${item.isError ? " moflow-ai-tool-error" : ""}`}>
               <span className="moflow-ai-tool-group-item-label">{item.info ? formatToolArgs(item.info.name, item.info.args) : (item.msg.toolName ?? "")}</span>
-              {item.isError && <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>}
+              {item.isError && (
+                <details>
+                  <summary className="moflow-ai-tool-error-summary">Error</summary>
+                  <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
+                </details>
+              )}
             </div>
           ))}
         </div>
@@ -281,27 +310,32 @@ function EditToolResult({ item }: { item: ToolItem }) {
   if (item.isError) {
     displayContent = item.msg.content;
   } else {
-    const content = item.msg.content;
-    const sepIdx = content.indexOf("\n---\n");
-    if (sepIdx !== -1) {
-      const header = content.slice(0, sepIdx);
-      const body = content.slice(sepIdx + 5);
-      displayContent = lang ? `\`\`\`${lang}\n${body}\n\`\`\`` : body;
-      if (!item.isError) displayContent = `**${header}**\n\n${displayContent}`;
+    const toolName = item.info?.name;
+    if (toolName === "write") {
+      displayContent = item.msg.content;
     } else {
-      displayContent = lang ? `\`\`\`${lang}\n${content}\n\`\`\`` : content;
+      const oldString = String(item.info?.args.old_string ?? "");
+      const newString = String(item.info?.args.new_string ?? "");
+      const diffLines: string[] = [];
+      for (const line of oldString.split("\n")) diffLines.push(`- ${line}`);
+      for (const line of newString.split("\n")) diffLines.push(`+ ${line}`);
+      const diff = diffLines.join("\n");
+      displayContent = lang ? `\`\`\`${lang}\n${diff}\n\`\`\`` : diff;
+      displayContent = `**${item.msg.content}**\n\n${displayContent}`;
     }
   }
 
   if (item.isError) {
     return (
       <div className="moflow-ai-tool-edit moflow-ai-tool-error">
-        <div className="moflow-ai-tool-edit-header">
-          <span className="moflow-ai-tool-edit-icon"><ToolIcon type="edit" /></span>
-          <span>Edit {path}</span>
-          <span className="moflow-ai-tool-error-badge">✗</span>
-        </div>
-        <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
+        <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+          <summary className="moflow-ai-tool-edit-header">
+            <span className="moflow-ai-tool-edit-icon"><ToolIcon type="edit" /></span>
+            <span>{t("ai.toolLabel.edit")} {path}</span>
+            <span className="moflow-ai-tool-error-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+          </summary>
+          <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
+        </details>
       </div>
     );
   }
@@ -311,7 +345,7 @@ function EditToolResult({ item }: { item: ToolItem }) {
       <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
         <summary className="moflow-ai-tool-edit-header">
           <span className="moflow-ai-tool-edit-icon"><ToolIcon type="edit" /></span>
-          <span>Edit {path}</span>
+          <span>{t("ai.toolLabel.edit")} {path}</span>
         </summary>
         <div className="moflow-ai-tool-edit-content">
           <MessageContent content={displayContent} />
@@ -328,12 +362,14 @@ function GenericToolResult({ item, iconType }: { item: ToolItem; iconType: "read
   if (item.isError) {
     return (
       <div className="moflow-ai-tool-group moflow-ai-tool-error">
-        <div className="moflow-ai-tool-group-summary">
-          <span className="moflow-ai-tool-group-icon"><ToolIcon type={iconType} /></span>
-          <span>{label}</span>
-          <span className="moflow-ai-tool-error-badge">✗</span>
-        </div>
-        <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
+        <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+          <summary className="moflow-ai-tool-group-summary">
+            <span className="moflow-ai-tool-group-icon"><ToolIcon type={iconType} /></span>
+            <span>{label}</span>
+            <span className="moflow-ai-tool-error-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+          </summary>
+          <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
+        </details>
       </div>
     );
   }
@@ -364,7 +400,7 @@ function ToolResultGroups({ toolMessages, messages }: { toolMessages: Message[];
     let type: "read" | "edit" | "script" | "generic";
     if (READ_TOOLS.has(name)) type = "read";
     else if (EDIT_TOOLS.has(name)) type = "edit";
-    else if (name === "run_skill_script") type = "script";
+    else if (name === "runSkillScript") type = "script";
     else type = "generic";
 
     const lastGroup = groups.length > 0 ? groups[groups.length - 1] : null;
@@ -794,7 +830,9 @@ export default function AISidebar() {
       let round = 0;
       let webfetchCount = 0;
 
-      while (round <= MAX_TOOL_ROUNDS) {
+      const maxToolRounds = useThemeStore.getState().maxToolRounds;
+
+      while (round <= maxToolRounds) {
         round++;
 
         const contextMsgs = useChatStore.getState().getContext(chatKey);
@@ -913,7 +951,7 @@ export default function AISidebar() {
 
         setToolCallStatus(null);
 
-        if (round >= MAX_TOOL_ROUNDS) {
+        if (round >= maxToolRounds) {
           const limitMsg = addMessage(chatKey, {
             role: "assistant",
             content: t("ai.error.toolRoundsLimit"),
