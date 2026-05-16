@@ -68,13 +68,13 @@ src/                    # Frontend (React + TypeScript)
     index.tsx           # I18nProvider component
     useT.ts             # useT() hook for React reactivity on language change
     locales/
-      zh.ts             # Chinese locale (~318 keys)
-      en.ts             # English locale (~318 keys, source of truth)
+      zh.ts             # Chinese locale (~273 keys)
+      en.ts             # English locale (~273 keys, source of truth)
       ja.ts             # Japanese locale (AI-generated)
       ko.ts             # Korean locale (AI-generated)
   lib/
     chatPersistence.ts  # JSONL chat history (chatKey-based, safeFileName, append, load, repair)
-    contextBuilder.ts   # System prompt builder (workspaceRoot, activeFileName, dynamic maxContext)
+    contextBuilder.ts   # System prompt builder (workspaceRoot, activeFilePath, dynamic maxContext)
     fileOps.ts          # File read/write/open folder via Tauri FS plugin
     imageManager.ts     # Image save/resolve (saveImageToFile, resolveImagePath)
     modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
@@ -84,7 +84,7 @@ src/                    # Frontend (React + TypeScript)
     exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
     themeCSS.ts         # Dynamic theme CSS generation
     permission.ts       # Permission engine (wildcard matching, evaluateWithSession, generateAlwaysPattern)
-    tools.ts            # AI tool definitions + execution (outline, grep, read_lines, read_section, webfetch, find, glob, ls)
+    tools.ts            # AI tool definitions + execution (outline, grep, read_lines, read_section, webfetch, find, glob, ls) — descriptions hardcoded English, no i18n
     types.ts            # Shared types (ToolCall, ToolDefinition, ChatMessage)
     updater.ts          # Auto-update with proxy support
   App.tsx               # Root component
@@ -135,7 +135,8 @@ src-tauri/              # Backend (Rust + Tauri)
 - `completionTokensMap`, `totalTokensMap`, `costMap` are memory-only (reset on restart)
 - i18n: `src/i18n/core.ts` exports `t(key, params?)`, `isZh()`, `setLanguage()`, `resolveLanguage()`; `src/i18n/useT.ts` exports `useT()` hook for React reactivity; `src/i18n/index.tsx` exports `I18nProvider`; 4 locale files in `src/i18n/locales/`; dot-notation keys (e.g. `"common.confirm"`, `"ai.send"`)
 - **IMPORTANT**: All React components that call `t()` must also call `useT()` to re-render on language change; `t()` from `core.ts` is a module-level function with no React reactivity
-- Tool definitions use factory functions (e.g. `makeOutlineTool()`) instead of module-level `const` — `t()` must be called lazily at request time, not at module init
+- Tool definitions use factory functions (e.g. `makeOutlineTool()`) but descriptions are hardcoded English strings (not i18n) — LLM prompts should always be English
+- Tool error messages in `tools.ts` are also hardcoded English (not i18n) — they are only consumed by the LLM, not displayed to users
 - Settings Tab is a special tab (not a file tab), controlled by `showSettingsTab`/`settingsTabActive` in themeStore
 - Active file tab background uses editor theme (`--moflow-bg`/`--moflow-accent`), settings tab uses app theme (`--ui-*` vars)
 - `closeWorkspace` only closes workspace-related tabs (files under workspaceRoot), preserves other tabs; returns `false` if user cancels unsaved dialog

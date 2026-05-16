@@ -1,5 +1,20 @@
 # Changelog
 
+## v0.9.2 (2026-05-16)
+
+### Improvements
+
+- **AI prompt hardcoded English** — Tool descriptions and error messages in `tools.ts` changed from i18n `t()` calls to hardcoded English strings, since LLM prompts should always be in English regardless of UI language
+  - 26 tool definition descriptions (`ai.tool.*.desc` / `ai.tool.*.param.*`) replaced with inline English
+  - 27 tool error messages (`ai.tool.error.*`) replaced with inline English
+  - `skill` and `run_skill_script` tool descriptions added proper English text (previously missing from `en.ts`, causing fallback failures)
+  - Removed `import { t } from "../i18n/core"` from `tools.ts`
+- **Locale cleanup** — Removed ~45 `ai.tool.*` / `ai.tool.error.*` keys from all 4 locale files (en/zh/ja/ko); retained `ai.toolStatus.*` keys (UI-visible spinner text)
+
+### Bug Fixes
+
+- **Missing `js-yaml` dependency** — Added `js-yaml` and `@types/js-yaml` to `package.json` (previously used but undeclared, causing `TS2307: Cannot find module 'js-yaml'` on `bun run build`)
+
 ## v0.9.0 (2026-05-16)
 
 ### New Features
