@@ -17,8 +17,8 @@ export default function PermissionBar({ request, onAllow, onAlwaysAllow, onDeny 
     case "external_path":
       label = t("permission.accessPath", { path: request.input });
       break;
-    case "execute":
-      label = t("permission.executeScript", { script: request.input });
+    case "run_skill_script":
+      label = t("permission.runSkillScript", { script: request.input });
       break;
     case "edit":
       label = t("permission.editPath", { path: request.input });

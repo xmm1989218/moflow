@@ -72,6 +72,14 @@ function App() {
           const { loadTabContent } = await import("./lib/fileOps");
           loadTabContent(activeTab.id);
         }
+        try {
+          const { useSkillStore } = await import("./stores/skillStore");
+          await useSkillStore.getState().discoverSkills();
+          const skills = useSkillStore.getState().discoveredSkills;
+          console.info("[App] discoverSkills completed:", skills.length, "skills", skills.map((s) => `${s.name}(${s.enabled ? "on" : "off"})`));
+        } catch (e) {
+          console.error("[App] discoverSkills failed:", e);
+        }
       })
       .catch((e) => {
         console.error("initFromStartupData failed:", e);

@@ -1,5 +1,68 @@
 # Changelog
 
+## v0.9.0 (2026-05-16)
+
+### New Features
+
+- **Skill system** — Extensible skill framework with discovery, activation, and script execution
+  - `src/lib/skillManager.ts` — Skill discovery (scan `SKILL.md` frontmatter), body loading, script execution via `bun`
+  - `src/lib/skillRegistry.ts` — Remote skill registry from GitHub monorepo (`moflow-skills`), install/update/uninstall with atomic replacement
+  - `src/stores/skillStore.ts` — Zustand store for discovered/remote skills, install statuses
+  - `src/lib/prompt/default.txt` — Static system prompt (English only, replaces i18n-based prompts)
+  - `src/lib/types.ts` — `SkillMeta`, `RemoteSkill`, `SkillInstallStatus` types
+  - `skill` tool — AI loads skill instructions by name; `<available_skills>` XML in system prompt (opencode pattern)
+  - `run_skill_script` tool — Execute `.ts`/`.js` scripts from skill's `scripts/` directory; `${VAR_NAME}` placeholder resolution; three-layer STOP instruction
+  - `/skills` slash command — Dropdown display of enabled skills with descriptions (no toggle; enable/disable only via Settings)
+
+- **Skill Store UI** — Browse, install, update, and uninstall skills from Settings → Skills
+  - `src/components/SettingsPanel/SkillsSection.tsx` — Available (remote) + Installed (local) sections with confirm dialogs
+  - `src/components/SettingsPanel/EnvVarsSection.tsx` — Auto-save environment variables for skill scripts
+  - `src/stores/themeStore.ts` — `envVars`/`setEnvVars` persisted via `persistSettings`
+  - `src/lib/settings.ts` — `envVars` field added to `AppSettings`
+
+- **Rust backend for skills**
+  - `fetch_skill_registry` — Fetch remote skill list from GitHub monorepo
+  - `download_and_install_skill` — Download zip, extract skill, atomic install (rename old→`.old`, tmp→target, rollback on failure)
+  - `uninstall_skill` — Remove skill directory
+  - `clean_skill_temp` — Clean `.tmp-*` and `*.old` directories
+  - `check_bun_available` — Verify bun is installed
+  - `execute_script` — Run script via `bun` in skill's `scripts/` directory with env vars and 30s timeout
+  - Windows path separator fix: `PathBuf::starts_with`/`strip_prefix` instead of string comparison
+
+- **Confirm dialog** — Generic confirm mode for skill install/update/uninstall
+  - `src/stores/appStore.ts` — `DialogMode` union adds `"confirm"`, `showConfirmDialog()` action
+  - `src/lib/closeDialog.ts` — `showConfirmDialog()`/`resolveConfirm()` functions
+  - `src/components/ConfirmCloseDialog/ConfirmCloseDialog.tsx` — Confirm mode UI (OK/Cancel)
+
+- **Permission system update** — `execute` → `run_skill_script`
+  - `src/lib/permission.ts` — Permission key renamed from `execute` to `run_skill_script`
+  - `src/stores/permissionStore.ts` — Updated key type
+  - `src/components/AISidebar/PermissionBar.tsx` — `run_skill_script` case added
+
+- **SlashCommandMenu rewrite** — 3-phase menu (commands → models → skills)
+  - `/skills` shows enabled skills with name on first line, description on second line
+  - Menu width auto-adapts to textarea width
+
+- **i18n updates** — All 4 locales (en/zh/ja/ko) updated with skill/runSkillScript descriptions and params
+  - Removed `ai.systemPrompt.*` and `ai.mdSyntax` keys (replaced by static `default.txt`)
+
+### Prompt & Skill Optimization (v0.9.1)
+
+- **Document content XML tags** — `---` separators replaced with `<document_content>` / `<document_structure>` tags, preventing LLM confusion between filenames and document titles
+- **Environment variable current values** — `<available_env_vars>` now includes `<current_value>` showing actual paths; `buildSystemPrompt` param changed from `activeFileName` to `activeFilePath`
+- **Removed redundant prompt text** — "The user is editing..." / "Please answer..." removed; XML tags self-document
+- **SKILL_INSTRUCTION updated** — "MoFlow resolves these before execution — you do NOT need to know their actual values"
+- **Skill tool output cleaned** — Removed redundant `Available environment variables` paragraph (already in system prompt `<available_env_vars>`)
+- **Strengthened STOP instruction** — `[Script executed successfully. Report this output to the user and STOP.]` → `[SUCCESS — Do NOT call run_skill_script again. Report this output to the user now.]`
+- **Removed debug logs** — 20 `console.info` calls removed from contextBuilder, tools, AISidebar, skillManager, skillStore
+
+### Bug Fixes
+
+- **`initFromStartupData` missing fields** — Added `language`, `permissions`, `envVars` to local `defaultSettings` and `useThemeStore.setState()` call, preventing silent data loss on normal startup
+- **Zustand infinite loop** — Moved `.filter()` outside `useSkillStore` selector to return stable reference
+- **SkillsSection i18n key mismatches** — Fixed; errors now via `showAlertDialog`
+- **`discoverSkills()` startup race** — Moved from `initSession()` to `App.tsx` startup callback (runs after both init paths)
+
 ## v0.8.5 (2026-05-13)
 
 ### New Features

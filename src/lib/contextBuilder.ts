@@ -1,4 +1,7 @@
-﻿export function estimateTokens(text: string): number {
+﻿import DEFAULT_PROMPT from './prompt/default.txt?raw';
+import { useSkillStore } from "../stores/skillStore";
+
+export function estimateTokens(text: string): number {
   let zhCount = 0;
   for (const ch of text) {
     if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(ch)) zhCount++;
@@ -43,27 +46,57 @@ export interface SystemPromptResult {
   needsDocTools: boolean;
 }
 
-import { t, isZh } from "../i18n/core";
+const WS_FILE_TOOLS = [
+  "- outline: Get document heading outline",
+  "- read_lines: Read a range of lines",
+  "- read_section: Read content under a heading",
+  "- grep: Search lines matching a regex",
+  "- find: Search files by name",
+  "- glob: Match file paths by glob pattern",
+  "- ls: List directory contents",
+].join("\n");
 
-function buildWsFileTools(): string {
-  return [
-    t("ai.systemPrompt.toolOutline"),
-    t("ai.systemPrompt.toolRead"),
-    t("ai.systemPrompt.toolReadSection"),
-    t("ai.systemPrompt.toolGrep"),
-    t("ai.systemPrompt.toolFind"),
-    t("ai.systemPrompt.toolGlob"),
-    t("ai.systemPrompt.toolLs"),
-  ].join("\n");
-}
+const DOC_FILE_TOOLS = [
+  "- outline(path?): Get document heading outline",
+  "- read_lines(path?, offset?, limit?): Read a range of lines",
+  "- read_section(heading, path?): Read content under a heading",
+  "- grep(pattern, path?): Search matching lines",
+].join("\n");
 
-function buildDocTools(): string {
-  return [
-    t("ai.systemPrompt.docToolOutline"),
-    t("ai.systemPrompt.docToolRead"),
-    t("ai.systemPrompt.docToolReadSection"),
-    t("ai.systemPrompt.docToolGrep"),
+const WEBFETCH_INSTRUCTION = "You can use webfetch(url, format?) to access web page content for external information or references. format supports markdown (default), text, html. Max 3 calls per request.";
+
+const SWITCH_NOTE = "Note: The user may switch files within the workspace. The content above is from the currently active file. If the user mentions other files, please use tools to view them.";
+
+const SKILL_INSTRUCTION = `# Skills
+Skills provide specialized capabilities. When a task matches a skill's description, first use the "skill" tool to load its instructions by name. After loading, if the skill includes scripts, use the "run_skill_script" tool to execute them. Always load the skill first before running any of its scripts. In run_skill_script args, use \${VAR_NAME} placeholders for environment variables. MoFlow resolves these before execution — you do NOT need to know their actual values. Available variables and their current values are listed below. After a script runs successfully, you MUST report the output to the user and STOP immediately. Do NOT make any additional run_skill_script calls. Do NOT retry with different arguments. Do NOT attempt to improve or modify the result unless the user explicitly asks.`;
+
+function buildSkillInstruction(workspaceRoot?: string | null, activeFilePath?: string | null): string {
+  const available = useSkillStore.getState().discoveredSkills.filter((s) => s.enabled);
+  if (available.length === 0) {
+    return "";
+  }
+  const skillXml = [
+    "<available_skills>",
+    ...available
+      .toSorted((a, b) => a.name.localeCompare(b.name))
+      .flatMap((s) => [
+        "  <skill>",
+        `    <name>${s.name}</name>`,
+        `    <description>${s.description}</description>`,
+        "  </skill>",
+      ]),
+    "</available_skills>",
   ].join("\n");
+
+  const envVars: string[] = [];
+  if (workspaceRoot) envVars.push(`    <var>\n      <name>MOFLOW_WORKSPACE_ROOT</name>\n      <description>Current workspace root path</description>\n      <current_value>${workspaceRoot}</current_value>\n    </var>`);
+  if (activeFilePath) envVars.push(`    <var>\n      <name>MOFLOW_ACTIVE_FILE</name>\n      <description>Currently active file path</description>\n      <current_value>${activeFilePath}</current_value>\n    </var>`);
+
+  const envXml = envVars.length > 0
+    ? "\n<available_env_vars>\n" + envVars.join("\n") + "\n</available_env_vars>"
+    : "";
+
+  return "\n" + SKILL_INSTRUCTION + "\n\n" + skillXml + envXml + "\n";
 }
 
 export function buildSystemPrompt(
@@ -71,8 +104,10 @@ export function buildSystemPrompt(
   maxContext: number,
   needsDocTools: boolean = false,
   workspaceRoot?: string | null,
-  activeFileName?: string | null,
+  activeFilePath?: string | null,
 ): SystemPromptResult {
+  const base = DEFAULT_PROMPT;
+  const skillSection = buildSkillInstruction(workspaceRoot, activeFilePath);
   const hasWorkspace = !!workspaceRoot;
 
   if (hasWorkspace) {
@@ -83,14 +118,15 @@ export function buildSystemPrompt(
     if (!docContent || docContent.trim().length === 0) {
       return {
         prompt: [
-          t("ai.systemPrompt.wsNoFile"),
+          base,
           "",
-          t("ai.mdSyntax"),
+          "The user has a workspace open but no file is currently active.",
           "",
-          t("ai.systemPrompt.browseWorkspace"),
-          buildWsFileTools(),
+          "You can use the following tools to browse workspace files. When the user asks about files, directories, or code, ALWAYS use these tools:",
+          WS_FILE_TOOLS,
           "",
-          t("ai.systemPrompt.webfetchInstruction"),
+          WEBFETCH_INSTRUCTION,
+          skillSection,
         ].join("\n"),
         needsDocTools: true,
       };
@@ -99,25 +135,22 @@ export function buildSystemPrompt(
     const docTokens = estimateTokens(docContent);
 
     if (docTokens <= availableDocTokens) {
-      const fileLabel = activeFileName
-        ? (isZh() ? `「${activeFileName}」` : `"${activeFileName}"`)
-        : (isZh() ? "" : "a Markdown document");
       return {
         prompt: [
-          t("ai.systemPrompt.wsWithFile", { fileLabel }),
-          "---",
+          base,
+          "",
+          "The user has a workspace open.",
+          "<document_content>",
           docContent,
-          "---",
-          t("ai.systemPrompt.basedOnDoc"),
+          "</document_content>",
           "",
-          t("ai.systemPrompt.switchNote"),
+          SWITCH_NOTE,
           "",
-          t("ai.mdSyntax"),
+          "You can use the following tools. When the user asks about files, directories, or code, ALWAYS use these tools:",
+          WS_FILE_TOOLS,
           "",
-          t("ai.systemPrompt.youCanUseTools"),
-          buildWsFileTools(),
-          "",
-          t("ai.systemPrompt.webfetchInstruction"),
+          WEBFETCH_INSTRUCTION,
+          skillSection,
         ].join("\n"),
         needsDocTools: true,
       };
@@ -132,31 +165,29 @@ export function buildSystemPrompt(
 
     const truncated = docContent.slice(0, maxChars);
     const outline = buildOutline(docContent);
-    const fileLabel = activeFileName
-      ? (isZh() ? `「${activeFileName}」` : `"${activeFileName}"`)
-      : (isZh() ? "" : "a Markdown document");
 
     const prompt = [
-      t("ai.systemPrompt.wsTruncated", { fileLabel }),
+      base,
       "",
-      t("ai.systemPrompt.docContentTruncated"),
+      "The user has a workspace open (long content, only the beginning is shown).",
+      "",
+      "<document_content truncated=\"true\">",
       truncated,
-      "---",
+      "</document_content>",
       "",
-      t("ai.systemPrompt.docStructure"),
+      "<document_structure>",
       outline,
-      "---",
+      "</document_structure>",
       "",
-      t("ai.systemPrompt.switchNote"),
+      SWITCH_NOTE,
       "",
-      t("ai.mdSyntax"),
+      "You can use the following tools to explore the full document content. When the user asks about files, directories, or code, ALWAYS use these tools:",
+      WS_FILE_TOOLS,
       "",
-      t("ai.systemPrompt.useToolsToExplore"),
-      buildWsFileTools(),
+      WEBFETCH_INSTRUCTION,
       "",
-      t("ai.systemPrompt.webfetchInstruction"),
-      "",
-      t("ai.systemPrompt.proactiveToolUse"),
+      "When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.",
+      skillSection,
     ].join("\n");
 
     return { prompt, needsDocTools: true };
@@ -169,11 +200,12 @@ export function buildSystemPrompt(
   if (!docContent || docContent.trim().length === 0) {
     return {
       prompt: [
-        t("ai.systemPrompt.noDoc"),
+        base,
         "",
-        t("ai.mdSyntax"),
+        "The user has no document open.",
         "",
-        t("ai.systemPrompt.webfetchInstruction"),
+        WEBFETCH_INSTRUCTION,
+        skillSection,
       ].join("\n"),
       needsDocTools: false,
     };
@@ -184,15 +216,14 @@ export function buildSystemPrompt(
   if (docTokens <= availableDocTokens) {
     return {
       prompt: [
-        t("ai.systemPrompt.withDoc"),
-        "---",
+        base,
+        "",
+        "<document_content>",
         docContent,
-        "---",
-        t("ai.systemPrompt.basedOnDoc"),
+        "</document_content>",
         "",
-        t("ai.mdSyntax"),
-        "",
-        t("ai.systemPrompt.webfetchInstruction"),
+        WEBFETCH_INSTRUCTION,
+        skillSection,
       ].join("\n"),
       needsDocTools: false,
     };
@@ -209,24 +240,23 @@ export function buildSystemPrompt(
   const outline = buildOutline(docContent);
 
   const prompt = [
-    t("ai.systemPrompt.truncated"),
+    base,
     "",
-    t("ai.systemPrompt.docContentTruncated"),
+    "<document_content truncated=\"true\">",
     truncated,
-    "---",
+    "</document_content>",
     "",
-    t("ai.systemPrompt.docStructure"),
+    "<document_structure>",
     outline,
-    "---",
+    "</document_structure>",
     "",
-    t("ai.mdSyntax"),
+    "You can use the following tools to explore the full document content. When the user asks about files, directories, or code, ALWAYS use these tools:",
+    DOC_FILE_TOOLS,
     "",
-    t("ai.systemPrompt.useToolsToExplore"),
-    buildDocTools(),
+    WEBFETCH_INSTRUCTION,
     "",
-    t("ai.systemPrompt.webfetchInstruction"),
-    "",
-    t("ai.systemPrompt.proactiveToolUse"),
+    "When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.",
+    skillSection,
   ].join("\n");
 
   return { prompt, needsDocTools: true };

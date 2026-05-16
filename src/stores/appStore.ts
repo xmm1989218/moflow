@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 export type CloseDialogResult = "save" | "discard" | "cancel";
-export type DialogMode = "confirm-close" | "alert";
+export type DialogMode = "confirm-close" | "alert" | "confirm";
 
 interface CloseDialogState {
   visible: boolean;
@@ -14,6 +14,7 @@ interface AppState {
 
   showCloseDialog: (message: string) => void;
   showAlertDialog: (message: string) => void;
+  showConfirmDialog: (message: string) => void;
   hideCloseDialog: () => void;
 }
 
@@ -26,6 +27,10 @@ export const useAppStore = create<AppState>((set) => ({
 
   showAlertDialog: (message) => {
     set({ closeDialog: { visible: true, message, mode: "alert" } });
+  },
+
+  showConfirmDialog: (message) => {
+    set({ closeDialog: { visible: true, message, mode: "confirm" } });
   },
 
   hideCloseDialog: () => {

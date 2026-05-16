@@ -420,6 +420,9 @@ const defaultSettings = {
   outlineWidth: 240,
   aiConfig: { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" },
   proxyUrl: "",
+  language: "system" as const,
+  permissions: { external_path: { "*": "ask" }, run_skill_script: { "*": "ask" }, edit: { "*": "ask" } },
+  envVars: {} as Record<string, string>,
 };
 
 const defaultAIConfig = { mode: "mock", providerId: "custom", provider: "openai-compatible", apiEndpoint: "", apiToken: "", model: "" };
@@ -449,6 +452,9 @@ export async function initFromStartupData(): Promise<boolean> {
       outlineWidth: (settings.outlineWidth as number) ?? 240,
       aiConfig: settings.aiConfig as import("../lib/settings").AIConfig,
       proxyUrl: settings.proxyUrl,
+      language: (settings.language as import("../lib/settings").SupportedLanguage) ?? "system",
+      permissions: settings.permissions as import("../lib/permission").Permissions | undefined,
+      envVars: (settings.envVars as Record<string, string>) ?? {},
     });
     await invoke("set_proxy", { proxyUrl: settings.proxyUrl || null });
     performance.mark("apply-settings-end");
@@ -534,6 +540,9 @@ export async function initSession() {
     outlineWidth: settings.outlineWidth ?? 240,
     aiConfig: settings.aiConfig,
     proxyUrl: settings.proxyUrl ?? "",
+    language: settings.language ?? "system",
+    permissions: settings.permissions,
+    envVars: settings.envVars ?? {},
   });
 
   const { invoke } = await import("@tauri-apps/api/core");

@@ -7,7 +7,7 @@ interface PermissionState {
   addSessionRule: (chatKey: string, rule: PermissionRule) => void;
   evaluatePermission: (
     chatKey: string,
-    key: "external_path" | "execute" | "edit",
+    key: "external_path" | "run_skill_script" | "edit",
     input: string,
     globalRules: Permissions
   ) => PermissionAction;

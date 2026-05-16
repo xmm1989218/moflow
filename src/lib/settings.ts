@@ -35,6 +35,7 @@ export interface AppSettings {
   proxyUrl: string;
   language: SupportedLanguage;
   permissions: import("./permission").Permissions;
+  envVars: Record<string, string>;
 }
 
 export const defaultSettings: AppSettings = {
@@ -48,6 +49,7 @@ export const defaultSettings: AppSettings = {
   proxyUrl: "",
   language: "system",
   permissions: { ...DEFAULT_PERMISSIONS },
+  envVars: {},
 };
 
 export async function readSettings(): Promise<AppSettings> {
@@ -69,6 +71,7 @@ export async function readSettings(): Promise<AppSettings> {
       outlineWidth: parsed.outlineWidth ?? 240,
       language: parsed.language ?? "system",
       permissions: { ...DEFAULT_PERMISSIONS, ...(parsed.permissions || {}) },
+      envVars: parsed.envVars ?? {},
     };
     return settings;
   } catch {

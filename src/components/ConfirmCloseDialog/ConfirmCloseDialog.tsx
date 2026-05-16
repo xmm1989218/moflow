@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useAppStore, type CloseDialogResult } from "../../stores/appStore";
-import { resolveDialog, resolveAlert } from "../../lib/closeDialog";
+import { resolveDialog, resolveAlert, resolveConfirm } from "../../lib/closeDialog";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 
@@ -64,10 +64,22 @@ export default function ConfirmCloseDialog() {
     resolveAlert();
   };
 
+  const handleConfirmOk = () => {
+    hideCloseDialog();
+    resolveConfirm(true);
+  };
+
+  const handleConfirmCancel = () => {
+    hideCloseDialog();
+    resolveConfirm(false);
+  };
+
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       if (closeDialog.mode === "alert") {
         handleAlertOk();
+      } else if (closeDialog.mode === "confirm") {
+        handleConfirmCancel();
       } else {
         handleResult("cancel");
       }
@@ -78,6 +90,8 @@ export default function ConfirmCloseDialog() {
     if (e.key === "Escape") {
       if (closeDialog.mode === "alert") {
         handleAlertOk();
+      } else if (closeDialog.mode === "confirm") {
+        handleConfirmCancel();
       } else {
         handleResult("cancel");
       }
@@ -111,6 +125,15 @@ export default function ConfirmCloseDialog() {
               </button>
               <button className={`${btnBase} border-ui-accent bg-ui-accent text-white hover:opacity-90`} onClick={() => handleResult("save")}>
                 {t("common.save")}
+              </button>
+            </>
+          ) : closeDialog.mode === "confirm" ? (
+            <>
+              <button className={`${btnBase} border-ui-border bg-transparent text-ui-text-secondary hover:bg-ui-bg-secondary`} onClick={handleConfirmCancel}>
+                {t("common.cancel")}
+              </button>
+              <button className={`${btnBase} border-ui-accent bg-ui-accent text-white hover:opacity-90`} onClick={handleConfirmOk}>
+                {t("common.confirm")}
               </button>
             </>
           ) : (

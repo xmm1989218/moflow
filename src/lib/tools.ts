@@ -7,11 +7,15 @@ import { t } from "../i18n/core";
 import type { PermissionAction, PermissionRequest } from "./permission";
 import { evaluateWithSession, generateAlwaysPattern, DEFAULT_PERMISSIONS } from "./permission";
 import type { Permissions } from "./permission";
+import { useSkillStore } from "../stores/skillStore";
+import { loadSkillBody, listScriptFiles, executeSkillScript } from "./skillManager";
+import { useThemeStore } from "../stores/themeStore";
 
 export type OnPermissionCallback = (request: PermissionRequest) => Promise<PermissionAction>;
 
 export interface ToolContext {
   workspaceRoot?: string;
+  activeFilePath?: string;
   docContent: string;
   permissions?: Permissions;
   sessionRules?: import("./permission").PermissionRule[];
@@ -586,6 +590,140 @@ async function toolWebFetch(url: string, format: string | undefined, signal: Abo
   }
 }
 
+export function makeSkillTool(): ToolDefinition {
+  return {
+    type: "function",
+    function: {
+      name: "skill",
+      description: t("ai.tool.skill.desc"),
+      parameters: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: t("ai.tool.skill.param.name"),
+          },
+        },
+        required: ["name"],
+      },
+    },
+  };
+}
+
+export function makeRunSkillScriptTool(): ToolDefinition {
+  return {
+    type: "function",
+    function: {
+      name: "run_skill_script",
+      description: t("ai.tool.runSkillScript.desc"),
+      parameters: {
+        type: "object",
+        properties: {
+          script: {
+            type: "string",
+            description: t("ai.tool.runSkillScript.param.script"),
+          },
+          args: {
+            type: "string",
+            description: t("ai.tool.runSkillScript.param.args"),
+          },
+        },
+        required: ["script"],
+      },
+    },
+  };
+}
+
+export function shouldAddRunSkillScriptTool(): boolean {
+  const skills = useSkillStore.getState().discoveredSkills.filter((s) => s.enabled);
+  const withScripts = skills.filter((s) => s.hasScripts);
+  const result = withScripts.length > 0;
+  return result;
+}
+
+async function toolSkill(name: string): Promise<string> {
+  if (!name) return "Skill name is required";
+
+  const skill = useSkillStore.getState().discoveredSkills.find((s) => s.name === name);
+  if (!skill) return `Unknown skill: ${name}`;
+  if (!skill.enabled) return `Skill disabled: ${name}`;
+
+  try {
+    const body = await loadSkillBody(name);
+    const scripts = await listScriptFiles(name);
+    const parts = [body];
+    if (scripts.length > 0) {
+      parts.push("\n\nAvailable scripts (use with run_skill_script):");
+      for (const f of scripts) parts.push(`- ${f}`);
+    }
+    const result = parts.join("\n");
+    return result;
+  } catch (e) {
+    return `Failed to load skill "${name}": ${e instanceof Error ? e.message : String(e)}`;
+  }
+}
+
+function resolveEnvVars(args: string, ctx: ToolContext, userEnv?: Record<string, string>): string {
+  return args.replace(/\$\{(\w+)\}/g, (_, key) => {
+    if (key === "MOFLOW_WORKSPACE_ROOT" && ctx.workspaceRoot) return ctx.workspaceRoot;
+    if (key === "MOFLOW_ACTIVE_FILE" && ctx.activeFilePath) return ctx.activeFilePath;
+    if (userEnv && userEnv[key]) return userEnv[key];
+    return `\${${key}}`;
+  });
+}
+
+async function toolRunSkillScript(
+  script: string,
+  args: string,
+  ctx: ToolContext,
+  onPermission?: OnPermissionCallback,
+): Promise<string> {
+  const enabledSkills = useSkillStore.getState().discoveredSkills.filter((s) => s.enabled && s.hasScripts);
+  let owningSkill = enabledSkills.find((s) => s.name === script.split("/")[0]);
+  if (!owningSkill) {
+    for (const s of enabledSkills) {
+      const scripts = await listScriptFiles(s.name);
+      if (scripts.includes(script)) {
+        owningSkill = s;
+        break;
+      }
+    }
+  }
+  if (!owningSkill) return `Script not found: ${script}. No enabled skill contains this script.`;
+
+
+  const permissions = ctx.permissions ?? DEFAULT_PERMISSIONS;
+  const sessionRules = ctx.sessionRules ?? [];
+  const action = evaluateWithSession(sessionRules, permissions.run_skill_script, "run_skill_script", owningSkill.name);
+
+  if (action === "deny") {
+    return t("ai.tool.error.runSkillScriptDenied", { name: owningSkill.name });
+  }
+  if (action === "ask" && onPermission) {
+    const alwaysPattern = generateAlwaysPattern("run_skill_script", owningSkill.name);
+    const userAction = await onPermission({
+      permissionKey: "run_skill_script",
+      input: owningSkill.name,
+      alwaysPatterns: [alwaysPattern],
+    });
+    if (userAction === "deny") {
+      return t("ai.tool.error.runSkillScriptDenied", { name: owningSkill.name });
+    }
+  }
+
+  try {
+    const envVars = useThemeStore.getState().envVars ?? {};
+    const resolvedArgs = resolveEnvVars(args, ctx, envVars);
+    const mergedEnv: Record<string, string> = { ...envVars };
+    if (ctx.workspaceRoot) mergedEnv.MOFLOW_WORKSPACE_ROOT = ctx.workspaceRoot;
+    if (ctx.activeFilePath) mergedEnv.MOFLOW_ACTIVE_FILE = ctx.activeFilePath;
+    const result = await executeSkillScript(owningSkill.name, script, resolvedArgs, mergedEnv);
+    return truncateResult(result) + "\n\n[SUCCESS — Do NOT call run_skill_script again. Report this output to the user now.]";
+  } catch (e) {
+    return `Script execution error: ${e instanceof Error ? e.message : String(e)}`;
+  }
+}
+
 export async function executeTool(
   name: string,
   args: Record<string, unknown>,
@@ -644,6 +782,14 @@ export async function executeTool(
       }
       case "webfetch": {
         result = await toolWebFetch(String(args.url ?? ""), args.format != null ? String(args.format) : undefined, signal);
+        break;
+      }
+      case "skill": {
+        result = await toolSkill(String(args.name ?? ""));
+        break;
+      }
+      case "run_skill_script": {
+        result = await toolRunSkillScript(String(args.script ?? ""), String(args.args ?? ""), ctx, onPermission);
         break;
       }
       default:

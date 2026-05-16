@@ -8,8 +8,10 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AIConfig } from "../../lib/settings";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
+import SkillsSection from "./SkillsSection";
+import EnvVarsSection from "./EnvVarsSection";
 
-type Section = "appearance" | "ai" | "proxy" | "about";
+type Section = "appearance" | "ai" | "skills" | "envVars" | "proxy" | "about";
 
 const sectionIcons: Record<Section, React.JSX.Element> = {
   appearance: (
@@ -20,6 +22,16 @@ const sectionIcons: Record<Section, React.JSX.Element> = {
   ai: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z" /><path d="M16 14H8a4 4 0 0 0-4 4v2h16v-2a4 4 0 0 0-4-4z" />
+    </svg>
+  ),
+  skills: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  ),
+  envVars: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
     </svg>
   ),
   proxy: (
@@ -515,6 +527,8 @@ export default function SettingsPanel() {
   const sections: { id: Section; label: string }[] = [
     { id: "appearance", label: t("settings.section.appearance") },
     { id: "ai", label: t("settings.section.ai") },
+    { id: "skills", label: t("settings.section.skills") },
+    { id: "envVars", label: t("settings.section.envVars") },
     { id: "proxy", label: t("settings.section.proxy") },
     { id: "about", label: t("settings.section.about") },
   ];
@@ -536,6 +550,8 @@ export default function SettingsPanel() {
       <div className="flex-1 overflow-y-auto p-6 px-12 flex justify-center">
         {activeSection === "appearance" && <AppearanceSection />}
         {activeSection === "ai" && <AISection />}
+        {activeSection === "skills" && <SkillsSection />}
+        {activeSection === "envVars" && <EnvVarsSection />}
         {activeSection === "proxy" && <ProxySection />}
         {activeSection === "about" && <AboutSection />}
       </div>

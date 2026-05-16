@@ -563,6 +563,270 @@ fn toggle_devtools(app: tauri::AppHandle) {
     }
 }
 
+const SKILLS_REPO_OWNER: &str = "xmm1989218";
+const SKILLS_REPO_NAME: &str = "moflow-skills";
+
+#[tauri::command]
+async fn fetch_skill_registry(url: String, app: tauri::AppHandle) -> Result<String, String> {
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return Err("Invalid URL: only http and https allowed".to_string());
+    }
+
+    let proxy_url = app.state::<ProxyState>().proxy_url.lock().ok().and_then(|guard| guard.clone())
+        .or_else(|| std::env::var("HTTPS_PROXY").ok().or_else(|| std::env::var("HTTP_PROXY").ok()).or_else(|| std::env::var("ALL_PROXY").ok()));
+
+    let client = build_reqwest_client(proxy_url.as_deref(), CHROME_UA)?;
+    let res = client.get(&url)
+        .header("Accept", "application/vnd.github+json, application/json, text/yaml, text/plain, */*")
+        .send()
+        .await
+        .map_err(|e| format!("Request error: {}", e))?;
+
+    if !res.status().is_success() {
+        return Err(format!("HTTP error {}", res.status()));
+    }
+
+    let body = res.text().await.map_err(|e| format!("Read body error: {}", e))?;
+    Ok(body)
+}
+
+#[tauri::command]
+async fn download_and_install_skill(tag: String, skill_name: String, app: tauri::AppHandle) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let skills_dir = dir.join("skills");
+    std::fs::create_dir_all(&skills_dir).map_err(|e| format!("Create skills dir: {}", e))?;
+
+    let target_dir = skills_dir.join(&skill_name);
+    let tmp_dir = skills_dir.join(format!(".tmp-{}", skill_name));
+
+    if tmp_dir.exists() {
+        std::fs::remove_dir_all(&tmp_dir).map_err(|e| format!("Remove stale tmp: {}", e))?;
+    }
+
+    let zip_url = format!(
+        "https://github.com/{}/{}/archive/refs/tags/{}.zip",
+        SKILLS_REPO_OWNER, SKILLS_REPO_NAME, tag
+    );
+
+    log::info!("[skill] downloading: {}", zip_url);
+
+    let proxy_url = app.state::<ProxyState>().proxy_url.lock().ok().and_then(|guard| guard.clone())
+        .or_else(|| std::env::var("HTTPS_PROXY").ok().or_else(|| std::env::var("HTTP_PROXY").ok()).or_else(|| std::env::var("ALL_PROXY").ok()));
+
+    let client = build_reqwest_client(proxy_url.as_deref(), CHROME_UA)?;
+    let res = client.get(&zip_url).send().await.map_err(|e| format!("Download error: {}", e))?;
+
+    if !res.status().is_success() {
+        return Err(format!("Download HTTP error {}", res.status()));
+    }
+
+    let bytes = res.bytes().await.map_err(|e| format!("Read download: {}", e))?;
+    log::info!("[skill] downloaded {} bytes for {}", bytes.len(), skill_name);
+
+    std::fs::create_dir_all(&tmp_dir).map_err(|e| format!("Create tmp dir: {}", e))?;
+
+    let reader = std::io::Cursor::new(&bytes);
+    let mut archive = zip::ZipArchive::new(reader).map_err(|e| format!("Zip parse: {}", e))?;
+
+    let skill_prefix_path = std::path::PathBuf::from(format!("skills/{}", skill_name));
+
+    let mut extracted_any = false;
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).map_err(|e| format!("Zip entry {}: {}", i, e))?;
+        let out_path = match file.enclosed_name() {
+            Some(p) => p.to_owned(),
+            None => continue,
+        };
+
+        let after_root: std::path::PathBuf = out_path.components().skip(1).collect();
+        if after_root.as_os_str().is_empty() { continue; }
+
+        if !after_root.starts_with(&skill_prefix_path) {
+            continue;
+        }
+
+        let relative = after_root.strip_prefix(&skill_prefix_path).map_err(|e| format!("Strip prefix: {}", e))?;
+        if relative.as_os_str().is_empty() && file.is_dir() {
+            std::fs::create_dir_all(&tmp_dir).map_err(|e| format!("Create dir {}: {}", tmp_dir.display(), e))?;
+            continue;
+        }
+
+        let full_path = tmp_dir.join(relative);
+
+        if file.is_dir() {
+            std::fs::create_dir_all(&full_path).map_err(|e| format!("Create dir {}: {}", full_path.display(), e))?;
+        } else {
+            if let Some(parent) = full_path.parent() {
+                std::fs::create_dir_all(parent).map_err(|e| format!("Create parent {}: {}", parent.display(), e))?;
+            }
+            let mut out_file = std::fs::File::create(&full_path).map_err(|e| format!("Create file {}: {}", full_path.display(), e))?;
+            std::io::copy(&mut file, &mut out_file).map_err(|e| format!("Write file {}: {}", full_path.display(), e))?;
+            extracted_any = true;
+        }
+    }
+
+    if !extracted_any {
+        std::fs::remove_dir_all(&tmp_dir).ok();
+        return Err(format!("Skill '{}' not found in repository archive", skill_name));
+    }
+
+    let old_dir = skills_dir.join(format!("{}.old", skill_name));
+
+    if target_dir.exists() {
+        if old_dir.exists() {
+            std::fs::remove_dir_all(&old_dir).map_err(|e| format!("Remove old backup: {}", e))?;
+        }
+        std::fs::rename(&target_dir, &old_dir).map_err(|e| format!("Rename current to old: {}", e))?;
+    }
+
+    let rename_result = std::fs::rename(&tmp_dir, &target_dir);
+    if rename_result.is_err() {
+        if old_dir.exists() {
+            let rollback = std::fs::rename(&old_dir, &target_dir);
+            if rollback.is_err() {
+                log::error!("[skill] rollback failed for {}", skill_name);
+            }
+        }
+        std::fs::remove_dir_all(&tmp_dir).ok();
+        return rename_result.map_err(|e| format!("Install rename: {}", e));
+    }
+
+    if old_dir.exists() {
+        std::fs::remove_dir_all(&old_dir).map_err(|e| {
+            log::warn!("[skill] failed to remove old backup for {}: {}", skill_name, e);
+            format!("Remove old: {}", e)
+        })?;
+    }
+
+    log::info!("[skill] installed {} v{}", skill_name, tag);
+    Ok(())
+}
+
+#[tauri::command]
+async fn uninstall_skill(skill_name: String, app: tauri::AppHandle) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let skill_dir = dir.join("skills").join(&skill_name);
+
+    if !skill_dir.exists() {
+        return Err(format!("Skill '{}' not found", skill_name));
+    }
+
+    std::fs::remove_dir_all(&skill_dir).map_err(|e| format!("Remove {}: {}", skill_name, e))?;
+    log::info!("[skill] uninstalled {}", skill_name);
+    Ok(())
+}
+
+#[tauri::command]
+async fn clean_skill_temp(app: tauri::AppHandle) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let skills_dir = dir.join("skills");
+
+    if !skills_dir.exists() {
+        return Ok(());
+    }
+
+    let entries = std::fs::read_dir(&skills_dir).map_err(|e| format!("Read dir: {}", e))?;
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("Entry: {}", e))?;
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+
+        if name_str.starts_with(".tmp-") || name_str.ends_with(".old") {
+            let path = entry.path();
+            if path.is_dir() {
+                std::fs::remove_dir_all(&path).map_err(|e| format!("Remove {}: {}", path.display(), e))?;
+            } else {
+                std::fs::remove_file(&path).map_err(|e| format!("Remove {}: {}", path.display(), e))?;
+            }
+            log::info!("[skill] cleaned {}", name_str);
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+async fn check_bun_available() -> Result<String, String> {
+    let output = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        tokio::process::Command::new("bun")
+            .arg("--version")
+            .output(),
+    )
+    .await
+    .map_err(|_| "Timeout: bun check took >5s".to_string())?
+    .map_err(|e| format!("Failed to run bun: {}", e))?;
+
+    if !output.status.success() {
+        return Err(format!("bun exited with code {}", output.status.code().unwrap_or(-1)));
+    }
+
+    let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if version.is_empty() {
+        return Err("bun --version returned empty output".to_string());
+    }
+    Ok(version)
+}
+
+#[tauri::command]
+async fn execute_script(
+    script_path: String,
+    args: Vec<String>,
+    env_vars: Option<HashMap<String, String>>,
+    timeout_secs: Option<u64>,
+) -> Result<String, String> {
+    let timeout = std::time::Duration::from_secs(timeout_secs.unwrap_or(30));
+    let script_dir = std::path::Path::new(&script_path)
+        .parent()
+        .ok_or_else(|| "Script path has no parent directory".to_string())?;
+
+    if !std::path::Path::new(&script_path).exists() {
+        return Err(format!("Script not found: {}", script_path));
+    }
+
+    let filename = std::path::Path::new(&script_path)
+        .file_name()
+        .ok_or_else(|| "Script path has no filename".to_string())?
+        .to_string_lossy()
+        .to_string();
+
+    let mut cmd = tokio::process::Command::new("bun");
+    cmd.arg(&filename)
+        .args(&args)
+        .current_dir(script_dir)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+
+    if let Some(vars) = env_vars {
+        for (k, v) in vars {
+            cmd.env(k, v);
+        }
+    }
+
+    let output = tokio::time::timeout(timeout, cmd.output())
+        .await
+        .map_err(|_| format!("Script timed out after {}s", timeout.as_secs()))?
+        .map_err(|e| format!("Failed to execute bun: {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+
+    if !output.status.success() {
+        let code = output.status.code().unwrap_or(-1);
+        let msg = if stderr.is_empty() {
+            format!("Script exited with code {}", code)
+        } else {
+            format!("Script exited with code {}: {}", code, stderr.trim())
+        };
+        return Err(msg);
+    }
+
+    if !stderr.is_empty() {
+        log::warn!("[execute_script] stderr: {}", stderr.trim());
+    }
+
+    Ok(stdout)
+}
+
 #[tauri::command]
 async fn export_pdf(app: tauri::AppHandle, html: String, path: String) -> Result<bool, String> {
     #[cfg(target_os = "windows")]
@@ -722,7 +986,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, get_startup_data])
+        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, get_startup_data, fetch_skill_registry, download_and_install_skill, uninstall_skill, clean_skill_temp, check_bun_available, execute_script])
         .setup(move |app| {
             log::info!("[startup] setup-enter: {}ms", app_start.elapsed().as_millis());
 

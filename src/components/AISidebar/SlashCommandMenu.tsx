@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { useThemeStore } from "../../stores/themeStore";
+import { useSkillStore } from "../../stores/skillStore";
 import { getProviderModels } from "../../lib/modelInfo";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
@@ -7,6 +8,7 @@ import { useT } from "../../i18n/useT";
 const COMMANDS = [
   { id: "new", label: "/new", desc: "ai.slash.new" },
   { id: "compact", label: "/compact", desc: "ai.slash.compact" },
+  { id: "skills", label: "/skills", desc: "ai.slash.skills" },
   { id: "models", label: "/models", desc: "ai.slash.models" },
 ];
 
@@ -26,9 +28,11 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
   function SlashCommandMenu({ input, inputRef, onSelectCommand, onSelectModel, onClose }, ref) {
     useT();
     const [highlightIndex, setHighlightIndex] = useState(0);
-    const [phase, setPhase] = useState<"commands" | "models">("commands");
+    const [phase, setPhase] = useState<"commands" | "models" | "skills">("commands");
     const menuRef = useRef<HTMLDivElement>(null);
     const config = useThemeStore((s) => s.aiConfig);
+    const discoveredSkills = useSkillStore((s) => s.discoveredSkills);
+    const enabledSkills = discoveredSkills.filter((s) => s.enabled);
     const models = getProviderModels(config.providerId);
 
     const query = input.slice(1).toLowerCase();
@@ -45,7 +49,7 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
     }, [query]);
 
     useEffect(() => {
-      if (phase === "models") {
+      if (phase !== "commands") {
         setHighlightIndex(0);
       }
     }, [phase]);
@@ -57,10 +61,17 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
           desc: t(c.desc),
           disabled: c.id === "models" && !hasModels,
         }))
-      : models.map((m) => ({
+      : phase === "models"
+      ? models.map((m) => ({
           id: m.id,
           label: m.id,
           desc: m.id === config.model ? t("ai.slash.currentModel") : "",
+          disabled: false,
+        }))
+      : enabledSkills.map((s) => ({
+          id: s.name,
+          label: s.name,
+          desc: s.description,
           disabled: false,
         }));
 
@@ -68,7 +79,7 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
       handleKeyDown(e: React.KeyboardEvent) {
         if (items.length === 0) {
           if (e.key === "Escape") {
-            if (phase === "models") {
+            if (phase !== "commands") {
               setPhase("commands");
               return true;
             }
@@ -113,15 +124,21 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
               setPhase("models");
               return true;
             }
+            if (item.id === "skills") {
+              setPhase("skills");
+              return true;
+            }
             onSelectCommand(item.id);
-          } else {
+          } else if (phase === "models") {
             onSelectModel(item.id);
+          } else {
+            onClose();
           }
           return true;
         }
 
         if (e.key === "Escape") {
-          if (phase === "models") {
+          if (phase !== "commands") {
             setPhase("commands");
             return true;
           }
@@ -160,13 +177,27 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
       menuStyle = {
         position: "fixed",
         left: rect.left,
+        width: rect.width,
         bottom: window.innerHeight - rect.top + 4,
         zIndex: 100,
       };
     }
 
+    const BackButton = (
+      <button
+        className="flex items-center justify-center w-5 h-5 rounded border-none bg-transparent text-moflow-text-secondary cursor-pointer hover:bg-moflow-bg-secondary hover:text-moflow-text"
+        onClick={() => setPhase("commands")}
+        type="button"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 12H5" />
+          <path d="M12 19l-7-7 7-7" />
+        </svg>
+      </button>
+    );
+
     return (
-      <div ref={menuRef} className="w-[280px] max-h-60 bg-moflow-bg border border-moflow-border rounded-lg overflow-y-auto animate-search-appear" style={{ ...menuStyle, boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)" }}>
+      <div ref={menuRef} className="max-h-60 bg-moflow-bg border border-moflow-border rounded-lg overflow-y-auto animate-search-appear" style={{ ...menuStyle, boxShadow: "0 4px 16px rgba(0, 0, 0, 0.12)" }}>
         {phase === "commands" && filteredCommands.map((c) => {
           const idx = items.findIndex((i) => i.id === c.id);
           const disabled = c.id === "models" && !hasModels;
@@ -179,6 +210,8 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
                 if (disabled) return;
                 if (c.id === "models") {
                   setPhase("models");
+                } else if (c.id === "skills") {
+                  setPhase("skills");
                 } else {
                   onSelectCommand(c.id);
                 }
@@ -193,16 +226,7 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
           <>
             <div className="flex items-center justify-between py-1.5 px-2.5 text-[11px] font-semibold text-moflow-text-secondary border-b border-moflow-border sticky top-0 bg-moflow-bg z-1">
               <span>{t("ai.slash.selectModel")}</span>
-              <button
-                className="flex items-center justify-center w-5 h-5 rounded border-none bg-transparent text-moflow-text-secondary cursor-pointer hover:bg-moflow-bg-secondary hover:text-moflow-text"
-                onClick={() => setPhase("commands")}
-                type="button"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 12H5" />
-                  <path d="M12 19l-7-7 7-7" />
-                </svg>
-              </button>
+              {BackButton}
             </div>
             {models.map((m, idx) => (
               <div
@@ -221,6 +245,28 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
                 )}
               </div>
             ))}
+          </>
+        )}
+        {phase === "skills" && (
+          <>
+            <div className="flex items-center justify-between py-1.5 px-2.5 text-[11px] font-semibold text-moflow-text-secondary border-b border-moflow-border sticky top-0 bg-moflow-bg z-1">
+              <span>{t("ai.slash.selectSkill")}</span>
+              {BackButton}
+            </div>
+            {enabledSkills.length === 0 ? (
+              <div className="py-[10px] px-2.5 text-[12px] text-moflow-text-secondary">{t("ai.slash.skillsEmpty")}</div>
+            ) : (
+              enabledSkills.map((s, idx) => (
+                <div
+                  key={s.name}
+                  className={`py-[7px] px-2.5 cursor-default transition-[background-color] duration-100 ${idx === highlightIndex ? "bg-moflow-bg-secondary" : ""}`}
+                  onMouseEnter={() => setHighlightIndex(idx)}
+                >
+                  <span className="text-[13px] font-medium text-moflow-text">{s.name}</span>
+                  <p className="text-[11px] text-moflow-text-secondary m-0 leading-[1.3]">{s.description}</p>
+                </div>
+              ))
+            )}
           </>
         )}
       </div>

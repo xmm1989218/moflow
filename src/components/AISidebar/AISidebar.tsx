@@ -4,11 +4,12 @@ import { useChatStore, type Message, COMPACT_TAIL_TURNS } from "../../stores/cha
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { usePermissionStore } from "../../stores/permissionStore";
+import { useSkillStore } from "../../stores/skillStore";
 import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClient";
 import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
-import { getToolDefinitions, executeTool, WEBFETCH_LIMIT } from "../../lib/tools";
+import { getToolDefinitions, executeTool, WEBFETCH_LIMIT, makeSkillTool, makeRunSkillScriptTool, shouldAddRunSkillScriptTool } from "../../lib/tools";
 import type { ToolContext, OnPermissionCallback } from "../../lib/tools";
 import type { PermissionRequest, PermissionAction } from "../../lib/permission";
 import { useShallow } from "zustand/react/shallow";
@@ -176,9 +177,9 @@ export default function AISidebar() {
     if (s.workspaceRoot) return "dir:" + s.workspaceRoot.replace(/\\/g, "/").toLowerCase();
     return s.activeFileId;
   });
-  const activeFileName = useTabStore((s) => {
+  const activeFilePath = useTabStore((s) => {
     const tab = s.files.find((f) => f.id === s.activeFileId);
-    return tab?.fileName ?? null;
+    return tab?.filePath ?? null;
   });
   const chatLoaded = useChatStore((s) => s.chatLoadedMap[chatKey] ?? true);
   const { messages, isStreaming, streamingContent, addMessage, appendStreamingContent, clearStreamingContent, clearMessages, setStreaming, stopGeneration } = useChatStore(
@@ -533,11 +534,20 @@ export default function AISidebar() {
     const reserved = Math.floor(maxContext * (1 - docRatio));
     const needsDocTools = docTokens > (maxContext - reserved);
 
-    const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsDocTools, workspaceRoot, activeFileName);
+    const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsDocTools, workspaceRoot, activeFilePath);
     const tools = getToolDefinitions(needsDocTools, workspaceRoot);
+    const availableSkills = useSkillStore.getState().discoveredSkills.filter((s) => s.enabled);
+    if (availableSkills.length > 0) {
+      tools.push(makeSkillTool());
+    }
+    const hasRunScript = shouldAddRunSkillScriptTool();
+    if (hasRunScript) {
+      tools.push(makeRunSkillScriptTool());
+    }
 
     const toolCtx: ToolContext = {
       workspaceRoot: workspaceRoot ?? undefined,
+      activeFilePath: activeFilePath ?? undefined,
       docContent,
       permissions: useThemeStore.getState().permissions,
       sessionRules: usePermissionStore.getState().sessionRules[chatKey] ?? [],
@@ -716,8 +726,9 @@ export default function AISidebar() {
       return;
     }
 
-    if (id === "compact") {
+if (id === "compact") {
       await doCompact();
+      return;
     }
   };
 

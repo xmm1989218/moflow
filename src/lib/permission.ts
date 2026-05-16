@@ -4,7 +4,7 @@ export type PermissionRules = PermissionAction | Record<string, PermissionAction
 
 export interface Permissions {
   external_path: PermissionRules;
-  execute: PermissionRules;
+  run_skill_script: PermissionRules;
   edit: PermissionRules;
 }
 
@@ -15,14 +15,14 @@ export interface PermissionRule {
 }
 
 export interface PermissionRequest {
-  permissionKey: "external_path" | "execute" | "edit";
+  permissionKey: "external_path" | "run_skill_script" | "edit";
   input: string;
   alwaysPatterns: string[];
 }
 
 export const DEFAULT_PERMISSIONS: Permissions = {
   external_path: { "*": "ask" },
-  execute: { "*": "ask" },
+  run_skill_script: { "*": "ask" },
   edit: { "*": "ask" },
 };
 
@@ -30,7 +30,7 @@ function escapeRegex(str: string): string {
   return str.replace(/[.+^${}()|[\]\\]/g, "\\$&");
 }
 
-function wildcardToRegex(pattern: string, key: "external_path" | "execute" | "edit"): RegExp {
+function wildcardToRegex(pattern: string, key: "external_path" | "run_skill_script" | "edit"): RegExp {
   const normalized = pattern.replace(/\\/g, "/");
 
   let regexStr = escapeRegex(normalized);
@@ -59,7 +59,7 @@ function wildcardToRegex(pattern: string, key: "external_path" | "execute" | "ed
 export function wildcardMatch(
   pattern: string,
   input: string,
-  key: "external_path" | "execute" | "edit"
+  key: "external_path" | "run_skill_script" | "edit"
 ): boolean {
   const normalizedInput = input.replace(/\\/g, "/");
   const regex = wildcardToRegex(pattern, key);
@@ -69,7 +69,7 @@ export function wildcardMatch(
 export function evaluate(
   rules: PermissionRules,
   input: string,
-  key: "external_path" | "execute" | "edit"
+  key: "external_path" | "run_skill_script" | "edit"
 ): PermissionAction {
   if (typeof rules === "string") {
     return rules;
@@ -89,7 +89,7 @@ export function evaluate(
 export function evaluateWithSession(
   sessionRules: PermissionRule[],
   globalRules: PermissionRules,
-  key: "external_path" | "execute" | "edit",
+  key: "external_path" | "run_skill_script" | "edit",
   input: string
 ): PermissionAction {
   let lastSessionAction: PermissionAction | null = null;
@@ -104,10 +104,10 @@ export function evaluateWithSession(
 }
 
 export function generateAlwaysPattern(
-  key: "external_path" | "execute" | "edit",
+  key: "external_path" | "run_skill_script" | "edit",
   input: string
 ): string {
-  if (key === "execute") {
+  if (key === "run_skill_script") {
     return input;
   }
 

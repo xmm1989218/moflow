@@ -614,35 +614,55 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.9.0 — Skill 系统
+## v0.9.0 — Skill 系统 ✅
 
 ### Skill 定义规范
 
-- [ ] 遵循 Agent Skills 开放标准（agentskills.io）
-- [ ] Skill 目录结构（SKILL.md + scripts/ + references/ + assets/）
-- [ ] SKILL.md frontmatter 解析（name/description/license/compatibility/metadata/allowed-tools）
-- [ ] Skill 存放路径：{appDataDir}/skills/\<name\>/
-- [ ] 三层渐进加载（Discovery → Activation → Execution）
+- [x] Skill 目录结构（SKILL.md + scripts/）
+- [x] SKILL.md frontmatter 解析（name/description/version）
+- [x] Skill 存放路径：{appDataDir}/skills/\<name\>/
+- [x] 三层渐进加载（Discovery → Activation → Execution）
 
 ### Skill 运行时
 
-- [ ] Skill 发现：启动时扫描 skills/ 目录，读取所有 SKILL.md 的 name + description
-- [ ] `skill` tool 注册：description 中动态注入可用 skill 列表，AI 调用 skill({name}) 加载 SKILL.md body
-- [ ] `execute` tool：执行已激活 Skill 的 scripts/ 下脚本，自动匹配解释器（.py→python3, .js→node, .sh→bash），Rust 侧子进程执行 + 环境变量继承 + 30s 超时 + 路径安全校验
-- [ ] getToolDefinitions 改造：始终追加 skill tool + execute tool
-- [ ] Skill 激活状态管理（activeSkillsMap，按 chatKey 隔离）
+- [x] Skill 发现：启动时扫描 skills/ 目录，读取所有 SKILL.md 的 name + description
+- [x] `skill` tool 注册：description 中动态注入可用 skill 列表，AI 调用 skill({name}) 加载 SKILL.md body
+- [x] `run_skill_script` tool：执行已激活 Skill 的 scripts/ 下 .ts/.js 脚本（via bun），Rust 侧子进程执行 + 环境变量继承 + 30s 超时 + 路径安全校验
+- [x] getToolDefinitions 改造：按需追加 skill tool + run_skill_script tool
+- [x] Skill 激活状态管理（按 tab 隔离，shouldAddRunSkillScriptTool 判断）
 
 ### 环境变量配置
 
-- [ ] Settings Panel 新增「环境变量」导航项，支持 KV 对增删改（name + value）
-- [ ] 保存时将 KV 对设为应用进程环境变量（Rust 侧 + JS 侧均可访问）
-- [ ] Skill 脚本执行时自动继承环境变量
+- [x] Settings Panel 新增「环境变量」导航项，支持 KV 对增删改（name + value）
+- [x] 自动持久化环境变量到 settings.json（add/remove/change 即时保存）
+- [x] Skill 脚本执行时自动继承环境变量（resolveEnvVars 替换 ${VAR_NAME}）
 
 ### Skill 管理界面
 
-- [ ] Settings Panel 新增「Skill」导航项
-- [ ] Skill 列表页（已安装 skill 展示，启用/禁用切换，SKILL.md 预览）
-- [ ] 内置 skill 示例（3 个 prompt-only skill，随应用首次启动自动创建）
+- [x] Settings Panel 新增「Skill」导航项（Available 远程 + Installed 本地分区）
+- [x] Skill Store 浏览/安装/更新/卸载（GitHub monorepo 作为 skill 源）
+- [x] 安装确认对话框 + 错误提示（showAlertDialog）
+- [x] bun 可用性检测（hasDeps 技能安装前检查）
+- [x] 原子替换安装（rename old→.old, tmp→target, rollback on failure）
+- [x] Rust 侧远程请求（fetch_skill_registry 复用 reqwest + ProxyState）
+
+---
+
+## v0.9.1 — 提示词 & Skill 优化 ✅
+
+### 提示词优化
+
+- [x] 文档内容分隔符从 `---` 改为 XML 标签（`<document_content>` / `<document_structure>`），解决 LLM 混淆文件名与内容标题
+- [x] `<available_env_vars>` 加 `<current_value>`，LLM 不再需要 webfetch 查询环境变量实际值
+- [x] `buildSystemPrompt` 参数 `activeFileName` → `activeFilePath`，传递完整路径而非仅文件名
+- [x] 删除冗余引述（"The user is editing..." / "Please answer..."），`<document_content>` 标签本身已说明
+- [x] SKILL_INSTRUCTION 更新（"MoFlow resolves these before execution — you do NOT need to know their actual values"）
+
+### Skill 优化
+
+- [x] `toolSkill` 返回内容删除冗余 `Available environment variables` 段落（已在 system prompt `<available_env_vars>` 中提供）
+- [x] 强化 STOP 指令：`[Script executed successfully...]` → `[SUCCESS — Do NOT call run_skill_script again. Report this output to the user now.]`
+- [x] 移除 debug `console.info` 日志（contextBuilder 3处、tools 5处、AISidebar 6处、skillManager 4处、skillStore 2处）
 
 ---
 
@@ -658,14 +678,16 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v1.0.0 — 正式版（Skill 市场）
+## v1.0.0 — 正式版（Skill 市场增强）
 
 ### Skill 市场
 
-- [ ] Skill 市场浏览界面（搜索、分类、排序）
-- [ ] 一键安装（从 GitHub 仓库下载 skill 到本地）
-- [ ] Skill 版本管理与更新
-- [ ] 社区 skill 分享（GitHub 仓库作为 skill 源，约定目录结构）
+- [x] Skill 市场浏览界面（Available + Installed 分区）
+- [x] 一键安装（从 GitHub monorepo 下载 skill 到本地）
+- [x] Skill 版本管理与更新
+- [x] GitHub 仓库作为 skill 源（moflow-skills monorepo）
+- [ ] Skill 搜索与分类
+- [ ] 社区 skill 分享与提交
 
 ---
 

@@ -54,7 +54,7 @@ describe("contextBuilder", () => {
     });
   });
 
-  describe("buildSystemPrompt \u2014 no workspace", () => {
+  describe("buildSystemPrompt — no workspace", () => {
     it("returns prompt with docContent when short document", () => {
       const { prompt, needsDocTools } = buildSystemPrompt(sampleDoc, 128000);
       expect(prompt).toContain(sampleDoc);
@@ -70,26 +70,24 @@ describe("contextBuilder", () => {
     it("truncates long documents", () => {
       const longDoc = "x".repeat(200000);
       const { prompt, needsDocTools } = buildSystemPrompt(longDoc, 4000);
-      const hasTruncation = prompt.includes("truncated") || prompt.includes("\u622a\u65ad");
-      expect(hasTruncation).toBe(true);
+      expect(prompt).toContain("truncated");
       expect(needsDocTools).toBe(true);
     });
   });
 
-  describe("buildSystemPrompt \u2014 workspace mode", () => {
-    it("includes filename when activeFileName provided", () => {
-      const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "README.md");
-      expect(prompt).toContain("README.md");
+  describe("buildSystemPrompt — workspace mode", () => {
+    it("includes filename when activeFilePath provided", () => {
+      const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "D:/projects/foo/README.md");
+      expect(prompt).toContain("D:/projects/foo/README.md");
     });
 
     it("includes switch-file note", () => {
-      const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "README.md");
-      const hasSwitchNote = prompt.includes("switch files") || prompt.includes("\u5207\u6362\u6587\u4ef6");
-      expect(hasSwitchNote).toBe(true);
+      const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "D:/projects/foo/README.md");
+      expect(prompt).toContain("switch files");
     });
 
     it("includes all tools in workspace mode", () => {
-      const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "README.md");
+      const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "D:/projects/foo/README.md");
       expect(prompt).toContain("find:");
       expect(prompt).toContain("glob:");
       expect(prompt).toContain("ls:");
@@ -105,12 +103,11 @@ describe("contextBuilder", () => {
 
     it("workspace with no file shows workspace message", () => {
       const { prompt } = buildSystemPrompt("", 128000, false, "D:/projects/foo", null);
-      const hasWsMsg = prompt.includes("workspace open") || prompt.includes("\u5de5\u4f5c\u533a");
-      expect(hasWsMsg).toBe(true);
+      expect(prompt).toContain("workspace open");
     });
 
     it("workspace mode always returns needsDocTools true", () => {
-      const { needsDocTools } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "README.md");
+      const { needsDocTools } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "D:/projects/foo/README.md");
       expect(needsDocTools).toBe(true);
     });
 
@@ -121,8 +118,8 @@ describe("contextBuilder", () => {
 
     it("workspace truncation includes filename", () => {
       const longDoc = "x".repeat(200000);
-      const { prompt } = buildSystemPrompt(longDoc, 128000, true, "D:/projects/foo", "long.md");
-      expect(prompt).toContain("long.md");
+      const { prompt } = buildSystemPrompt(longDoc, 128000, true, "D:/projects/foo", "D:/projects/foo/long.md");
+      expect(prompt).toContain("D:/projects/foo/long.md");
     });
 
     it("no workspace prompt does not include workspace-specific tools", () => {
@@ -135,7 +132,14 @@ describe("contextBuilder", () => {
     it("no workspace prompt does not include switch-file note", () => {
       const { prompt } = buildSystemPrompt(sampleDoc, 128000);
       expect(prompt).not.toContain("switch files");
-      expect(prompt).not.toContain("\u5207\u6362\u6587\u4ef6");
+    });
+
+    it("includes default.txt content as prefix", () => {
+      const { prompt } = buildSystemPrompt(sampleDoc, 128000);
+      expect(prompt).toContain("You are the AI assistant for MoFlow editor.");
+      expect(prompt).toContain("Tone and style");
+      expect(prompt).toContain("Proactiveness");
+      expect(prompt).toContain("Tool usage policy");
     });
   });
 });

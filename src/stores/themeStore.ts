@@ -41,6 +41,7 @@ function persistSettings(get: () => ThemeState) {
     proxyUrl: s.proxyUrl,
     language: s.language,
     permissions: s.permissions,
+    envVars: s.envVars,
   });
 }
 
@@ -55,6 +56,7 @@ interface ThemeState {
   proxyUrl: string;
   language: SupportedLanguage;
   permissions: Permissions;
+  envVars: Record<string, string>;
   showSettingsTab: boolean;
   settingsTabActive: boolean;
   showOutline: boolean;
@@ -78,6 +80,7 @@ interface ThemeState {
   activateSettingsTab: () => void;
   deactivateSettingsTab: () => void;
   setLeftPanelTab: (tab: "files" | "outline") => void;
+  setEnvVars: (vars: Record<string, string>) => void;
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
@@ -91,6 +94,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   proxyUrl: "",
   language: "system",
   permissions: { ...DEFAULT_PERMISSIONS },
+  envVars: {},
   showSettingsTab: false,
   settingsTabActive: false,
   showOutline: false,
@@ -171,5 +175,10 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   setLeftPanelTab: (tab) => {
     set({ leftPanelTab: tab });
+  },
+
+  setEnvVars: (vars) => {
+    set({ envVars: vars });
+    persistSettings(get);
   },
 }));
