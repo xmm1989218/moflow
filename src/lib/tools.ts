@@ -3,7 +3,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { readTextFile, readDir, exists, stat } from "@tauri-apps/plugin-fs";
 import { join } from "@tauri-apps/api/path";
 import { buildOutline } from "./contextBuilder";
-import { t } from "../i18n/core";
 import type { PermissionAction, PermissionRequest } from "./permission";
 import { evaluateWithSession, generateAlwaysPattern, DEFAULT_PERMISSIONS } from "./permission";
 import type { Permissions } from "./permission";
@@ -63,7 +62,7 @@ async function checkPathAccess(
   onPermission?: OnPermissionCallback
 ): Promise<{ allowed: boolean; error?: string }> {
   if (!workspaceRoot) {
-    return { allowed: false, error: t("ai.tool.error.noWorkspace") };
+    return { allowed: false, error: "No workspace open. Cannot read other files. Omit path to use the current document." };
   }
 
   if (isPathInsideWorkspace(absPath, workspaceRoot)) {
@@ -78,10 +77,10 @@ async function checkPathAccess(
     await allowFsScope(absPath);
     return { allowed: true };
   }
-  if (action === "deny") return { allowed: false, error: t("ai.tool.error.pathDenied") };
+  if (action === "deny") return { allowed: false, error: "Access denied: path is outside the workspace and permission was not granted" };
 
   if (!onPermission) {
-    return { allowed: false, error: t("ai.tool.error.pathOutsideWorkspace") };
+    return { allowed: false, error: "Path is outside the workspace" };
   }
 
   const alwaysPattern = generateAlwaysPattern("external_path", absPath);
@@ -95,7 +94,7 @@ async function checkPathAccess(
     await allowFsScope(absPath);
     return { allowed: true };
   }
-  return { allowed: false, error: t("ai.tool.error.pathDenied") };
+  return { allowed: false, error: "Access denied: path is outside the workspace and permission was not granted" };
 }
 
 function makeOutlineTool(): ToolDefinition {
@@ -103,13 +102,13 @@ function makeOutlineTool(): ToolDefinition {
     type: "function",
     function: {
       name: "outline",
-      description: t("ai.tool.outline.desc"),
+      description: "Get the heading outline of a document, including heading levels and line ranges. Useful for understanding document structure.",
       parameters: {
         type: "object",
         properties: {
           path: {
             type: "string",
-            description: t("ai.tool.outline.param.path"),
+            description: "File path (relative to workspace root). Omit to use the current document.",
           },
         },
         required: [],
@@ -123,21 +122,21 @@ function makeReadTool(): ToolDefinition {
     type: "function",
     function: {
       name: "read",
-      description: t("ai.tool.read.desc"),
+      description: "Read file content, with optional line range. Line numbers start from 1, default max 200 lines.",
       parameters: {
         type: "object",
         properties: {
           path: {
             type: "string",
-            description: t("ai.tool.read.param.path"),
+            description: "File path (relative to workspace root). Omit to use the current document.",
           },
           offset: {
             type: "number",
-            description: t("ai.tool.read.param.offset"),
+            description: "Starting line number (from 1, default 1)",
           },
           limit: {
             type: "number",
-            description: t("ai.tool.read.param.limit"),
+            description: "Maximum number of lines to return (default 200)",
           },
         },
         required: [],
@@ -151,17 +150,17 @@ function makeReadSectionTool(): ToolDefinition {
     type: "function",
     function: {
       name: "read_section",
-      description: t("ai.tool.readSection.desc"),
+      description: "Read content under a specific heading, until a same-level or higher-level heading. Heading must match exactly (without # prefix).",
       parameters: {
         type: "object",
         properties: {
           heading: {
             type: "string",
-            description: t("ai.tool.readSection.param.heading"),
+            description: "Heading text to read (without # prefix)",
           },
           path: {
             type: "string",
-            description: t("ai.tool.readSection.param.path"),
+            description: "File path (relative to workspace root). Omit to use the current document.",
           },
         },
         required: ["heading"],
@@ -175,17 +174,17 @@ function makeGrepTool(): ToolDefinition {
     type: "function",
     function: {
       name: "grep",
-      description: t("ai.tool.grep.desc"),
+      description: "Search for lines matching a regex pattern in a file, returning matching content with line numbers. Max 50 matches.",
       parameters: {
         type: "object",
         properties: {
           pattern: {
             type: "string",
-            description: t("ai.tool.grep.param.pattern"),
+            description: "Regex pattern",
           },
           path: {
             type: "string",
-            description: t("ai.tool.grep.param.path"),
+            description: "File path (relative to workspace root). Omit to use the current document.",
           },
         },
         required: ["pattern"],
@@ -199,13 +198,13 @@ function makeFindTool(): ToolDefinition {
     type: "function",
     function: {
       name: "find",
-      description: t("ai.tool.find.desc"),
+      description: "Search for files by name in the workspace (substring match), returning relative paths. Max 50 results.",
       parameters: {
         type: "object",
         properties: {
           pattern: {
             type: "string",
-            description: t("ai.tool.find.param.pattern"),
+            description: "Filename substring",
           },
         },
         required: ["pattern"],
@@ -219,13 +218,13 @@ function makeGlobTool(): ToolDefinition {
     type: "function",
     function: {
       name: "glob",
-      description: t("ai.tool.glob.desc"),
+      description: "Match file paths in the workspace by glob pattern. Supports *, **, ?. Max 50 results.",
       parameters: {
         type: "object",
         properties: {
           pattern: {
             type: "string",
-            description: t("ai.tool.glob.param.pattern"),
+            description: "Glob pattern, e.g. **/*.md, src/**/*.ts",
           },
         },
         required: ["pattern"],
@@ -239,13 +238,13 @@ function makeLsTool(): ToolDefinition {
     type: "function",
     function: {
       name: "ls",
-      description: t("ai.tool.ls.desc"),
+      description: "List files and subdirectories in a directory. Omit path to list workspace root.",
       parameters: {
         type: "object",
         properties: {
           path: {
             type: "string",
-            description: t("ai.tool.ls.param.path"),
+            description: "Directory path (relative to workspace root). Omit to list workspace root.",
           },
         },
         required: [],
@@ -259,18 +258,18 @@ function makeWebfetchTool(): ToolDefinition {
     type: "function",
     function: {
       name: "webfetch",
-      description: t("ai.tool.webfetch.desc"),
+      description: "Access web page content at a URL. Supports three formats: markdown, text, html. Only http/https.",
       parameters: {
         type: "object",
         properties: {
           url: {
             type: "string",
-            description: t("ai.tool.webfetch.param.url"),
+            description: "URL to access (http/https only)",
           },
           format: {
             type: "string",
             enum: ["markdown", "text", "html"],
-            description: t("ai.tool.webfetch.param.format"),
+            description: "Return format: markdown (default), text, html",
           },
         },
         required: ["url"],
@@ -322,30 +321,30 @@ async function resolveContent(
   }
 
   if (!ctx.workspaceRoot) {
-    return { content: "", error: t("ai.tool.error.noWorkspace") };
+    return { content: "", error: "No workspace open. Cannot read other files. Omit path to use the current document." };
   }
 
   const absPath = await resolveAbsolutePath(path, ctx.workspaceRoot);
   const { allowed, error } = await checkPathAccess(absPath, ctx.workspaceRoot, ctx, onPermission);
   if (!allowed) {
-    return { content: "", error: error ?? t("ai.tool.error.pathOutsideWorkspace") };
+    return { content: "", error: error ?? "Path is outside the workspace" };
   }
 
   if (!(await exists(absPath))) {
-    return { content: "", error: t("ai.tool.error.fileNotFound", { path }) };
+    return { content: "", error: `File not found: ${path}` };
   }
 
   try {
     const content = await readTextFile(absPath);
     return { content, absPath };
   } catch (e) {
-    return { content: "", error: t("ai.tool.error.readFileFailed", { error: e instanceof Error ? e.message : String(e) }) };
+    return { content: "", error: `Failed to read file: ${e instanceof Error ? e.message : String(e)}` };
   }
 }
 
 function toolOutline(docContent: string): string {
   const result = buildOutline(docContent);
-  return result || t("ai.tool.error.noOutline");
+  return result || "Document has no heading structure";
 }
 
 function toolGrep(pattern: string, docContent: string): string {
@@ -373,7 +372,7 @@ function toolGrep(pattern: string, docContent: string): string {
 
   const suffix =
     matches.length >= MAX_GREP_RESULTS
-      ? "\n" + t("ai.tool.error.grepTruncated", { n: MAX_GREP_RESULTS })
+      ? "\n...(showing first " + MAX_GREP_RESULTS + " matches)"
       : `\n${matches.length} matches found`;
   return matches.join("\n") + suffix;
 }
@@ -385,7 +384,7 @@ function toolRead(docContent: string, offset?: number, limit?: number): string {
   const endLine = Math.min(lines.length, startLine + maxLines - 1);
 
   if (startLine > lines.length) {
-    return t("ai.tool.error.readLineOutOfRange", { n: lines.length, s: startLine });
+    return `File has ${lines.length} lines, requested start line ${startLine} is out of range`;
   }
 
   const result: string[] = [];
@@ -394,7 +393,7 @@ function toolRead(docContent: string, offset?: number, limit?: number): string {
   }
 
   if (endLine < lines.length) {
-    result.push(t("ai.tool.error.readTruncated", { n: lines.length }));
+    result.push(`...(total ${lines.length} lines)`);
   }
 
   return result.join("\n");
@@ -427,9 +426,9 @@ function toolReadSection(heading: string, docContent: string): string {
       if (match) available.push(match[2].trim());
     }
     if (available.length > 0) {
-      return `Section not found: "${heading}"\n${t("ai.tool.error.sectionNotFound")}:\n${available.map((s) => `- ${s}`).join("\n")}`;
+      return `Section not found: "${heading}"\nAvailable sections:\n${available.map((s) => `- ${s}`).join("\n")}`;
     }
-    return `Section not found: "${heading}"\n${t("ai.tool.error.noOutline")}`;
+    return `Section not found: "${heading}"\nDocument has no heading structure`;
   }
 
   let endLine = lines.length;
@@ -475,10 +474,10 @@ async function toolFind(pattern: string, workspaceRoot: string): Promise<string>
   await walk(workspaceRoot, 0);
 
   if (results.length === 0) {
-    return t("ai.tool.error.findNoResults", { pattern });
+    return `No files matching "${pattern}" found`;
   }
   const suffix = results.length >= MAX_FIND_RESULTS
-    ? "\n" + t("ai.tool.error.findTruncated", { n: MAX_FIND_RESULTS })
+    ? "\n...(showing first " + MAX_FIND_RESULTS + " results)"
     : "";
   return results.join("\n") + suffix;
 }
@@ -527,10 +526,10 @@ async function toolGlob(pattern: string, workspaceRoot: string): Promise<string>
   await walk(workspaceRoot, 0);
 
   if (results.length === 0) {
-    return t("ai.tool.error.globNoResults", { pattern });
+    return `No files matching "${pattern}" found`;
   }
   const suffix = results.length >= MAX_GLOB_RESULTS
-    ? "\n" + t("ai.tool.error.globTruncated", { n: MAX_GLOB_RESULTS })
+    ? "\n...(showing first " + MAX_GLOB_RESULTS + " results)"
     : "";
   return results.join("\n") + suffix;
 }
@@ -539,22 +538,22 @@ async function toolLs(dirPath: string | undefined, workspaceRoot: string, ctx: T
   const absDir = dirPath ? await resolveAbsolutePath(dirPath, workspaceRoot) : workspaceRoot;
   const { allowed, error } = await checkPathAccess(absDir, workspaceRoot, ctx, onPermission);
   if (!allowed) {
-    return error ?? t("ai.tool.error.pathOutsideWorkspace");
+    return error ?? "Path is outside the workspace";
   }
   if (!(await exists(absDir))) {
-    return t("ai.tool.error.dirNotFound", { path: dirPath ?? "/" });
+    return `Directory not found: ${dirPath ?? "/"}`;
   }
 
   const dirStat = await stat(absDir);
   if (!dirStat.isDirectory) {
-    return t("ai.tool.error.notDirectory", { path: dirPath ?? "/" });
+    return `Not a directory: ${dirPath ?? "/"}`;
   }
 
   let entries;
   try {
     entries = await readDir(absDir);
   } catch (e) {
-    return t("ai.tool.error.readDirFailed", { error: e instanceof Error ? e.message : String(e) });
+    return `Failed to read directory: ${e instanceof Error ? e.message : String(e)}`;
   }
 
   const sorted = entries.sort((a, b) => {
@@ -595,13 +594,13 @@ export function makeSkillTool(): ToolDefinition {
     type: "function",
     function: {
       name: "skill",
-      description: t("ai.tool.skill.desc"),
+      description: "Load a skill's instructions into context by name. Skill names must match those listed in the available_skills section of the system prompt.",
       parameters: {
         type: "object",
         properties: {
           name: {
             type: "string",
-            description: t("ai.tool.skill.param.name"),
+            description: "Skill name as listed in available_skills",
           },
         },
         required: ["name"],
@@ -615,17 +614,17 @@ export function makeRunSkillScriptTool(): ToolDefinition {
     type: "function",
     function: {
       name: "run_skill_script",
-      description: t("ai.tool.runSkillScript.desc"),
+      description: "Run a .ts or .js script from a skill's scripts/ directory. You must first use the \"skill\" tool to load the skill before running its scripts. In args, use ${VAR_NAME} placeholders for environment variables — they will be resolved before execution. Available variables are listed when you load the skill. This tool only runs skill scripts, not shell commands. After a successful execution, you MUST report the output to the user and STOP. Do NOT retry or modify the command.",
       parameters: {
         type: "object",
         properties: {
           script: {
             type: "string",
-            description: t("ai.tool.runSkillScript.param.script"),
+            description: "Script filename (e.g. 'convert.js'). Must match a script listed when you loaded the skill.",
           },
           args: {
             type: "string",
-            description: t("ai.tool.runSkillScript.param.args"),
+            description: "Space-separated arguments to pass to the script. Use ${VAR_NAME} placeholders for environment variables — they will be resolved before execution. Example: '${MOFLOW_ACTIVE_FILE} --html'",
           },
         },
         required: ["script"],
@@ -697,7 +696,7 @@ async function toolRunSkillScript(
   const action = evaluateWithSession(sessionRules, permissions.run_skill_script, "run_skill_script", owningSkill.name);
 
   if (action === "deny") {
-    return t("ai.tool.error.runSkillScriptDenied", { name: owningSkill.name });
+    return `Skill script execution for "${owningSkill.name}" was denied`;
   }
   if (action === "ask" && onPermission) {
     const alwaysPattern = generateAlwaysPattern("run_skill_script", owningSkill.name);
@@ -707,7 +706,7 @@ async function toolRunSkillScript(
       alwaysPatterns: [alwaysPattern],
     });
     if (userAction === "deny") {
-      return t("ai.tool.error.runSkillScriptDenied", { name: owningSkill.name });
+      return `Skill script execution for "${owningSkill.name}" was denied`;
     }
   }
 
@@ -761,21 +760,21 @@ export async function executeTool(
       }
       case "find": {
         if (!ctx.workspaceRoot) {
-          return t("ai.tool.error.noWorkspaceFind");
+          return "No workspace open, cannot use find";
         }
         result = await toolFind(String(args.pattern ?? ""), ctx.workspaceRoot);
         break;
       }
       case "glob": {
         if (!ctx.workspaceRoot) {
-          return t("ai.tool.error.noWorkspaceGlob");
+          return "No workspace open, cannot use glob";
         }
         result = await toolGlob(String(args.pattern ?? ""), ctx.workspaceRoot);
         break;
       }
       case "ls": {
         if (!ctx.workspaceRoot) {
-          return t("ai.tool.error.noWorkspaceLs");
+          return "No workspace open, cannot use ls";
         }
         result = await toolLs(args.path as string | undefined, ctx.workspaceRoot, ctx, onPermission);
         break;

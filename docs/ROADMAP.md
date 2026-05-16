@@ -666,6 +666,16 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
+## v0.9.2 — AI prompt 英文硬编码 ✅
+
+- [x] 工具描述（`ai.tool.*.desc` / `ai.tool.*.param.*`）从 i18n `t()` 改为英文硬编码（LLM prompt 不需要多语言）
+- [x] 工具错误消息（`ai.tool.error.*`）从 i18n `t()` 改为英文硬编码（tool result 只给 LLM 看）
+- [x] `skill` tool 和 `run_skill_script` tool 描述补齐英文（之前 en.ts 缺失 key 导致 fallback 失效）
+- [x] `tools.ts` 移除 `import { t } from "../i18n/core"`（不再有 i18n 依赖）
+- [x] 4 个 locale 文件各删除约 45 个 `ai.tool.*` / `ai.tool.error.*` key（保留 `ai.toolStatus.*` UI 可见键）
+
+---
+
 ## v0.9.5 — AI 提示词优化
 
 - [ ] Selection AI 去掉全量文档（explain/translate/rewrite 不再发送完整文档）
