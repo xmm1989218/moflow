@@ -76,9 +76,10 @@ describe("contextBuilder", () => {
   });
 
   describe("buildSystemPrompt — workspace mode", () => {
-    it("includes filename when activeFilePath provided", () => {
+    it("includes workspace open message when activeFilePath provided", () => {
       const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "D:/projects/foo/README.md");
-      expect(prompt).toContain("D:/projects/foo/README.md");
+      expect(prompt).toContain("workspace open");
+      expect(prompt).toContain("<document_content>");
     });
 
     it("includes switch-file note", () => {
@@ -116,10 +117,11 @@ describe("contextBuilder", () => {
       expect(needsDocTools).toBe(true);
     });
 
-    it("workspace truncation includes filename", () => {
+    it("workspace truncation includes truncated tag", () => {
       const longDoc = "x".repeat(200000);
-      const { prompt } = buildSystemPrompt(longDoc, 128000, true, "D:/projects/foo", "D:/projects/foo/long.md");
-      expect(prompt).toContain("D:/projects/foo/long.md");
+      const { prompt } = buildSystemPrompt(longDoc, 4000, true, "D:/projects/foo", "D:/projects/foo/long.md");
+      expect(prompt).toContain("<document_content truncated=\"true\">");
+      expect(prompt).toContain("<document_structure>");
     });
 
     it("no workspace prompt does not include workspace-specific tools", () => {
