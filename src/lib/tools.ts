@@ -769,7 +769,10 @@ async function toolWrite(
     await writeFile(absPath, new TextEncoder().encode(content));
     syncTabContent(absPath, content);
 
-    return `File written successfully: ${absPath} (${content.length} chars)`;
+    const previewLines = content.split("\n").slice(0, 20);
+    const preview = previewLines.join("\n");
+    const suffix = content.split("\n").length > 20 ? `\n... (${content.length} chars total)` : `\n(${content.length} chars)`;
+    return `File written: ${absPath}\n---\n${preview}${suffix}`;
   } catch (e) {
     return `Write error: ${e instanceof Error ? e.message : String(e)}`;
   }
@@ -851,7 +854,12 @@ async function toolEdit(
     await writeFile(absPath, new TextEncoder().encode(newContent));
     syncTabContent(absPath, newContent);
 
-    return `File edited successfully: ${absPath} (${matches.length} replacement${matches.length > 1 ? "s" : ""})`;
+    const countLabel = matches.length > 1 ? ` (${matches.length} replacements)` : "";
+    const diffLines: string[] = [];
+    for (const line of oldString.split("\n")) diffLines.push(`- ${line}`);
+    for (const line of newString.split("\n")) diffLines.push(`+ ${line}`);
+    const diff = diffLines.join("\n");
+    return `File edited: ${absPath}${countLabel}\n---\n${diff}`;
   } catch (e) {
     return `Edit error: ${e instanceof Error ? e.message : String(e)}`;
   }

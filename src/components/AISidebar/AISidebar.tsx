@@ -89,8 +89,28 @@ function UsageBadge({ tabId, providerId, model, onClick, active }: { tabId: stri
   );
 }
 
-function ToolCallStatus({ name, args }: { name: string; args: Record<string, unknown> }) {
+function ToolCallStatus({ name, args, completedReadStats }: { name: string; args: Record<string, unknown>; completedReadStats?: { reads: number; searches: number } }) {
   useT();
+
+  const isReadTool = READ_TOOLS.has(name);
+
+  if (isReadTool && completedReadStats) {
+    const currentReads = completedReadStats.reads + (READ_TYPE_TOOLS.has(name) ? 1 : 0);
+    const currentSearches = completedReadStats.searches + (SEARCH_TYPE_TOOLS.has(name) ? 1 : 0);
+    const parts: string[] = [];
+    if (currentReads > 0) parts.push(`${currentReads} reads`);
+    if (currentSearches > 0) parts.push(`${currentSearches} searches`);
+    const label = parts.join(" ");
+
+    return (
+      <div className="moflow-ai-tool-status">
+        <span className="moflow-ai-tool-spinner" />
+        <span className="moflow-ai-tool-status-icon"><ToolIcon type="read" /></span>
+        <span>Exploring · {label}</span>
+      </div>
+    );
+  }
+
   let text: string;
   switch (name) {
     case "outline":
@@ -124,10 +144,10 @@ function ToolCallStatus({ name, args }: { name: string; args: Record<string, unk
       text = t("ai.toolStatus.runSkillScript") + `: ${args.script ?? ""}${args.args ? " " + String(args.args) : ""}`;
       break;
     case "write":
-      text = `Editing: ${args.path ?? ""}`;
+      text = `Edit ${args.path ?? ""}`;
       break;
     case "edit":
-      text = `Editing: ${args.path ?? ""}`;
+      text = `Edit ${args.path ?? ""}`;
       break;
     default:
       text = t("ai.toolStatus.default", { name });
@@ -136,50 +156,252 @@ function ToolCallStatus({ name, args }: { name: string; args: Record<string, unk
   return (
     <div className="moflow-ai-tool-status">
       <span className="moflow-ai-tool-spinner" />
+      <span className="moflow-ai-tool-status-icon"><ToolIcon type={name === "run_skill_script" ? "script" : name === "webfetch" ? "webfetch" : name === "skill" ? "skill" : READ_TOOLS.has(name) ? "read" : EDIT_TOOLS.has(name) ? "edit" : "generic"} /></span>
       <span>{text}</span>
     </div>
   );
 }
 
 function formatToolArgs(name: string, args: Record<string, unknown>): string {
-  if (name === "write" || name === "edit") return `edit(${args.path ?? ""})`;
+  if (name === "write" || name === "edit") return `Edit ${args.path ?? ""}`;
+  if (name === "run_skill_script") return `Run ${args.script ?? ""}${args.args ? " " + String(args.args) : ""}`;
+  const displayName = name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, " ");
   const entries = Object.entries(args);
-  if (entries.length === 0) return `${name}()`;
+  if (entries.length === 0) return displayName;
   const parts = entries.map(([, v]) => String(v));
-  return `${name}(${parts.join(", ")})`;
+  return `${displayName} ${parts.join(" ")}`;
 }
 
-function ToolResultBlock({ msg, messages }: { msg: Message; messages: Message[] }) {
-  const [open, setOpen] = useState(false);
-  let argsLabel = msg.toolName ?? "";
-  if (msg.toolCallId) {
-    for (const m of messages) {
-      if (m.role === "assistant" && m.toolCalls) {
-        const tc = m.toolCalls.find((c) => c.id === msg.toolCallId);
-        if (tc) {
-          try {
-            const args = JSON.parse(tc.arguments || "{}");
-            argsLabel = formatToolArgs(tc.name, args);
-          } catch {
-            argsLabel = tc.name + "()";
-          }
-          break;
+const READ_TOOLS = new Set(["outline", "read", "read_section", "grep", "find", "glob", "ls"]);
+const EDIT_TOOLS = new Set(["write", "edit"]);
+
+function ToolIcon({ type }: { type: "read" | "edit" | "script" | "webfetch" | "skill" | "generic" }) {
+  const svgProps = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  switch (type) {
+    case "read":
+      return <svg {...svgProps}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+    case "edit":
+      return <svg {...svgProps}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+    case "script":
+      return <svg {...svgProps}><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>;
+    case "webfetch":
+      return <svg {...svgProps}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>;
+    case "skill":
+      return <svg {...svgProps}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+    default:
+      return <svg {...svgProps}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>;
+  }
+}
+
+function getToolCallInfo(msg: Message, messages: Message[]): { name: string; args: Record<string, unknown> } | null {
+  if (!msg.toolCallId) return null;
+  for (const m of messages) {
+    if (m.role === "assistant" && m.toolCalls) {
+      const tc = m.toolCalls.find((c) => c.id === msg.toolCallId);
+      if (tc) {
+        try {
+          return { name: tc.name, args: JSON.parse(tc.arguments || "{}") };
+        } catch {
+          return { name: tc.name, args: {} };
         }
       }
     }
   }
+  return null;
+}
+
+function isToolError(content: string): boolean {
+  const lower = content.toLowerCase();
+  return lower.includes("error") || lower.includes("not found") || lower.includes("denied") || lower.includes("failed") || lower.includes("no match");
+}
+
+function getLangFromPath(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    json: "json", ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript",
+    md: "markdown", py: "python", css: "css", html: "html", yml: "yaml", yaml: "yaml",
+    toml: "toml", rs: "rust", go: "go", sh: "bash", sql: "sql", xml: "xml",
+  };
+  return map[ext] ?? "";
+}
+
+interface ToolItem {
+  msg: Message;
+  info: { name: string; args: Record<string, unknown> } | null;
+  isError: boolean;
+}
+
+const READ_TYPE_TOOLS = new Set(["outline", "read", "read_section"]);
+const SEARCH_TYPE_TOOLS = new Set(["grep", "find", "glob", "ls"]);
+function buildReadLabel(items: ToolItem[]): string {
+  let reads = 0;
+  let searches = 0;
+  for (const item of items) {
+    const name = item.info?.name ?? item.msg.toolName ?? "";
+    if (READ_TYPE_TOOLS.has(name)) reads++;
+    else if (SEARCH_TYPE_TOOLS.has(name)) searches++;
+    else reads++;
+  }
+  const parts: string[] = [];
+  if (reads > 0) parts.push(`${reads} reads`);
+  if (searches > 0) parts.push(`${searches} searches`);
+  return parts.join(" ");
+}
+
+function ReadToolGroup({ items }: { items: ToolItem[] }) {
+  const [open, setOpen] = useState(false);
+  const label = buildReadLabel(items);
 
   return (
-    <div className="moflow-ai-tool-result">
-      <details aria-expanded={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
-        <summary className="moflow-ai-tool-result-summary">
-          <span className="moflow-ai-tool-result-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>
-          <span className="moflow-ai-tool-args-text">{argsLabel}</span>
+    <div className="moflow-ai-tool-group">
+      <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+        <summary className="moflow-ai-tool-group-summary">
+          <span className="moflow-ai-tool-group-icon"><ToolIcon type="read" /></span>
+          <span>Explored · {label}</span>
         </summary>
-        <pre className="moflow-ai-tool-result-content">{msg.content}</pre>
+        <div className="moflow-ai-tool-group-items">
+          {items.map((item) => (
+            <div key={item.msg.id} className={`moflow-ai-tool-group-item${item.isError ? " moflow-ai-tool-error" : ""}`}>
+              <span className="moflow-ai-tool-group-item-label">{item.info ? formatToolArgs(item.info.name, item.info.args) : (item.msg.toolName ?? "")}</span>
+              {item.isError && <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>}
+            </div>
+          ))}
+        </div>
       </details>
     </div>
   );
+}
+
+function EditToolResult({ item }: { item: ToolItem }) {
+  const [open, setOpen] = useState(false);
+  const path = item.info?.args.path ? String(item.info.args.path) : "";
+  const lang = getLangFromPath(path);
+
+  let displayContent: string;
+  if (item.isError) {
+    displayContent = item.msg.content;
+  } else {
+    const content = item.msg.content;
+    const sepIdx = content.indexOf("\n---\n");
+    if (sepIdx !== -1) {
+      const header = content.slice(0, sepIdx);
+      const body = content.slice(sepIdx + 5);
+      displayContent = lang ? `\`\`\`${lang}\n${body}\n\`\`\`` : body;
+      if (!item.isError) displayContent = `**${header}**\n\n${displayContent}`;
+    } else {
+      displayContent = lang ? `\`\`\`${lang}\n${content}\n\`\`\`` : content;
+    }
+  }
+
+  if (item.isError) {
+    return (
+      <div className="moflow-ai-tool-edit moflow-ai-tool-error">
+        <div className="moflow-ai-tool-edit-header">
+          <span className="moflow-ai-tool-edit-icon"><ToolIcon type="edit" /></span>
+          <span>Edit {path}</span>
+          <span className="moflow-ai-tool-error-badge">✗</span>
+        </div>
+        <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
+      </div>
+    );
+  }
+
+  return (
+    <div className="moflow-ai-tool-edit">
+      <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+        <summary className="moflow-ai-tool-edit-header">
+          <span className="moflow-ai-tool-edit-icon"><ToolIcon type="edit" /></span>
+          <span>Edit {path}</span>
+        </summary>
+        <div className="moflow-ai-tool-edit-content">
+          <MessageContent content={displayContent} />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function GenericToolResult({ item, iconType }: { item: ToolItem; iconType: "read" | "edit" | "script" | "webfetch" | "skill" | "generic" }) {
+  const [open, setOpen] = useState(false);
+  const label = item.info ? formatToolArgs(item.info.name, item.info.args) : (item.msg.toolName ?? "");
+
+  if (item.isError) {
+    return (
+      <div className="moflow-ai-tool-group moflow-ai-tool-error">
+        <div className="moflow-ai-tool-group-summary">
+          <span className="moflow-ai-tool-group-icon"><ToolIcon type={iconType} /></span>
+          <span>{label}</span>
+          <span className="moflow-ai-tool-error-badge">✗</span>
+        </div>
+        <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
+      </div>
+    );
+  }
+
+  return (
+    <div className="moflow-ai-tool-group">
+      <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+        <summary className="moflow-ai-tool-group-summary">
+          <span className="moflow-ai-tool-group-icon"><ToolIcon type={iconType} /></span>
+          <span>{label}</span>
+        </summary>
+        <pre className="moflow-ai-tool-result-content">{item.msg.content}</pre>
+      </details>
+    </div>
+  );
+}
+
+function ToolResultGroups({ toolMessages, messages }: { toolMessages: Message[]; messages: Message[] }) {
+  const groups: Array<"read" | "edit" | "script" | "generic">[] = [];
+  const groupItems: ToolItem[][] = [];
+
+  for (const msg of toolMessages) {
+    const info = getToolCallInfo(msg, messages);
+    const name = info?.name ?? msg.toolName ?? "";
+    const isError = isToolError(msg.content);
+    const item: ToolItem = { msg, info, isError };
+
+    let type: "read" | "edit" | "script" | "generic";
+    if (READ_TOOLS.has(name)) type = "read";
+    else if (EDIT_TOOLS.has(name)) type = "edit";
+    else if (name === "run_skill_script") type = "script";
+    else type = "generic";
+
+    const lastGroup = groups.length > 0 ? groups[groups.length - 1] : null;
+    const lastItems = groupItems.length > 0 ? groupItems[groupItems.length - 1] : null;
+
+    if (lastGroup && lastGroup.length === 1 && lastGroup[0] === "read" && type === "read" && !isError && !lastItems?.some((i) => i.isError)) {
+      lastItems!.push(item);
+    } else {
+      groups.push([type]);
+      groupItems.push([item]);
+    }
+  }
+
+  const elements: React.ReactNode[] = [];
+  for (let gi = 0; gi < groups.length; gi++) {
+    const items = groupItems[gi];
+    const type = groups[gi][0];
+
+    if (type === "read") {
+      elements.push(<ReadToolGroup key={`read-${gi}`} items={items} />);
+    } else if (type === "edit") {
+      for (const item of items) {
+        elements.push(<EditToolResult key={item.msg.id} item={item} />);
+      }
+    } else if (type === "script") {
+      for (const item of items) {
+        elements.push(<GenericToolResult key={item.msg.id} item={item} iconType="script" />);
+      }
+    } else {
+      for (const item of items) {
+        const iconType: "read" | "edit" | "script" | "webfetch" | "skill" | "generic" = item.info?.name === "webfetch" ? "webfetch" : item.info?.name === "skill" ? "skill" : "generic";
+        elements.push(<GenericToolResult key={item.msg.id} item={item} iconType={iconType} />);
+      }
+    }
+  }
+
+  return <>{elements}</>;
 }
 
 
@@ -893,35 +1115,54 @@ if (id === "compact") {
             <p>{t("ai.empty.prompt")}</p>
           </div>
         ) : null}
-        {chatLoaded && messages.map((msg) => {
-          if (msg.content === "/compact" && msg.role === "user") {
-            return (
-              <div key={msg.id} className="moflow-ai-compact-divider">
-                <span>{t("ai.compacted")}</span>
-              </div>
-            );
-          }
+        {chatLoaded && (() => {
+            const elements: React.ReactNode[] = [];
+            let toolBuffer: Message[] = [];
 
-          if (msg.role === "tool") {
-            return <ToolResultBlock key={msg.id} msg={msg} messages={messages} />;
-          }
+            const flushToolBuffer = () => {
+              if (toolBuffer.length > 0) {
+                elements.push(<ToolResultGroups key={`tools-${elements.length}`} toolMessages={toolBuffer} messages={messages} />);
+                toolBuffer = [];
+              }
+            };
 
-          if (msg.role === "assistant" && !msg.content && msg.toolCalls?.length) {
-            return null;
-          }
+            for (const msg of messages) {
+              if (msg.content === "/compact" && msg.role === "user") {
+                flushToolBuffer();
+                elements.push(
+                  <div key={msg.id} className="moflow-ai-compact-divider">
+                    <span>{t("ai.compacted")}</span>
+                  </div>
+                );
+                continue;
+              }
 
-          return (
-            <div key={msg.id} className={`moflow-ai-message moflow-ai-message-${msg.role}`}>
-              <div className="moflow-ai-message-content">
-                {msg.role === "assistant" ? (
-                  <MessageContent content={msg.content} />
-                ) : (
-                  msg.content
-                )}
-              </div>
-            </div>
-          );
-        })}
+              if (msg.role === "tool") {
+                toolBuffer.push(msg);
+                continue;
+              }
+
+              flushToolBuffer();
+
+              if (msg.role === "assistant" && !msg.content && msg.toolCalls?.length) {
+                continue;
+              }
+
+              elements.push(
+                <div key={msg.id} className={`moflow-ai-message moflow-ai-message-${msg.role}`}>
+                  <div className="moflow-ai-message-content">
+                    {msg.role === "assistant" ? (
+                      <MessageContent content={msg.content} />
+                    ) : (
+                      msg.content
+                    )}
+                  </div>
+                </div>
+              );
+            }
+            flushToolBuffer();
+            return elements;
+          })()}
         {streamingContent && (
           <div className="moflow-ai-message moflow-ai-message-assistant">
             <div className="moflow-ai-message-content">
@@ -930,7 +1171,18 @@ if (id === "compact") {
             </div>
           </div>
         )}
-        {toolCallStatus && <ToolCallStatus name={toolCallStatus.name} args={toolCallStatus.args} />}
+        {toolCallStatus && (() => {
+          const completedReadTools = messages.filter((m) => m.role === "tool" && READ_TOOLS.has(m.toolName ?? ""));
+          let reads = 0;
+          let searches = 0;
+          for (const m of completedReadTools) {
+            if (READ_TYPE_TOOLS.has(m.toolName ?? "")) reads++;
+            else if (SEARCH_TYPE_TOOLS.has(m.toolName ?? "")) searches++;
+            else reads++;
+          }
+          const stats = (reads > 0 || searches > 0) ? { reads, searches } : undefined;
+          return <ToolCallStatus name={toolCallStatus.name} args={toolCallStatus.args} completedReadStats={stats} />;
+        })()}
         <div ref={messagesEndRef} />
         {showScrollBottom && (
           <button className="moflow-ai-scroll-bottom-btn" onClick={scrollToBottom} aria-label={t("ai.scrollBottom")}>
