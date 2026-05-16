@@ -116,7 +116,7 @@ async function main() {
 
   // 8. Commit, tag and push
   console.log("Step 8/8: Committing, tagging and pushing...");
-  run(`git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json CHANGELOG.md`);
+  run(`git add package.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json CHANGELOG.md`);
   const hasStaged = runQuiet("git diff --cached --quiet || echo changed").includes("changed");
   if (hasStaged) {
     run(`git commit -m "chore: bump version to ${version}"\n`);
