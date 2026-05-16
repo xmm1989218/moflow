@@ -676,6 +676,38 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
+## v0.9.3 — Write/Edit Tool & Skill 调用优化
+
+### Write Tool（文件写入能力）
+
+- [x] `makeWriteTool()` — tool 定义（path + content 参数，支持绝对路径和相对路径）
+- [x] `toolWrite()` — 执行逻辑：路径解析（workspace > activeFile dir > 绝对路径）、`edit` 权限检查、`allowFsScope`、`writeFile`、自动创建父目录、已打开 tab 同步内容
+- [x] `executeTool` 新增 `case "write"` 分支
+- [x] `getToolDefinitions` 增加 `activeFilePath` 参数，无 workspace 但有 activeFilePath 时也返回 write tool
+- [x] `WS_FILE_TOOLS` / `DOC_FILE_TOOLS` 追加 write tool 说明行
+- [x] 无 workspace + 短文档 prompt 分支追加 write tool 说明
+- [x] `AISidebar.tsx` / `ContextView.tsx` 传入 `activeFilePath` 参数
+
+### Edit Tool（文件局部编辑）
+
+- [x] `makeEditTool()` — tool 定义（path + old_string + new_string + replace_all 参数）
+- [x] `toolEdit()` — 精确匹配 + 行尾空格模糊匹配；多处匹配提示 replace_all；无匹配返回上下文片段
+- [x] `resolvePathAndCheckWritePermission()` — 提取 write/edit 共享路径解析+权限检查逻辑
+- [x] `syncTabContent()` — 提取 write/edit 共享 tab 同步逻辑
+- [x] `executeTool` 新增 `case "edit"` 分支
+- [x] `getToolDefinitions` 追加 edit tool
+- [x] `WS_FILE_TOOLS` / `DOC_FILE_TOOLS` 追加 edit tool 说明行
+
+### Skill 调用 Prompt 优化
+
+- [ ] `run_skill_script` 硬停机制（`skillScriptExecuted` flag + 拦截逻辑 + 动态移除 tool schema）
+- [ ] `run_skill_script` tool description 简化（行为约束移至 system prompt）
+- [ ] `SKILL_INSTRUCTION` 拆分为 `SKILL_BASE` + `SKILL_SCRIPT`（按条件拼接）
+- [ ] `<available_skills>` XML 紧凑化（行内属性）
+- [ ] `<available_env_vars>` 精简（行内属性，保留 desc）
+
+---
+
 ## v0.9.5 — AI 提示词优化
 
 - [ ] Selection AI 去掉全量文档（explain/translate/rewrite 不再发送完整文档）

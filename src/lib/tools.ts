@@ -1,7 +1,7 @@
 import type { ToolDefinition } from "./types";
 import { invoke } from "@tauri-apps/api/core";
-import { readTextFile, readDir, exists, stat } from "@tauri-apps/plugin-fs";
-import { join } from "@tauri-apps/api/path";
+import { readTextFile, readDir, exists, stat, writeFile, mkdir } from "@tauri-apps/plugin-fs";
+import { join, dirname } from "@tauri-apps/api/path";
 import { buildOutline } from "./contextBuilder";
 import type { PermissionAction, PermissionRequest } from "./permission";
 import { evaluateWithSession, generateAlwaysPattern, DEFAULT_PERMISSIONS } from "./permission";
@@ -9,6 +9,7 @@ import type { Permissions } from "./permission";
 import { useSkillStore } from "../stores/skillStore";
 import { loadSkillBody, listScriptFiles, executeSkillScript } from "./skillManager";
 import { useThemeStore } from "../stores/themeStore";
+import { useTabStore } from "../stores/appStore";
 
 export type OnPermissionCallback = (request: PermissionRequest) => Promise<PermissionAction>;
 
@@ -278,6 +279,62 @@ function makeWebfetchTool(): ToolDefinition {
   };
 }
 
+function makeWriteTool(): ToolDefinition {
+  return {
+    type: "function",
+    function: {
+      name: "write",
+      description: "Create or overwrite a file. Path can be absolute or relative (to workspace root, or to the active file's directory if no workspace). Use this to create new files or save generated content.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "File path (absolute, or relative to workspace root / active file directory)",
+          },
+          content: {
+            type: "string",
+            description: "Complete file content to write",
+          },
+        },
+        required: ["path", "content"],
+      },
+    },
+  };
+}
+
+function makeEditTool(): ToolDefinition {
+  return {
+    type: "function",
+    function: {
+      name: "edit",
+      description: "Replace text in an existing file. Provide the exact text to find (old_string) and the replacement (new_string). Use replace_all to replace all occurrences. Prefer edit over write for small changes — it uses fewer tokens.",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "File path (absolute, or relative to workspace root / active file directory)",
+          },
+          old_string: {
+            type: "string",
+            description: "Exact text to find and replace",
+          },
+          new_string: {
+            type: "string",
+            description: "Replacement text",
+          },
+          replace_all: {
+            type: "boolean",
+            description: "Replace all occurrences of old_string (default: false, replaces only the first unique match)",
+          },
+        },
+        required: ["path", "old_string", "new_string"],
+      },
+    },
+  };
+}
+
 export function getFileToolDefinitions(): ToolDefinition[] {
   return [makeOutlineTool(), makeReadTool(), makeReadSectionTool()];
 }
@@ -296,7 +353,7 @@ export function getNetworkToolDefinitions(): ToolDefinition[] {
 
 export const WEBFETCH_LIMIT = 3;
 
-export function getToolDefinitions(needsDocTools: boolean, workspaceRoot?: string | null): ToolDefinition[] {
+export function getToolDefinitions(needsDocTools: boolean, workspaceRoot?: string | null, activeFilePath?: string | null): ToolDefinition[] {
   const tools: ToolDefinition[] = [makeWebfetchTool()];
   const fileDefs = [makeOutlineTool(), makeReadTool(), makeReadSectionTool()];
   const grepDef = makeGrepTool();
@@ -306,7 +363,9 @@ export function getToolDefinitions(needsDocTools: boolean, workspaceRoot?: strin
   }
   if (workspaceRoot) {
     if (!needsDocTools) tools.push(...fileDefs, grepDef);
-    tools.push(...projectDefs);
+    tools.push(...projectDefs, makeWriteTool(), makeEditTool());
+  } else if (activeFilePath) {
+    tools.push(...fileDefs, grepDef, makeWriteTool(), makeEditTool());
   }
   return tools;
 }
@@ -589,6 +648,170 @@ async function toolWebFetch(url: string, format: string | undefined, signal: Abo
   }
 }
 
+async function resolvePathAndCheckWritePermission(
+  path: string,
+  workspaceRoot: string | undefined,
+  activeFilePath: string | undefined,
+  ctx: ToolContext,
+  onPermission?: OnPermissionCallback
+): Promise<{ absPath?: string; error?: string }> {
+  let absPath: string;
+
+  if (isAbsolutePath(path)) {
+    absPath = path;
+  } else if (workspaceRoot) {
+    absPath = await resolveAbsolutePath(path, workspaceRoot);
+  } else if (activeFilePath) {
+    absPath = await join(await dirname(activeFilePath), path);
+  } else {
+    return { error: "No workspace open and no active file. Please provide an absolute file path." };
+  }
+
+  if (workspaceRoot && !isPathInsideWorkspace(absPath, workspaceRoot)) {
+    const { allowed, error } = await checkPathAccess(absPath, workspaceRoot, ctx, onPermission);
+    if (!allowed) return { error: error ?? "Access denied: path is outside the workspace" };
+  }
+
+  const permissions = ctx.permissions ?? DEFAULT_PERMISSIONS;
+  const sessionRules = ctx.sessionRules ?? [];
+  const action = evaluateWithSession(sessionRules, permissions.edit, "edit", absPath);
+
+  if (action === "deny") return { error: "Permission denied: edit not granted" };
+  if (action === "ask") {
+    if (!onPermission) return { error: "Permission denied: edit not granted" };
+    const alwaysPattern = generateAlwaysPattern("edit", absPath);
+    const userAction = await onPermission({
+      permissionKey: "edit",
+      input: absPath,
+      alwaysPatterns: [alwaysPattern],
+    });
+    if (userAction === "deny") return { error: "Permission denied: edit not granted" };
+  }
+
+  return { absPath };
+}
+
+function syncTabContent(absPath: string, content: string): void {
+  const tabState = useTabStore.getState();
+  const existingTab = tabState.files.find((f) => f.filePath === absPath);
+  if (existingTab) {
+    tabState.updateTabMeta(existingTab.id, {
+      content,
+      lastSavedContent: content,
+      isModified: false,
+      contentLoaded: true,
+    });
+  }
+}
+
+async function toolWrite(
+  path: string,
+  content: string,
+  workspaceRoot: string | undefined,
+  activeFilePath: string | undefined,
+  ctx: ToolContext,
+  onPermission?: OnPermissionCallback
+): Promise<string> {
+  const { absPath, error } = await resolvePathAndCheckWritePermission(path, workspaceRoot, activeFilePath, ctx, onPermission);
+  if (!absPath) return error ?? "Write error";
+
+  try {
+    await allowFsScope(absPath);
+
+    const dir = await dirname(absPath);
+    if (!(await exists(dir))) {
+      await mkdir(dir, { recursive: true });
+    }
+
+    await writeFile(absPath, new TextEncoder().encode(content));
+    syncTabContent(absPath, content);
+
+    return `File written successfully: ${path} (${content.length} chars)`;
+  } catch (e) {
+    return `Write error: ${e instanceof Error ? e.message : String(e)}`;
+  }
+}
+
+async function toolEdit(
+  path: string,
+  oldString: string,
+  newString: string,
+  replaceAll: boolean,
+  workspaceRoot: string | undefined,
+  activeFilePath: string | undefined,
+  ctx: ToolContext,
+  onPermission?: OnPermissionCallback
+): Promise<string> {
+  const { absPath, error: permError } = await resolvePathAndCheckWritePermission(path, workspaceRoot, activeFilePath, ctx, onPermission);
+  if (!absPath) return permError ?? "Edit error";
+
+  try {
+    await allowFsScope(absPath);
+
+    if (!(await exists(absPath))) {
+      return `File not found: ${path}`;
+    }
+
+    const fileContent = await readTextFile(absPath);
+
+    const exactMatches: number[] = [];
+    let pos = 0;
+    while (pos < fileContent.length) {
+      const idx = fileContent.indexOf(oldString, pos);
+      if (idx === -1) break;
+      exactMatches.push(idx);
+      pos = idx + 1;
+    }
+
+    const trimMatches: number[] = [];
+    if (exactMatches.length === 0 && oldString.trimEnd() !== oldString) {
+      const trimmed = oldString.trimEnd();
+      pos = 0;
+      while (pos < fileContent.length) {
+        const idx = fileContent.indexOf(trimmed, pos);
+        if (idx === -1) break;
+        const after = fileContent.slice(idx + trimmed.length, idx + trimmed.length + (oldString.length - trimmed.length));
+        if (after.trimEnd().length === 0) {
+          trimMatches.push(idx);
+        }
+        pos = idx + 1;
+      }
+    }
+
+    const matches = exactMatches.length > 0 ? exactMatches : trimMatches;
+    const matchSource = exactMatches.length > 0 ? "exact" : "trailing-whitespace";
+
+    if (matches.length === 0) {
+      const lines = fileContent.split("\n");
+      const lineNum = lines.findIndex((line) => line.includes(oldString.split("\n")[0]));
+      const contextStart = Math.max(0, lineNum - 3);
+      const contextEnd = Math.min(lines.length, lineNum + 7);
+      const context = lines.slice(contextStart, contextEnd).map((l, i) => `${contextStart + i + 1}: ${l}`).join("\n");
+      return `No match found for old_string in ${path}. The string you provided may not exist in the file exactly as written. Here is the surrounding context:\n${context}\n\nPlease try again with the exact text from the file, or use the read tool to view the file content first.`;
+    }
+
+    if (matches.length > 1 && !replaceAll) {
+      return `Found ${matches.length} matches for old_string in ${path}. Use replace_all: true to replace all occurrences, or provide more surrounding text to make the match unique.`;
+    }
+
+    let newContent: string;
+    if (replaceAll || matches.length === 1) {
+      const matchStr = matchSource === "exact" ? oldString : oldString.trimEnd();
+      newContent = fileContent.split(matchStr).join(newString);
+    } else {
+      const matchStr = matchSource === "exact" ? oldString : oldString.trimEnd();
+      newContent = fileContent.replace(matchStr, newString);
+    }
+
+    await writeFile(absPath, new TextEncoder().encode(newContent));
+    syncTabContent(absPath, newContent);
+
+    return `File edited successfully: ${path} (${matches.length} replacement${matches.length > 1 ? "s" : ""})`;
+  } catch (e) {
+    return `Edit error: ${e instanceof Error ? e.message : String(e)}`;
+  }
+}
+
 export function makeSkillTool(): ToolDefinition {
   return {
     type: "function",
@@ -781,6 +1004,14 @@ export async function executeTool(
       }
       case "webfetch": {
         result = await toolWebFetch(String(args.url ?? ""), args.format != null ? String(args.format) : undefined, signal);
+        break;
+      }
+      case "write": {
+        result = await toolWrite(String(args.path ?? ""), String(args.content ?? ""), ctx.workspaceRoot, ctx.activeFilePath, ctx, onPermission);
+        break;
+      }
+      case "edit": {
+        result = await toolEdit(String(args.path ?? ""), String(args.old_string ?? ""), String(args.new_string ?? ""), args.replace_all === true, ctx.workspaceRoot, ctx.activeFilePath, ctx, onPermission);
         break;
       }
       case "skill": {

@@ -535,7 +535,7 @@ export default function AISidebar() {
     const needsDocTools = docTokens > (maxContext - reserved);
 
     const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsDocTools, workspaceRoot, activeFilePath);
-    const tools = getToolDefinitions(needsDocTools, workspaceRoot);
+    const tools = getToolDefinitions(needsDocTools, workspaceRoot, activeFilePath);
     const availableSkills = useSkillStore.getState().discoveredSkills.filter((s) => s.enabled);
     if (availableSkills.length > 0) {
       tools.push(makeSkillTool());

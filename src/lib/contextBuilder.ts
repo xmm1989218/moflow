@@ -54,6 +54,8 @@ const WS_FILE_TOOLS = [
   "- find: Search files by name",
   "- glob: Match file paths by glob pattern",
   "- ls: List directory contents",
+  "- write(path, content): Create or overwrite a file",
+  "- edit(path, old_string, new_string, replace_all?): Replace text in a file",
 ].join("\n");
 
 const DOC_FILE_TOOLS = [
@@ -61,6 +63,8 @@ const DOC_FILE_TOOLS = [
   "- read_lines(path?, offset?, limit?): Read a range of lines",
   "- read_section(heading, path?): Read content under a heading",
   "- grep(pattern, path?): Search matching lines",
+  "- write(path, content): Create or overwrite a file",
+  "- edit(path, old_string, new_string, replace_all?): Replace text in a file",
 ].join("\n");
 
 const WEBFETCH_INSTRUCTION = "You can use webfetch(url, format?) to access web page content for external information or references. format supports markdown (default), text, html. Max 3 calls per request.";
@@ -214,20 +218,24 @@ export function buildSystemPrompt(
   const docTokens = estimateTokens(docContent);
 
   if (docTokens <= availableDocTokens) {
-    return {
-      prompt: [
-        base,
-        "",
-        "<document_content>",
-        docContent,
-        "</document_content>",
-        "",
-        WEBFETCH_INSTRUCTION,
-        skillSection,
-      ].join("\n"),
-      needsDocTools: false,
-    };
-  }
+      const writeNote = activeFilePath
+        ? "\nYou can use write(path, content) to create/overwrite files and edit(path, old_string, new_string) to replace text in files.\n"
+        : "";
+      return {
+        prompt: [
+          base,
+          "",
+          "<document_content>",
+          docContent,
+          "</document_content>",
+          "",
+          writeNote,
+          WEBFETCH_INSTRUCTION,
+          skillSection,
+        ].join("\n"),
+        needsDocTools: false,
+      };
+    }
 
   const zhCount = Array.from(docContent).filter((ch) =>
     /[\u4e00-\u9fff\u3400-\u4dbf]/.test(ch)

@@ -172,11 +172,11 @@ export default function ContextView({ tabId, providerId, model, docContent }: Co
     const activeFilePath = useTabStore.getState().files.find((f) => f.id === tabId)?.filePath ?? null;
 
     const { prompt, needsDocTools: promptNeedsDocTools } = buildSystemPrompt(docContent, maxContext, needsDocTools, workspaceRoot, activeFilePath);
-    const toolList = getToolDefinitions(promptNeedsDocTools, workspaceRoot);
+    const toolList = getToolDefinitions(promptNeedsDocTools, workspaceRoot, activeFilePath);
     const bd = computeBreakdown(prompt, contextMsgs, contextTokens);
     const total = bd.reduce((sum, b) => sum + b.tokens, 0);
     return { tools: toolList, breakdown: bd, totalBreakdown: total };
-  }, [docContent, contextMsgs, contextTokens, maxContext]);
+  }, [docContent, contextMsgs, contextTokens, maxContext, tabId]);
 
   return (
     <div className="moflow-ctx-view">
