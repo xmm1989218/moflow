@@ -117,6 +117,18 @@ function ToolCallStatus({ name, args }: { name: string; args: Record<string, unk
     case "webfetch":
       text = t("ai.toolStatus.webfetch", { url: String(args.url) });
       break;
+    case "skill":
+      text = t("ai.toolStatus.skill") + `: ${args.name ?? ""}`;
+      break;
+    case "run_skill_script":
+      text = t("ai.toolStatus.runSkillScript") + `: ${args.script ?? ""}${args.args ? " " + String(args.args) : ""}`;
+      break;
+    case "write":
+      text = `Editing: ${args.path ?? ""}`;
+      break;
+    case "edit":
+      text = `Editing: ${args.path ?? ""}`;
+      break;
     default:
       text = t("ai.toolStatus.default", { name });
   }
@@ -130,6 +142,7 @@ function ToolCallStatus({ name, args }: { name: string; args: Record<string, unk
 }
 
 function formatToolArgs(name: string, args: Record<string, unknown>): string {
+  if (name === "write" || name === "edit") return `edit(${args.path ?? ""})`;
   const entries = Object.entries(args);
   if (entries.length === 0) return `${name}()`;
   const parts = entries.map(([, v]) => String(v));

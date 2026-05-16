@@ -18,6 +18,7 @@ export interface PermissionRequest {
   permissionKey: "external_path" | "run_skill_script" | "edit";
   input: string;
   alwaysPatterns: string[];
+  detail?: string;
 }
 
 export const DEFAULT_PERMISSIONS: Permissions = {

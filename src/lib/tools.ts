@@ -380,7 +380,47 @@ async function resolveContent(
   }
 
   if (!ctx.workspaceRoot) {
-    return { content: "", error: "No workspace open. Cannot read other files. Omit path to use the current document." };
+    let absPath: string;
+    if (isAbsolutePath(path)) {
+      absPath = path;
+    } else if (ctx.activeFilePath) {
+      absPath = await join(await dirname(ctx.activeFilePath), path);
+    } else {
+      return { content: "", error: "No workspace open and no active file. Cannot resolve relative path." };
+    }
+
+    const isCurrentFile = ctx.activeFilePath && absPath.replace(/\\/g, "/") === ctx.activeFilePath.replace(/\\/g, "/");
+
+    if (!isCurrentFile) {
+      const permissions = ctx.permissions ?? DEFAULT_PERMISSIONS;
+      const sessionRules = ctx.sessionRules ?? [];
+      const action = evaluateWithSession(sessionRules, permissions.external_path, "external_path", absPath);
+
+      if (action === "deny") return { content: "", error: "Access denied: permission not granted" };
+      if (action === "ask") {
+        if (!onPermission) return { content: "", error: "Access denied: permission not granted" };
+        const alwaysPattern = generateAlwaysPattern("external_path", absPath);
+        const userAction = await onPermission({
+          permissionKey: "external_path",
+          input: absPath,
+          alwaysPatterns: [alwaysPattern],
+        });
+        if (userAction === "deny") return { content: "", error: "Access denied: permission not granted" };
+      }
+    }
+
+    await allowFsScope(absPath);
+
+    if (!(await exists(absPath))) {
+      return { content: "", error: `File not found: ${absPath}` };
+    }
+
+    try {
+      const content = await readTextFile(absPath);
+      return { content, absPath };
+    } catch (e) {
+      return { content: "", error: `Failed to read file: ${e instanceof Error ? e.message : String(e)}` };
+    }
   }
 
   const absPath = await resolveAbsolutePath(path, ctx.workspaceRoot);
@@ -390,7 +430,7 @@ async function resolveContent(
   }
 
   if (!(await exists(absPath))) {
-    return { content: "", error: `File not found: ${path}` };
+    return { content: "", error: `File not found: ${absPath}` };
   }
 
   try {
@@ -653,7 +693,8 @@ async function resolvePathAndCheckWritePermission(
   workspaceRoot: string | undefined,
   activeFilePath: string | undefined,
   ctx: ToolContext,
-  onPermission?: OnPermissionCallback
+  onPermission?: OnPermissionCallback,
+  detail?: string,
 ): Promise<{ absPath?: string; error?: string }> {
   let absPath: string;
 
@@ -684,6 +725,7 @@ async function resolvePathAndCheckWritePermission(
       permissionKey: "edit",
       input: absPath,
       alwaysPatterns: [alwaysPattern],
+      detail,
     });
     if (userAction === "deny") return { error: "Permission denied: edit not granted" };
   }
@@ -710,9 +752,10 @@ async function toolWrite(
   workspaceRoot: string | undefined,
   activeFilePath: string | undefined,
   ctx: ToolContext,
-  onPermission?: OnPermissionCallback
+  onPermission?: OnPermissionCallback,
 ): Promise<string> {
-  const { absPath, error } = await resolvePathAndCheckWritePermission(path, workspaceRoot, activeFilePath, ctx, onPermission);
+  const detail = `write ${path} (${content.length} chars)`;
+  const { absPath, error } = await resolvePathAndCheckWritePermission(path, workspaceRoot, activeFilePath, ctx, onPermission, detail);
   if (!absPath) return error ?? "Write error";
 
   try {
@@ -726,7 +769,7 @@ async function toolWrite(
     await writeFile(absPath, new TextEncoder().encode(content));
     syncTabContent(absPath, content);
 
-    return `File written successfully: ${path} (${content.length} chars)`;
+    return `File written successfully: ${absPath} (${content.length} chars)`;
   } catch (e) {
     return `Write error: ${e instanceof Error ? e.message : String(e)}`;
   }
@@ -740,16 +783,18 @@ async function toolEdit(
   workspaceRoot: string | undefined,
   activeFilePath: string | undefined,
   ctx: ToolContext,
-  onPermission?: OnPermissionCallback
+  onPermission?: OnPermissionCallback,
 ): Promise<string> {
-  const { absPath, error: permError } = await resolvePathAndCheckWritePermission(path, workspaceRoot, activeFilePath, ctx, onPermission);
+  const truncate = (s: string) => s.length > 80 ? s.slice(0, 80) + "..." : s;
+  const detail = `edit ${path}\n  old: "${truncate(oldString)}"\n  new: "${truncate(newString)}"`;
+  const { absPath, error: permError } = await resolvePathAndCheckWritePermission(path, workspaceRoot, activeFilePath, ctx, onPermission, detail);
   if (!absPath) return permError ?? "Edit error";
 
   try {
     await allowFsScope(absPath);
 
     if (!(await exists(absPath))) {
-      return `File not found: ${path}`;
+      return `File not found: ${absPath}`;
     }
 
     const fileContent = await readTextFile(absPath);
@@ -806,7 +851,7 @@ async function toolEdit(
     await writeFile(absPath, new TextEncoder().encode(newContent));
     syncTabContent(absPath, newContent);
 
-    return `File edited successfully: ${path} (${matches.length} replacement${matches.length > 1 ? "s" : ""})`;
+    return `File edited successfully: ${absPath} (${matches.length} replacement${matches.length > 1 ? "s" : ""})`;
   } catch (e) {
     return `Edit error: ${e instanceof Error ? e.message : String(e)}`;
   }
@@ -927,6 +972,7 @@ async function toolRunSkillScript(
       permissionKey: "run_skill_script",
       input: owningSkill.name,
       alwaysPatterns: [alwaysPattern],
+      detail: `${script} ${args}`.trim(),
     });
     if (userAction === "deny") {
       return `Skill script execution for "${owningSkill.name}" was denied`;
