@@ -794,6 +794,22 @@ export default function AISidebar() {
     setShowScrollBottom(false);
 
     if (text.startsWith("/")) {
+      const cmd = text.slice(1).trim();
+      if (cmd === "new") {
+        useChatStore.getState().appendInputHistory(chatKey, text);
+        clearMessages(chatKey);
+        usePermissionStore.getState().clearSessionRules(chatKey);
+        setInput("");
+        return;
+      }
+      if (cmd === "compact") {
+        useChatStore.getState().appendInputHistory(chatKey, text);
+        setInput("");
+        isAtBottomRef.current = true;
+        setShowScrollBottom(false);
+        await doCompact();
+        return;
+      }
       const errMsg = addMessage(chatKey, { role: "assistant", content: `|?${t("ai.error.unknownCommand")}` });
       await appendMessage(chatKey, errMsg);
       setInput("");
@@ -1052,6 +1068,7 @@ export default function AISidebar() {
   };
 
   const handleSlashCommand = async (id: string) => {
+    useChatStore.getState().appendInputHistory(chatKey, `/${id}`);
     setInput("");
 
     if (id === "new") {
@@ -1061,6 +1078,8 @@ export default function AISidebar() {
     }
 
 if (id === "compact") {
+      isAtBottomRef.current = true;
+      setShowScrollBottom(false);
       await doCompact();
       return;
     }
@@ -1106,7 +1125,7 @@ if (id === "compact") {
   }, [chatKey]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (slashMenuVisible && slashMenuRef.current) {
+    if (slashMenuVisible && slashMenuRef.current && historyIndexRef.current === -1) {
       const handled = slashMenuRef.current.handleKeyDown(e);
       if (handled) return;
     }

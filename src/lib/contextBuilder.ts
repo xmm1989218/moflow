@@ -69,8 +69,8 @@ function buildSkillInstruction(workspaceRoot?: string | null, activeFilePath?: s
   ].join("\n");
 
   const envVars: string[] = [];
-  if (workspaceRoot) envVars.push(`  <var name="MOFLOW_WORKSPACE_ROOT" desc="Current workspace root path" value="${workspaceRoot}" />`);
-  if (activeFilePath) envVars.push(`  <var name="MOFLOW_ACTIVE_FILE" desc="Currently active file path" value="${activeFilePath}" />`);
+  if (workspaceRoot) envVars.push(`  <var name="MOFLOW_WORKSPACE_ROOT" desc="Absolute path of the current workspace root" value="${workspaceRoot}" />`);
+  if (activeFilePath) envVars.push(`  <var name="MOFLOW_ACTIVE_FILE" desc="Absolute path of the currently active file" value="${activeFilePath}" />`);
 
   const envXml = envVars.length > 0
     ? "\n<available_env_vars>\n" + envVars.join("\n") + "\n</available_env_vars>"

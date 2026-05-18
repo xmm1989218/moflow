@@ -443,7 +443,8 @@ async function resolveContent(
 
 function toolOutline(docContent: string): string {
   const result = buildOutline(docContent);
-  return result || "Document has no heading structure";
+  if (!result) return "Document has no heading structure";
+  return "<outline>\n" + result + "\n</outline>";
 }
 
 function toolGrep(pattern: string, docContent: string): string {
@@ -469,11 +470,14 @@ function toolGrep(pattern: string, docContent: string): string {
     return "No matches found";
   }
 
-  const suffix =
-    matches.length >= MAX_GREP_RESULTS
-      ? "\n...(showing first " + MAX_GREP_RESULTS + " matches)"
-      : `\n${matches.length} matches found`;
-  return matches.join("\n") + suffix;
+  let output = "<grep>\n" + matches.join("\n");
+  if (matches.length >= MAX_GREP_RESULTS) {
+    output += `\n\n(Showing first ${MAX_GREP_RESULTS} matches. There may be more.)`;
+  } else {
+    output += `\n\n${matches.length} matches found`;
+  }
+  output += "\n</grep>";
+  return output;
 }
 
 function toolRead(docContent: string, offset?: number, limit?: number): string {
@@ -491,11 +495,12 @@ function toolRead(docContent: string, offset?: number, limit?: number): string {
     result.push(`${i + 1}: ${lines[i]}`);
   }
 
+  let output = "<file>\n" + result.join("\n");
   if (endLine < lines.length) {
-    result.push(`...(total ${lines.length} lines)`);
+    output += `\n\n(File has ${lines.length} lines, showing ${startLine}-${endLine}. Use offset to read beyond line ${endLine})`;
   }
-
-  return result.join("\n");
+  output += "\n</file>";
+  return output;
 }
 
 function toolReadSection(heading: string, docContent: string): string {
@@ -539,7 +544,12 @@ function toolReadSection(heading: string, docContent: string): string {
     }
   }
 
-  return lines.slice(startLine, endLine).join("\n");
+  const result: string[] = [];
+  for (let i = startLine; i < endLine; i++) {
+    result.push(`${i + 1}: ${lines[i]}`);
+  }
+
+  return "<file>\n" + result.join("\n") + "\n</file>";
 }
 
 async function toolFind(pattern: string, workspaceRoot: string): Promise<string> {
@@ -575,10 +585,12 @@ async function toolFind(pattern: string, workspaceRoot: string): Promise<string>
   if (results.length === 0) {
     return `No files matching "${pattern}" found`;
   }
-  const suffix = results.length >= MAX_FIND_RESULTS
-    ? "\n...(showing first " + MAX_FIND_RESULTS + " results)"
-    : "";
-  return results.join("\n") + suffix;
+  let output = "<find>\n" + results.join("\n");
+  if (results.length >= MAX_FIND_RESULTS) {
+    output += `\n\n(Showing first ${MAX_FIND_RESULTS} results. There may be more.)`;
+  }
+  output += "\n</find>";
+  return output;
 }
 
 function globMatch(pattern: string, path: string): boolean {
@@ -627,10 +639,12 @@ async function toolGlob(pattern: string, workspaceRoot: string): Promise<string>
   if (results.length === 0) {
     return `No files matching "${pattern}" found`;
   }
-  const suffix = results.length >= MAX_GLOB_RESULTS
-    ? "\n...(showing first " + MAX_GLOB_RESULTS + " results)"
-    : "";
-  return results.join("\n") + suffix;
+  let output = "<glob>\n" + results.join("\n");
+  if (results.length >= MAX_GLOB_RESULTS) {
+    output += `\n\n(Showing first ${MAX_GLOB_RESULTS} results. There may be more.)`;
+  }
+  output += "\n</glob>";
+  return output;
 }
 
 async function toolLs(dirPath: string | undefined, workspaceRoot: string, ctx: ToolContext, onPermission?: OnPermissionCallback): Promise<string> {
@@ -665,7 +679,7 @@ async function toolLs(dirPath: string | undefined, workspaceRoot: string, ctx: T
     return `${e.name}${type}`;
   });
 
-  return lines.join("\n");
+  return "<ls>\n" + lines.join("\n") + "\n</ls>";
 }
 
 async function toolWebFetch(url: string, format: string | undefined, signal: AbortSignal): Promise<string> {
