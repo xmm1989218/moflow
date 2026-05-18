@@ -32,14 +32,14 @@ const TONE_OPTIONS = [
   { key: "internet", i18nKey: "ai.rewrite.tone.internet" },
 ] as const;
 
+const MD_NOTE = "\n\nNote: math must use LaTeX ($...$, $$...$$); code must be in code blocks.";
+
 function getRewritePrompt(key: string, selectedText: string): string {
-  const mdHint = `\n\n${t("ai.mdSyntax")}\n\n${t("ai.rewrite.mdNote")}`;
-  return t(`ai.rewrite.prompt.${key}`, { mdHint, selectedText });
+  return t(`ai.rewrite.prompt.${key}`, { mdHint: MD_NOTE, selectedText });
 }
 
 function getCustomRewritePrompt(instruction: string, selectedText: string): string {
-  const mdHint = `\n\n${t("ai.mdSyntax")}\n\n${t("ai.rewrite.mdNote")}`;
-  return t("ai.rewrite.prompt.custom", { instruction, mdHint, selectedText });
+  return t("ai.rewrite.prompt.custom", { instruction, mdHint: MD_NOTE, selectedText });
 }
 
 function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDismiss: () => void }) {
@@ -317,13 +317,18 @@ export default function SelectionAIPanel() {
 
       try {
         const client = getLLMClient(aiConfig);
-        const systemPrompt = buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext).prompt;
+        const systemPrompt = activeAction === "translate"
+          ? ""
+          : buildSystemPrompt(docContent, getModelInfo(aiConfig.providerId, aiConfig.model).maxContext).prompt;
+
+        const messages: ChatMessage[] = [];
+        if (systemPrompt) {
+          messages.push({ role: "system", content: systemPrompt });
+        }
+        messages.push({ role: "user", content: prompt });
 
         const res = await client.chat(
-          [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt },
-          ],
+          messages,
           (chunk) => {
             setResult((prev) => prev + chunk);
           },
@@ -352,13 +357,13 @@ export default function SelectionAIPanel() {
         abortRef.current = null;
       }
     },
-    [aiConfig, docContent, activeFileId, recordStandaloneUsage]
+    [aiConfig, docContent, activeFileId, activeAction, recordStandaloneUsage]
   );
 
   useEffect(() => {
     if (activeAction === "polish") return;
     if (activeAction === "explain" && selectedText) {
-      const prompt = t("ai.selection.prompt.explain", { mdSyntax: t("ai.mdSyntax"), selectedText });
+      const prompt = t("ai.selection.prompt.explain", { mdSyntax: MD_NOTE.trim(), selectedText });
       queueMicrotask(() => doLLMRequest(prompt));
     } else if (activeAction === "translate" && selectedText) {
       const targetLabel = getLangLabel(targetLang);
@@ -575,12 +580,6 @@ export default function SelectionAIPanel() {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="flex gap-2 px-2.5 py-2 border-b border-moflow-border">
-            <span className="w-[3px] shrink-0 bg-moflow-border rounded-sm" />
-            <span className="text-[13px] text-moflow-text-secondary leading-normal break-words">
-              {selectedText.length > 200 ? selectedText.slice(0, 200) + "..." : selectedText}
-            </span>
           </div>
         </>
       )}

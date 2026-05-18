@@ -1,5 +1,5 @@
 import type { AIConfig } from "./settings";
-import { getProviderInfo } from "./modelInfo";
+import { getProviderInfo, getModelInfo } from "./modelInfo";
 import { estimateTokens } from "./contextBuilder";
 import type { ToolCall, ToolDefinition } from "./types";
 import { t, isZh } from "../i18n/core";
@@ -47,6 +47,15 @@ export interface LLMClient {
   ): Promise<ChatResult>;
 }
 
+function serializeMessagesForEstimation(messages: ChatMessage[]): string {
+  return messages.map((m) => {
+    let text = m.content ?? "";
+    if (m.tool_calls?.length) text += m.tool_calls.map((tc) => tc.name + tc.arguments).join("");
+    if (m.reasoningContent) text += m.reasoningContent;
+    return text;
+  }).join("");
+}
+
 class MockClient implements LLMClient {
   async chat(
     messages: ChatMessage[],
@@ -67,7 +76,7 @@ class MockClient implements LLMClient {
       onChunk(response[i]);
     }
 
-    const promptTokens = estimateTokens(messages.map((m) => m.content).join(""));
+    const promptTokens = estimateTokens(serializeMessagesForEstimation(messages));
     const completionTokens = estimateTokens(response);
     return {
       usage: {
@@ -247,7 +256,7 @@ class OpenAICompatibleClient implements LLMClient {
     }
 
     if (usage.totalTokens === 0) {
-      const promptTokens = estimateTokens(messages.map((m) => m.content).join(""));
+      const promptTokens = estimateTokens(serializeMessagesForEstimation(messages));
       usage = {
         promptTokens,
         completionTokens: estimateTokens(fullResponse),
@@ -327,11 +336,13 @@ class ClaudeCompatibleClient implements LLMClient {
   private endpoint: string;
   private token: string;
   private model: string;
+  private providerId: string;
 
-  constructor(endpoint: string, token: string, model: string) {
+  constructor(endpoint: string, token: string, model: string, providerId: string) {
     this.endpoint = endpoint;
     this.token = token;
     this.model = model;
+    this.providerId = providerId;
   }
 
   async chat(
@@ -366,9 +377,15 @@ class ClaudeCompatibleClient implements LLMClient {
     let stopReason: string | undefined;
 
     try {
+      const modelInfo = getModelInfo(this.providerId, this.model);
+      const inputEstimate = estimateTokens(serializeMessagesForEstimation(messages));
+      const maxTokens = modelInfo.maxContext > 0
+        ? Math.min(Math.max(modelInfo.maxContext - inputEstimate, 1024), 8192)
+        : 4096;
+
       const body: Record<string, unknown> = {
         model: this.model,
-        max_tokens: 4096,
+        max_tokens: maxTokens,
         messages: claudeMessages,
         stream: true,
       };
@@ -475,7 +492,7 @@ class ClaudeCompatibleClient implements LLMClient {
     }
 
     if (inputTokens === 0 && outputTokens === 0) {
-      const promptTokens = estimateTokens(messages.map((m) => m.content).join(""));
+      const promptTokens = estimateTokens(serializeMessagesForEstimation(messages));
       const completionTokens = estimateTokens(fullResponse);
       const usage: ChatUsage = { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens };
       const result: ChatResult = { usage };
@@ -509,7 +526,7 @@ export function getLLMClient(config: AIConfig): LLMClient {
   const compatibility = providerInfo?.compatibility ?? config.provider;
 
   if (compatibility === "claude") {
-    return new ClaudeCompatibleClient(config.apiEndpoint, config.apiToken, config.model);
+    return new ClaudeCompatibleClient(config.apiEndpoint, config.apiToken, config.model, config.providerId);
   }
   return new OpenAICompatibleClient(config.apiEndpoint, config.apiToken, config.model);
 }

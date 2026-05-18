@@ -141,7 +141,6 @@ export default {
   "ai.selection.translation": "翻訳",
   "ai.selection.explanation": "説明",
 
-  "ai.rewrite.mdNote": "注意：数式はLaTeX構文（インライン$...$、ブロック$$...$$）を使用し、コードはコードブロックで囲んでください。",
   "ai.rewrite.prompt.polish": "以下のテキストをより流暢で自然になるよう推敲してください。これはMarkdownエディタです、適切にMarkdownフォーマットを使用してください。{mdHint}\n結果のみを出力してください：\n\n{selectedText}",
   "ai.rewrite.prompt.expand": "以下のテキストをより詳細で豊かな内容に展開してください。これはMarkdownエディタです、適切にMarkdownフォーマットを使用してください。{mdHint}\n結果のみを出力してください：\n\n{selectedText}",
   "ai.rewrite.prompt.shorten": "以下のテキストを要点を保ちつつ簡潔に短縮してください。これはMarkdownエディタです、適切にMarkdownフォーマットを使用してください。{mdHint}\n結果のみを出力してください：\n\n{selectedText}",
@@ -153,7 +152,7 @@ export default {
   "ai.rewrite.prompt.internet": "ソーシャルメディア向けにネット風のスタイルで、簡潔かつ魅力的に書き直してください。これはMarkdownエディタです、適切にMarkdownフォーマットを使用してください。{mdHint}\n結果のみを出力してください：\n\n{selectedText}",
   "ai.rewrite.prompt.custom": "次の指示に従ってテキストを書き直してください: {instruction}。これはMarkdownエディタです、適切にMarkdownフォーマットを使用してください。{mdHint}\n結果のみを出力してください：\n\n{selectedText}",
   "ai.selection.prompt.explain": "以下を簡潔に説明してください。これはMarkdownエディタの説明機能です、説明をわかりやすくするためにMarkdownフォーマットを使用してください：\n\n{mdSyntax}\n\n{selectedText}",
-  "ai.selection.prompt.translate": "以下を{targetLabel}に翻訳し、翻訳結果のみを出力してください：\n\n{selectedText}",
+  "ai.selection.prompt.translate": "Translate the text inside <selected_text> to {targetLabel}.\n\nRules:\n- Preserve ALL Markdown formatting exactly as-is: headings (#), list markers (*/-), bold (**), italic (*), inline code (`), code blocks (```), links ([text](url)), math ($...$, $$...$$)\n- Keep the same Markdown structure — same heading levels, same list style, same nesting\n- Output ONLY the translation, nothing else\n\n<selected_text>\n{selectedText}\n</selected_text>",
   "ai.selection.prompt.ask": "以下のテキストについて：\n{selectedText}\n\n質問: {question}",
   "ai.selection.prompt.followUp": "選択テキスト：\n{selectedText}\n\n{actionLabel}：\n{lastResult}\n\nフォローアップ: {question}",
 

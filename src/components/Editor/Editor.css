@@ -445,6 +445,13 @@
   pointer-events: none !important;
 }
 
+/* ── Hide toolbar while selecting ── */
+
+.moflow-editor-wrapper[data-selecting] .milkdown-toolbar {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* ── Crepe toolbar theme override ── */
 
 .moflow-editor-wrapper .milkdown-toolbar {

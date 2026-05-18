@@ -46,26 +46,7 @@ export interface SystemPromptResult {
   needsDocTools: boolean;
 }
 
-const WS_FILE_TOOLS = [
-  "- outline: Get document heading outline",
-  "- read: Read a range of lines",
-  "- readSection: Read content under a heading",
-  "- grep: Search lines matching a regex",
-  "- find: Search files by name",
-  "- glob: Match file paths by glob pattern",
-  "- ls: List directory contents",
-  "- write(path, content): Create or overwrite a file",
-  "- edit(path, old_string, new_string, replace_all?): Replace text in a file",
-].join("\n");
-
-const DOC_FILE_TOOLS = [
-  "- outline(path?): Get document heading outline",
-  "- read(path?, offset?, limit?): Read a range of lines",
-  "- readSection(heading, path?): Read content under a heading",
-  "- grep(pattern, path?): Search matching lines",
-  "- write(path, content): Create or overwrite a file",
-  "- edit(path, old_string, new_string, replace_all?): Replace text in a file",
-].join("\n");
+const TOOLS_GUIDE = "When the user asks about files, directories, or code, ALWAYS use the provided tools. Proactively use tools to find relevant information instead of guessing.";
 
 const WEBFETCH_INSTRUCTION = "You can use webfetch(url, format?) to access web page content for external information or references. format supports markdown (default), text, html. Max 3 calls per request.";
 
@@ -121,8 +102,7 @@ export function buildSystemPrompt(
           "",
           "The user has a workspace open but no file is currently active.",
           "",
-          "You can use the following tools to browse workspace files. When the user asks about files, directories, or code, ALWAYS use these tools:",
-          WS_FILE_TOOLS,
+          TOOLS_GUIDE,
           "",
           WEBFETCH_INSTRUCTION,
           skillSection,
@@ -145,8 +125,7 @@ export function buildSystemPrompt(
           "",
           SWITCH_NOTE,
           "",
-          "You can use the following tools. When the user asks about files, directories, or code, ALWAYS use these tools:",
-          WS_FILE_TOOLS,
+          TOOLS_GUIDE,
           "",
           WEBFETCH_INSTRUCTION,
           skillSection,
@@ -180,8 +159,7 @@ export function buildSystemPrompt(
       "",
       SWITCH_NOTE,
       "",
-      "You can use the following tools to explore the full document content. When the user asks about files, directories, or code, ALWAYS use these tools:",
-      WS_FILE_TOOLS,
+      TOOLS_GUIDE,
       "",
       WEBFETCH_INSTRUCTION,
       "",
@@ -253,8 +231,7 @@ export function buildSystemPrompt(
     outline,
     "</document_structure>",
     "",
-    "You can use the following tools to explore the full document content. When the user asks about files, directories, or code, ALWAYS use these tools:",
-    DOC_FILE_TOOLS,
+    TOOLS_GUIDE,
     "",
     WEBFETCH_INSTRUCTION,
     "",

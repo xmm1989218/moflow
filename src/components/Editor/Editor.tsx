@@ -1,8 +1,8 @@
 import { Crepe } from "@milkdown/crepe";
 import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { replaceAll, getHTML } from "@milkdown/utils";
-import { EditorStatus, editorViewCtx, parserCtx } from "@milkdown/core";
-import { Slice } from "prosemirror-model";
+import { EditorStatus, editorViewCtx, parserCtx, serializerCtx } from "@milkdown/core";
+import { Slice, type Node as ProseNode } from "prosemirror-model";
 
 function replaceAllNoHistory(markdown: string) {
   return (ctx: Ctx) => {
@@ -17,6 +17,15 @@ function replaceAllNoHistory(markdown: string) {
     );
   };
 }
+
+function getSelectionMarkdown(ctx: Ctx, view: { state: { selection: { from: number; to: number }; doc: ProseNode } }): string {
+  const { from, to } = view.state.selection;
+  const serializer = ctx.get(serializerCtx);
+  const slice = view.state.doc.slice(from, to);
+  const tempNode = view.state.doc.type.create(null, slice.content);
+  return serializer(tempNode);
+}
+
 import { TextSelection } from "prosemirror-state";
 import type { Ctx } from "@milkdown/kit/ctx";
 import { LanguageDescription, LanguageSupport, StreamLanguage } from "@codemirror/language";
@@ -369,10 +378,9 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
                 active: () => false,
                 onRun: (ctx: Ctx) => {
                   const view = ctx.get(editorViewCtx);
-                  const { from, to } = view.state.selection;
-                  const text = view.state.doc.textBetween(from, to);
+                  const text = getSelectionMarkdown(ctx, view);
                   if (!text) return;
-                  const coords = view.coordsAtPos(from);
+                  const coords = view.coordsAtPos(view.state.selection.from);
                   useAISelectionStore.getState().triggerExplain(text, {
                     x: coords.left,
                     y: coords.bottom,
@@ -384,10 +392,9 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
                 active: () => false,
                 onRun: (ctx: Ctx) => {
                   const view = ctx.get(editorViewCtx);
-                  const { from, to } = view.state.selection;
-                  const text = view.state.doc.textBetween(from, to);
+                  const text = getSelectionMarkdown(ctx, view);
                   if (!text) return;
-                  const coords = view.coordsAtPos(from);
+                  const coords = view.coordsAtPos(view.state.selection.from);
                   useAISelectionStore.getState().triggerTranslate(text, {
                     x: coords.left,
                     y: coords.bottom,
@@ -399,10 +406,9 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
                 active: () => false,
                 onRun: (ctx: Ctx) => {
                   const view = ctx.get(editorViewCtx);
-                  const { from, to } = view.state.selection;
-                  const text = view.state.doc.textBetween(from, to);
+                  const text = getSelectionMarkdown(ctx, view);
                   if (!text) return;
-                  const coords = view.coordsAtPos(from);
+                  const coords = view.coordsAtPos(view.state.selection.from);
                   useAISelectionStore.getState().triggerAsk(text, {
                     x: coords.left,
                     y: coords.bottom,
@@ -414,10 +420,9 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
                 active: () => false,
                 onRun: (ctx: Ctx) => {
                   const view = ctx.get(editorViewCtx);
-                  const { from, to } = view.state.selection;
-                  const text = view.state.doc.textBetween(from, to);
+                  const text = getSelectionMarkdown(ctx, view);
                   if (!text) return;
-                  const coords = view.coordsAtPos(from);
+                  const coords = view.coordsAtPos(view.state.selection.from);
                   useAISelectionStore.getState().triggerPolish(text, {
                     x: coords.left,
                     y: coords.bottom,
@@ -705,8 +710,20 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
     return () => observer.disconnect();
   }, [tabId]);
 
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = () => {
+    wrapperRef.current?.setAttribute("data-selecting", "true");
+  };
+
+  const handleMouseUp = () => {
+    setTimeout(() => {
+      wrapperRef.current?.removeAttribute("data-selecting");
+    }, 50);
+  };
+
   return (
-    <div className="moflow-editor-wrapper" data-editor-theme={editorTheme}>
+    <div ref={wrapperRef} className="moflow-editor-wrapper" data-editor-theme={editorTheme} onMouseDown={handleMouseDown} onMouseUp={handleMouseUp}>
       <div className={mode === "source" ? "moflow-milkdown-hidden" : ""}>
         <Milkdown />
       </div>

@@ -122,7 +122,6 @@ export default {
   "ai.selection.translation": "翻译",
   "ai.selection.explanation": "解释",
 
-  "ai.rewrite.mdNote": "请特别注意：数学公式请使用 LaTeX 语法（行内 $...$，独立 $$...$$），代码请用代码块包裹。",
   "ai.rewrite.prompt.polish": "请润色以下文字，使其更加流畅自然。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。{mdHint}\n只输出润色后的结果：\n\n{selectedText}",
   "ai.rewrite.prompt.expand": "请扩写以下文字，增加更多细节和丰富内容。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。{mdHint}\n只输出扩写后的结果：\n\n{selectedText}",
   "ai.rewrite.prompt.shorten": "请缩写以下文字，使其更加简洁精炼，保留核心要点。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。{mdHint}\n只输出缩写后的结果：\n\n{selectedText}",
@@ -134,7 +133,7 @@ export default {
   "ai.rewrite.prompt.internet": "请将以下文字改写得更有网感，适合社交媒体传播，简洁有力、有梗有趣。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。{mdHint}\n只输出改写后的结果：\n\n{selectedText}",
   "ai.rewrite.prompt.custom": "请根据以下要求改写文字：{instruction}。这是一款 Markdown 编辑器，请根据内容性质合理使用 Markdown 格式。{mdHint}\n只输出改写后的结果：\n\n{selectedText}",
   "ai.selection.prompt.explain": "请用简洁的语言解释以下内容。这是一款 Markdown 编辑器的解释功能，请合理使用 Markdown 格式使解释更清晰：\n\n{mdSyntax}\n\n{selectedText}",
-  "ai.selection.prompt.translate": "请将以下内容翻译为{targetLabel}，只输出翻译结果，不要添加任何解释：\n\n{selectedText}",
+  "ai.selection.prompt.translate": "Translate the text inside <selected_text> to {targetLabel}.\n\nRules:\n- Preserve ALL Markdown formatting exactly as-is: headings (#), list markers (*/-), bold (**), italic (*), inline code (`), code blocks (```), links ([text](url)), math ($...$, $$...$$)\n- Keep the same Markdown structure — same heading levels, same list style, same nesting\n- Output ONLY the translation, nothing else\n\n<selected_text>\n{selectedText}\n</selected_text>",
   "ai.selection.prompt.ask": "关于以下文本：\n{selectedText}\n\n用户问题：{question}",
   "ai.selection.prompt.followUp": "选中文本：\n{selectedText}\n\n{actionLabel}结果：\n{lastResult}\n\n追问：{question}",
 

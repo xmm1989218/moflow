@@ -122,7 +122,6 @@ export default {
   "ai.selection.translation": "번역",
   "ai.selection.explanation": "설명",
 
-  "ai.rewrite.mdNote": "참고: 수식은 LaTeX 구문(인라인 $...$, 디스플레이 $$...$$)을 사용해야 하며, 코드는 코드 블록으로 감싸야 합니다.",
   "ai.rewrite.prompt.polish": "다음 텍스트를 더 자연스럽고 매끄럽게 다듬어 주세요. 이것은 Markdown 편집기이므로 적절한 곳에 Markdown 서식을 사용하세요.{mdHint}\n결과만 출력하세요:\n\n{selectedText}",
   "ai.rewrite.prompt.expand": "다음 텍스트를 더 자세하고 풍부한 내용으로 확장해 주세요. 이것은 Markdown 편집기이므로 적절한 곳에 Markdown 서식을 사용하세요.{mdHint}\n결과만 출력하세요:\n\n{selectedText}",
   "ai.rewrite.prompt.shorten": "다음 텍스트를 핵심을 유지하면서 더 간결하게 줄여 주세요. 이것은 Markdown 편집기이므로 적절한 곳에 Markdown 서식을 사용하세요.{mdHint}\n결과만 출력하세요:\n\n{selectedText}",
@@ -134,7 +133,7 @@ export default {
   "ai.rewrite.prompt.internet": "소셜 미디어용 인터넷 친화적인 스타일로 간결하고 매력적으로 다시 써 주세요. 이것은 Markdown 편집기이므로 적절한 곳에 Markdown 서식을 사용하세요.{mdHint}\n결과만 출력하세요:\n\n{selectedText}",
   "ai.rewrite.prompt.custom": "다음 지시에 따라 텍스트를 다시 써 주세요: {instruction}. 이것은 Markdown 편집기이므로 적절한 곳에 Markdown 서식을 사용하세요.{mdHint}\n결과만 출력하세요:\n\n{selectedText}",
   "ai.selection.prompt.explain": "다음 내용을 간단히 설명해 주세요. 이것은 Markdown 편집기의 설명 기능이며, 설명을 더 명확하게 하기 위해 Markdown 서식을 사용하세요:\n\n{mdSyntax}\n\n{selectedText}",
-  "ai.selection.prompt.translate": "다음 내용을 {targetLabel}(으)로 번역하세요. 번역만 출력하세요:\n\n{selectedText}",
+  "ai.selection.prompt.translate": "Translate the text inside <selected_text> to {targetLabel}.\n\nRules:\n- Preserve ALL Markdown formatting exactly as-is: headings (#), list markers (*/-), bold (**), italic (*), inline code (`), code blocks (```), links ([text](url)), math ($...$, $$...$$)\n- Keep the same Markdown structure — same heading levels, same list style, same nesting\n- Output ONLY the translation, nothing else\n\n<selected_text>\n{selectedText}\n</selected_text>",
   "ai.selection.prompt.ask": "다음 텍스트에 대해:\n{selectedText}\n\n질문: {question}",
   "ai.selection.prompt.followUp": "선택한 텍스트:\n{selectedText}\n\n{actionLabel}:\n{lastResult}\n\n후속 질문: {question}",
 

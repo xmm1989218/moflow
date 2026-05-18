@@ -738,15 +738,26 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.9.5 — AI 提示词优化
+## v0.9.5 — AI 提示词优化 ✅
 
-- [ ] Selection AI 去掉全量文档（explain/translate/rewrite 不再发送完整文档）
-- [ ] Markdown 语法块精简（~550 chars → ~200 chars）
-- [ ] 工具说明去重（system prompt 不再重复 tools 参数中的描述）
-- [ ] Claude max_tokens 动态计算（替代硬编码 4096）
-- [ ] Token 估算改进（fallback 模式包含 tool_calls/reasoningContent）
-- [ ] translate 提示词补齐 Markdown 格式提示
-- [ ] API Token 输入框改为 type="password"
+- [x] Selection AI translate 去掉全量文档（空 system prompt，不发 docContent）
+- [x] translate 提示词补齐 Markdown 格式保留（Rules 条目化 + XML 标签）
+- [x] 翻译面板去掉原文展示，只显示翻译结果
+- [x] Selection AI explain/rewrite 保留全量文档
+- [x] 选中文字序列化为 Markdown（getSelectionMarkdown + serializerCtx），替代 textBetween 纯文本
+- [x] AI 消息列表圆点显示修复（MessageContent.css list-style-type）
+- [x] Toolbar 拖选隐藏（data-selecting + mousedown/mouseup + setTimeout 50ms）
+- [x] API Token 输入框改为 type="password"
+- [x] Markdown 语法块精简（~550 chars → ~200 chars）
+- [x] 工具说明去重（system prompt 不再重复 tools 参数中的描述）
+- [x] Claude max_tokens 动态计算（替代硬编码 4096）
+- [x] Token 估算改进（fallback 模式包含 tool_calls/reasoningContent）
+
+---
+
+## v0.9.6 — 交互式问答
+
+- [ ] 聊天交互式问答（AI 可向用户提问决策，用户确认/选择方案后再执行；类似 opencode 的交互模式）
 
 ---
 

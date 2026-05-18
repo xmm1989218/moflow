@@ -122,7 +122,6 @@ export default {
   "ai.selection.translation": "Translation",
   "ai.selection.explanation": "Explanation",
 
-  "ai.rewrite.mdNote": "Please note: math formulas must use LaTeX syntax (inline $...$, display $$...$$), code must be wrapped in code blocks.",
   "ai.rewrite.prompt.polish": "Polish the following text to make it more fluent and natural. This is a Markdown editor, use Markdown formatting where appropriate.{mdHint}\nOutput only the result:\n\n{selectedText}",
   "ai.rewrite.prompt.expand": "Expand the following text with more details and richer content. This is a Markdown editor, use Markdown formatting where appropriate.{mdHint}\nOutput only the result:\n\n{selectedText}",
   "ai.rewrite.prompt.shorten": "Shorten the following text to be more concise while keeping the key points. This is a Markdown editor, use Markdown formatting where appropriate.{mdHint}\nOutput only the result:\n\n{selectedText}",
@@ -134,7 +133,7 @@ export default {
   "ai.rewrite.prompt.internet": "Rewrite with an internet-savvy style for social media, concise and engaging. This is a Markdown editor, use Markdown formatting where appropriate.{mdHint}\nOutput only the result:\n\n{selectedText}",
   "ai.rewrite.prompt.custom": "Rewrite the following text according to this instruction: {instruction}. This is a Markdown editor, use Markdown formatting where appropriate.{mdHint}\nOutput only the result:\n\n{selectedText}",
   "ai.selection.prompt.explain": "Briefly explain the following. This is a Markdown editor's explain feature, use Markdown formatting to make the explanation clearer:\n\n{mdSyntax}\n\n{selectedText}",
-  "ai.selection.prompt.translate": "Translate the following to {targetLabel}, output only the translation:\n\n{selectedText}",
+  "ai.selection.prompt.translate": "Translate the text inside <selected_text> to {targetLabel}.\n\nRules:\n- Preserve ALL Markdown formatting exactly as-is: headings (#), list markers (*/-), bold (**), italic (*), inline code (`), code blocks (```), links ([text](url)), math ($...$, $$...$$)\n- Keep the same Markdown structure — same heading levels, same list style, same nesting\n- Output ONLY the translation, nothing else\n\n<selected_text>\n{selectedText}\n</selected_text>",
   "ai.selection.prompt.ask": "Regarding the following text:\n{selectedText}\n\nQuestion: {question}",
   "ai.selection.prompt.followUp": "Selected text:\n{selectedText}\n\n{actionLabel}:\n{lastResult}\n\nFollow-up: {question}",
 

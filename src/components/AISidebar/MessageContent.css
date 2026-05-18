@@ -28,10 +28,16 @@
 .moflow-ai-md h3 { font-size: 1.1em; }
 .moflow-ai-md h4 { font-size: 1em; }
 
-.moflow-ai-md ul,
+.moflow-ai-md ul {
+  margin: 4px 0;
+  padding-left: 20px;
+  list-style-type: disc;
+}
+
 .moflow-ai-md ol {
   margin: 4px 0;
   padding-left: 20px;
+  list-style-type: decimal;
 }
 
 .moflow-ai-md li {
