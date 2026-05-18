@@ -75,11 +75,11 @@ src/                    # Frontend (React + TypeScript)
       ko.ts             # Korean locale (AI-generated)
   lib/
     chatPersistence.ts  # JSONL chat history (chatKey-based, safeFileName, append, load, repair)
-    contextBuilder.ts   # System prompt builder (workspaceRoot, activeFilePath, dynamic maxContext)
+    contextBuilder.ts   # System prompt builder (TOOLS_GUIDE replaces WS_FILE_TOOLS/DOC_FILE_TOOLS)
     fileOps.ts          # File read/write/open folder via Tauri FS plugin
     imageManager.ts     # Image save/resolve (saveImageToFile, resolveImagePath)
     modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
-    llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling)
+    llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling, Claude dynamic max_tokens)
     shortcuts.ts        # Centralized shortcut registry (getShortcutDisplay, getShortcutLabel)
     settings.ts         # App settings persistence (proxyUrl derived proxy state, permissions)
     exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
@@ -132,7 +132,7 @@ src-tauri/              # Backend (Rust + Tauri)
 - Proxy: `proxyUrl` (non-empty = enabled) stored in settings; Rust `ProxyState` synced via `set_proxy` command; WebView2 proxy set at window creation (requires restart); webfetch/export_pdf use proxy immediately
 - `contextMap` (LLM context) is separate from `messagesMap` (display); `contextStart` derived from last `/compact` position
 - `/compact` appends divider message + AI summary; auto-compact triggers when `contextTokens > maxContext * 0.8`
-- `buildSystemPrompt` uses model's actual `maxContext` (not hardcoded); workspace mode: filename label + switch-file note + all tools; no-workspace mode: unchanged
+- `buildSystemPrompt` uses model's actual `maxContext` (not hardcoded); workspace mode: filename label + switch-file note; no-workspace mode: unchanged; tool descriptions only in API `tools` parameter (not duplicated in system prompt)
 - Damaged JSONL lines are skipped on load; if any corruption detected, a repair file is written and renamed to replace the original (best-effort)
 - Usage badge shows: context tokens, usage %, cumulative total tokens, cumulative cost
 - `completionTokensMap`, `totalTokensMap`, `costMap` are memory-only (reset on restart)
@@ -153,3 +153,4 @@ src-tauri/              # Backend (Rust + Tauri)
 - Theme variables include `--moflow-warn`/`--moflow-warn-text` per editor theme (for PermissionBar "always allow" button)
 - `runSkillScript` script param requires `skillName/scriptName` format (e.g. `markdown-to-ppt/convert.js`); `executeSkillScript` accepts `cwd` param (activeFile dir > workspaceRoot); bun resolves `node_modules` from script's directory regardless of cwd
 - `toolWrite` returns `"File written successfully."`, `toolEdit` returns `"Edit applied successfully."` — minimal results to LLM; UI `EditToolResult` builds diff display from `item.info.args`
+- Selection AI: `getSelectionMarkdown(ctx, view)` serializes ProseMirror selection to Markdown via `serializerCtx` (preserves bold, links, code, math, lists); translate uses empty system prompt (no docContent), explain/rewrite keep full document context

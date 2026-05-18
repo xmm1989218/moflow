@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.9.5 (2026-05-18)
+
+### New Features
+
+- **Selection AI Markdown serialization** — Selected text is now serialized to Markdown (via `serializerCtx`) instead of plain text (`textBetween`), preserving formatting (bold, links, code, math, lists) in explain/translate/rewrite/ask actions
+
+### Improvements
+
+- **Translate prompt optimization** — Translate no longer sends the full document as system prompt (empty system prompt); uses structured Rules format with XML `<selected_text>` tags; preserves all Markdown formatting exactly
+- **Translate panel simplified** — Removed original text preview, shows only the translation result
+- **Markdown syntax block trimmed** — Reduced from ~550 chars to ~200 chars across `default.txt`, rewrite hints, and explain prompts; eliminated duplicate `ai.mdSyntax`/`ai.rewrite.mdNote` i18n keys (replaced by `MD_NOTE` constant)
+- **Tool descriptions deduplicated** — Removed `WS_FILE_TOOLS`/`DOC_FILE_TOOLS` text blocks from system prompt; LLM now relies solely on API `tools` parameter for tool details
+- **Claude max_tokens dynamic** — Replaced hardcoded `max_tokens: 4096` with `min(maxContext - estimatedInputTokens, 8192)`, floor 1024, fallback 4096 for unknown models
+- **Token estimation improved** — Fallback mode now includes `tool_calls[].name + arguments` and `reasoningContent` in token estimation (via `serializeMessagesForEstimation()`)
+
+### Bug Fixes
+
+- **AI message list markers** — Fixed `ul`/`ol` list-style reset by Tailwind Preflight; added `list-style-type: disc/decimal` to `MessageContent.css`
+- **Toolbar selection flash** — Toolbar hidden during mouse drag (`data-selecting` attribute); 50ms delay on mouseup prevents flash when clicking to deselect
+
 ## v0.9.3 (2026-05-17)
 
 ### New Features

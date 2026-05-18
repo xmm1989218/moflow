@@ -37,7 +37,7 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **AI Tool-Calling** — AI can actively explore documents via tools (outline, grep, read_lines, read_section) and fetch web content instead of relying on truncated context
 - **Workspace-aware AI** — Open a folder as workspace, AI gets project-level tools (grep, find, glob, ls, read) to explore the entire codebase; workspace chat persists across tab switches
 - **Context View** — Inspect token usage, context breakdown, and raw messages in a dedicated panel
-- **Selection AI** — Explain, translate, or ask questions about selected text
+- **Selection AI** — Explain, translate, or ask questions about selected text; Markdown formatting preserved in translations and rewrites
 - **Settings Tab** — Unified settings panel with appearance, AI config, proxy, and about sections
 - **Proxy Support** — HTTP/HTTPS/SOCKS5 proxy for AI requests and web content fetching
 - **Find & Replace** — Regex support, case-sensitive search, replace all
