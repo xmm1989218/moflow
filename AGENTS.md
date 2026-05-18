@@ -31,6 +31,12 @@ MoFlow is a desktop Markdown editor built with Tauri v2 + React + TypeScript + V
 - Check off the corresponding item in `docs/ROADMAP.md` (`- [ ]` → `- [x]`)
 - Add ✅ to the version heading when all items in a version are done
 
+**Before releasing a new version:**
+- Update `CHANGELOG.md` — add new version section with New Features / Improvements / Bug Fixes
+- Update `README.md` — check if new features need to be added to the Features list
+- Update `AGENTS.md` — check if Architecture Notes or Project Structure descriptions need updating
+- Update `CONTRIBUTING.md` — check if release process or development workflow has changed
+
 ## Project Structure
 
 ```
