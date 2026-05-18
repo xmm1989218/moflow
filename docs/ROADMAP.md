@@ -757,7 +757,54 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ## v0.9.6 — 交互式问答
 
-- [ ] 聊天交互式问答（AI 可向用户提问决策，用户确认/选择方案后再执行；类似 opencode 的交互模式）
+### `question` Tool
+
+- [x] `makeQuestionTool()` — tool 定义（`questions[]` 数组，每项含 `question` + `options[{label, description?}]` + `multiple?`）
+- [x] `QuestionItem` / `QuestionOption` 类型导出
+- [x] `getToolDefinitions` 始终注册 question tool
+- [x] Tool description 包含使用时机指引（有选项时用，讨论时直接在文本中问）
+
+### AISidebar Tool Loop 拦截
+
+- [x] `tc.name === "question"` 时暂停 tool loop，通过 Promise 阻塞等用户回答
+- [x] `pendingQuestion` state + `resolveQuestionRef`（同 PermissionBar 模式）
+- [x] 用户回答后返回结构化答案（`Q: question → answer` 格式），写入 tool message
+- [x] question tool 不算 maxToolRounds 轮次
+- [x] finally 块清理 pendingQuestion + resolveQuestionRef
+- [x] `formatToolArgs` question case：显示所有 question 文本
+- [x] `ToolCallStatus` question case
+
+### QuestionBar 组件（向导式流程表单）
+
+- [x] `QuestionBar.tsx` — 向导式多问题表单，一次显示一个问题
+- [x] 顶部进度指示器（`1 / N`）
+- [x] 单选：radio 按钮，点击选中（不自动提交）
+- [x] 多选：checkbox 按钮，toggle 选择
+- [x] 自定义输入："其他"选项 + 文本输入框
+- [x] "其他"与普通选项互斥（点"其他"清除已选，点普通选项取消"其他"高亮）
+- [x] 非最后一步：右侧**继续**按钮
+- [x] 最后一步：右侧**确认**按钮
+- [x] 非第一步：确认按钮左边**返回**按钮（保留之前选择）
+- [x] 按钮右对齐（`justify-content: flex-end`）
+- [x] 输入框上方渲染（与 PermissionBar 同位置，互斥）
+- [x] pendingQuestion 时禁用输入框
+
+### CSS
+
+- [x] `.moflow-ai-question-bar` 相关样式（复用 PermissionBar 视觉风格）
+- [x] Radio/checkbox 自定义样式（`--moflow-accent` 配色）
+- [x] 进度指示器、返回/继续/确认按钮样式
+
+### System Prompt
+
+- [x] 删除矛盾指令 "Follow user instructions directly without questioning their intent"
+- [x] 合并 clarify + plan 为 "First principle: Understand before you act"
+- [x] 明确指定 non-trivial 任务必须先用 question tool 问清楚再执行
+- [x] 区分 trivial（直接做）vs non-trivial（先问）
+
+### i18n
+
+- [x] 4 个 locale 文件新增 `question.*`（customAnswer, customPlaceholder, submit, confirm, next, back）和 `ai.toolLabel.question` 键
 
 ---
 

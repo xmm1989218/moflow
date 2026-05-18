@@ -354,7 +354,7 @@ export function getNetworkToolDefinitions(): ToolDefinition[] {
 export const WEBFETCH_LIMIT = 3;
 
 export function getToolDefinitions(needsDocTools: boolean, workspaceRoot?: string | null, activeFilePath?: string | null): ToolDefinition[] {
-  const tools: ToolDefinition[] = [makeWebfetchTool()];
+  const tools: ToolDefinition[] = [makeWebfetchTool(), makeQuestionTool()];
   const fileDefs = [makeOutlineTool(), makeReadTool(), makeReadSectionTool()];
   const grepDef = makeGrepTool();
   const projectDefs = [makeFindTool(), makeGlobTool(), makeLsTool()];
@@ -856,6 +856,69 @@ async function toolEdit(
   } catch (e) {
     return `Edit error: ${e instanceof Error ? e.message : String(e)}`;
   }
+}
+
+export function makeQuestionTool(): ToolDefinition {
+  return {
+    type: "function",
+    function: {
+      name: "question",
+      description: "Ask the user one or more questions with predefined options to make a decision. Use this tool ONLY when you have clear, distinct options for the user to choose from. For open-ended questions or discussion, just ask in your response text directly — do NOT use this tool.",
+      parameters: {
+        type: "object",
+        properties: {
+          questions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                question: {
+                  type: "string",
+                  description: "The question to ask the user",
+                },
+                options: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      label: {
+                        type: "string",
+                        description: "Short option label (5 words max)",
+                      },
+                      description: {
+                        type: "string",
+                        description: "Brief explanation of this option",
+                      },
+                    },
+                    required: ["label"],
+                  },
+                  description: "Available options for the user to choose from. Must have at least 2 options.",
+                },
+                multiple: {
+                  type: "boolean",
+                  description: "Whether the user can select multiple options. Default: false.",
+                },
+              },
+              required: ["question", "options"],
+            },
+            description: "List of questions to ask the user. Each question must have at least 2 options.",
+          },
+        },
+        required: ["questions"],
+      },
+    },
+  };
+}
+
+export interface QuestionOption {
+  label: string;
+  description?: string;
+}
+
+export interface QuestionItem {
+  question: string;
+  options: QuestionOption[];
+  multiple: boolean;
 }
 
 export function makeSkillTool(): ToolDefinition {

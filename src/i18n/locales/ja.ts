@@ -105,6 +105,7 @@ export default {
   "ai.toolLabel.searches": "回検索",
   "ai.toolLabel.explored": "探索済み",
   "ai.toolLabel.exploring": "探索中",
+  "ai.toolLabel.question": "質問",
   "ai.error.timeout": "リクエストがタイムアウトしました",
   "ai.error.requestFailed": "リクエストに失敗しました",
   "ai.error.toolExecution": "ツールの実行エラー",
@@ -203,6 +204,13 @@ export default {
   "permission.executeScript": "{script} を実行",
   "permission.editPath": "{path} を編集",
   "permission.runSkillScript": "{script} を実行",
+
+  "question.customAnswer": "その他",
+  "question.customPlaceholder": "回答を入力...",
+  "question.submit": "送信",
+  "question.confirm": "確認",
+  "question.next": "次へ",
+  "question.back": "戻る",
 
   "provider.openai": "OpenAI",
   "provider.anthropic": "Anthropic",

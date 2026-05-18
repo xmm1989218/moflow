@@ -323,6 +323,234 @@
   opacity: 0.85;
 }
 
+.moflow-ai-question-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  background-color: var(--moflow-bg);
+  border: 1px solid var(--moflow-border);
+  border-radius: 8px;
+  margin: 0 4px 6px;
+  font-size: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.moflow-ai-question-progress {
+  font-size: 11px;
+  color: var(--moflow-text-secondary);
+  text-align: center;
+}
+
+.moflow-ai-question-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.moflow-ai-question-text {
+  color: var(--moflow-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.moflow-ai-question-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.moflow-ai-question-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  position: relative;
+}
+
+.moflow-ai-question-item:hover {
+  background-color: var(--moflow-bg-secondary);
+}
+
+.moflow-ai-question-item-selected {
+  background-color: var(--moflow-bg-secondary);
+}
+
+.moflow-ai-question-sr-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.moflow-ai-question-check {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.moflow-ai-question-radio {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid var(--moflow-border);
+  transition: border-color 0.15s;
+}
+
+.moflow-ai-question-checkbox {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1.5px solid var(--moflow-border);
+  transition: border-color 0.15s;
+}
+
+.moflow-ai-question-item-selected .moflow-ai-question-radio,
+.moflow-ai-question-item-selected .moflow-ai-question-checkbox {
+  border-color: var(--moflow-accent);
+}
+
+.moflow-ai-question-check-inner {
+  display: block;
+}
+
+.moflow-ai-question-item-selected .moflow-ai-question-radio .moflow-ai-question-check-inner {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--moflow-accent);
+}
+
+.moflow-ai-question-item-selected .moflow-ai-question-checkbox .moflow-ai-question-check-inner {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background-color: var(--moflow-accent);
+}
+
+.moflow-ai-question-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.moflow-ai-question-item-label {
+  color: var(--moflow-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.moflow-ai-question-item-desc {
+  color: var(--moflow-text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.moflow-ai-question-custom {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.moflow-ai-question-custom-input {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--moflow-border);
+  background-color: var(--moflow-bg-secondary);
+  color: var(--moflow-text);
+  outline: none;
+}
+
+.moflow-ai-question-custom-input:focus {
+  border-color: var(--moflow-accent);
+}
+
+.moflow-ai-question-custom-submit {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  border: 1px solid var(--moflow-accent);
+  background-color: var(--moflow-accent);
+  color: var(--moflow-bubble-user-text);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.moflow-ai-question-custom-submit:hover {
+  background-color: var(--moflow-accent-hover);
+  border-color: var(--moflow-accent-hover);
+}
+
+.moflow-ai-question-custom-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.moflow-ai-question-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.moflow-ai-question-back {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  border: 1px solid var(--moflow-border);
+  background-color: var(--moflow-bg-secondary);
+  color: var(--moflow-text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.moflow-ai-question-back:hover {
+  background-color: var(--moflow-border);
+}
+
+.moflow-ai-question-next,
+.moflow-ai-question-confirm {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  border: 1px solid var(--moflow-accent);
+  background-color: var(--moflow-accent);
+  color: var(--moflow-bubble-user-text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.moflow-ai-question-next:hover,
+.moflow-ai-question-confirm:hover {
+  background-color: var(--moflow-accent-hover);
+  border-color: var(--moflow-accent-hover);
+}
+
+.moflow-ai-question-next:disabled,
+.moflow-ai-question-confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .moflow-ai-usage-badge {
   position: relative;
   display: flex;

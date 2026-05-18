@@ -9,7 +9,7 @@ import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClien
 import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
-import { getToolDefinitions, executeTool, WEBFETCH_LIMIT, makeSkillTool, makeRunSkillScriptTool, shouldAddRunSkillScriptTool } from "../../lib/tools";
+import { getToolDefinitions, executeTool, WEBFETCH_LIMIT, makeSkillTool, makeRunSkillScriptTool, shouldAddRunSkillScriptTool, type QuestionItem } from "../../lib/tools";
 import type { ToolContext, OnPermissionCallback } from "../../lib/tools";
 import type { PermissionRequest, PermissionAction } from "../../lib/permission";
 import { useShallow } from "zustand/react/shallow";
@@ -18,6 +18,7 @@ import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
 import MessageContent from "./MessageContent";
 import ContextView from "./ContextView";
 import PermissionBar from "./PermissionBar";
+import QuestionBar from "./QuestionBar";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 import "./AISidebar.css";
@@ -148,6 +149,9 @@ function ToolCallStatus({ name, args, completedReadStats }: { name: string; args
     case "edit":
       text = `${t("ai.toolLabel.edit")} ${args.path ?? ""}`;
       break;
+    case "question":
+      text = `${t("ai.toolLabel.question")}`;
+      break;
     default:
       text = t("ai.toolStatus.default", { name });
   }
@@ -189,6 +193,10 @@ function formatToolArgs(name: string, args: Record<string, unknown>): string {
   if (name === "outline") {
     if (args.path) return `${label} ${args.path}`;
     return label;
+  }
+  if (name === "question") {
+    const qs = Array.isArray(args.questions) ? (args.questions as { question?: string }[]).map((q) => q.question ?? "").join("; ") : "";
+    return `${label} ${qs}`;
   }
   const entries = Object.entries(args);
   if (entries.length === 0) return label;
@@ -488,6 +496,8 @@ export default function AISidebar() {
   const draftInputRef = useRef("");
   const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
   const resolvePermissionRef = useRef<((action: PermissionAction) => void) | null>(null);
+  const [pendingQuestion, setPendingQuestion] = useState<{ questions: QuestionItem[]; toolCallId: string } | null>(null);
+  const resolveQuestionRef = useRef<((answer: string) => void) | null>(null);
   useT();
 
   useEffect(() => {
@@ -927,6 +937,43 @@ export default function AISidebar() {
             }
           }
 
+          if (tc.name === "question") {
+            const rawQuestions = Array.isArray(args.questions) ? args.questions : [];
+            const questions: QuestionItem[] = rawQuestions.map((q: Record<string, unknown>) => ({
+              question: String(q.question ?? ""),
+              options: Array.isArray(q.options) ? q.options.map((o: Record<string, unknown>) => ({
+                label: String(o.label ?? ""),
+                description: o.description ? String(o.description) : undefined,
+              })) : [],
+              multiple: q.multiple === true,
+            }));
+            const valid = questions.every((q) => q.question && q.options.length >= 2);
+            if (!valid || questions.length === 0) {
+              const toolMsg = addMessage(chatKey, {
+                role: "tool",
+                content: "Invalid question tool call: each question must have text and at least 2 options.",
+                toolCallId: tc.id,
+                toolName: tc.name,
+              });
+              await appendMessage(chatKey, toolMsg);
+              continue;
+            }
+            setToolCallStatus(null);
+            const answer = await new Promise<string>((resolve) => {
+              setPendingQuestion({ questions, toolCallId: tc.id });
+              resolveQuestionRef.current = resolve;
+            });
+            setPendingQuestion(null);
+            const toolMsg = addMessage(chatKey, {
+              role: "tool",
+              content: answer,
+              toolCallId: tc.id,
+              toolName: tc.name,
+            });
+            await appendMessage(chatKey, toolMsg);
+            continue;
+          }
+
           setToolCallStatus({ name: tc.name, args });
 
           let toolResult: string;
@@ -987,6 +1034,11 @@ export default function AISidebar() {
         resolvePermissionRef.current = null;
       }
       setPermissionRequest(null);
+      if (resolveQuestionRef.current) {
+        resolveQuestionRef.current("User cancelled");
+        resolveQuestionRef.current = null;
+      }
+      setPendingQuestion(null);
     }
   };
 
@@ -1243,6 +1295,15 @@ if (id === "compact") {
             onDeny={handlePermissionDeny}
           />
         )}
+        {pendingQuestion && (
+          <QuestionBar
+            questions={pendingQuestion.questions}
+            onConfirm={(answer) => {
+              resolveQuestionRef.current?.(answer);
+              resolveQuestionRef.current = null;
+            }}
+          />
+        )}
         <div className="moflow-ai-input-wrap relative">
           <textarea
             ref={inputRef}
@@ -1252,7 +1313,7 @@ if (id === "compact") {
             onKeyDown={handleKeyDown}
             placeholder={t("ai.input.placeholder")}
             rows={2}
-            disabled={isStreaming || !!permissionRequest}
+            disabled={isStreaming || !!permissionRequest || !!pendingQuestion}
           />
           {isStreaming ? (
             <button className="moflow-ai-action-btn moflow-ai-action-stop" onClick={handleStop}>

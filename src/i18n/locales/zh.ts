@@ -196,6 +196,7 @@ export default {
   "ai.toolLabel.searches": "次搜索",
   "ai.toolLabel.explored": "已探索",
   "ai.toolLabel.exploring": "探索中",
+  "ai.toolLabel.question": "提问",
 
   "permission.allow": "允许",
   "permission.alwaysAllow": "始终允许",
@@ -204,6 +205,13 @@ export default {
   "permission.executeScript": "执行 {script}",
   "permission.editPath": "编辑 {path}",
   "permission.runSkillScript": "运行 {script}",
+
+  "question.customAnswer": "其他",
+  "question.customPlaceholder": "输入你的回答...",
+  "question.submit": "提交",
+  "question.confirm": "确认",
+  "question.next": "继续",
+  "question.back": "返回",
 
   "provider.openai": "OpenAI",
   "provider.anthropic": "Anthropic",

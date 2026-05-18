@@ -196,6 +196,7 @@ export default {
   "ai.toolLabel.searches": "searches",
   "ai.toolLabel.explored": "Explored",
   "ai.toolLabel.exploring": "Exploring",
+  "ai.toolLabel.question": "Asking",
 
   "permission.allow": "Allow",
   "permission.alwaysAllow": "Always Allow",
@@ -204,6 +205,13 @@ export default {
   "permission.executeScript": "Execute {script}",
   "permission.runSkillScript": "Run {script}",
   "permission.editPath": "Edit {path}",
+
+  "question.customAnswer": "Other",
+  "question.customPlaceholder": "Type your answer...",
+  "question.submit": "Submit",
+  "question.confirm": "Confirm",
+  "question.next": "Continue",
+  "question.back": "Back",
 
   "provider.openai": "OpenAI",
   "provider.anthropic": "Anthropic",

@@ -196,6 +196,7 @@ export default {
   "ai.toolLabel.searches": "회 검색",
   "ai.toolLabel.explored": "탐색 완료",
   "ai.toolLabel.exploring": "탐색 중",
+  "ai.toolLabel.question": "질문",
 
   "permission.allow": "허용",
   "permission.alwaysAllow": "항상 허용",
@@ -204,6 +205,13 @@ export default {
   "permission.executeScript": "{script} 실행",
   "permission.editPath": "{path} 편집",
   "permission.runSkillScript": "{script} 실행",
+
+  "question.customAnswer": "기타",
+  "question.customPlaceholder": "답변을 입력하세요...",
+  "question.submit": "제출",
+  "question.confirm": "확인",
+  "question.next": "다음",
+  "question.back": "뒤로",
 
   "provider.openai": "OpenAI",
   "provider.anthropic": "Anthropic",
