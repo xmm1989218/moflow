@@ -755,7 +755,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v0.9.6 — 交互式问答
+## v0.9.6 — 交互式问答 ✅
 
 ### `question` Tool
 
@@ -836,6 +836,13 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] `runSkillScript` 硬停机制（`skillScriptExecuted` flag + 拦截逻辑 + 动态移除 tool schema）
 - [ ] `runSkillScript` tool description 简化（行为约束移至 system prompt）
 - [ ] `SKILL_INSTRUCTION` 拆分为 `SKILL_BASE` + `SKILL_SCRIPT`（按条件拼接）
+
+### 聊天框呈现
+
+- [ ] Thinking/reasoning 折叠显示（chat 消息流中渲染 `reasoningContent`，`<details>` 折叠，仅限支持推理模式的模型）
+- [ ] Tool result XML 渲染（`<file>` / `<grep>` / `<outline>` 等 XML 标签语法高亮 + 折叠行号区）
+- [ ] 消息编辑与重新生成（用户可编辑已发送消息，重新从该消息生成）
+- [ ] 多消息分支（同一用户消息下的多个 AI 回复切换，类似 ChatGPT 的 ← → 导航）
 
 ### 编辑器
 

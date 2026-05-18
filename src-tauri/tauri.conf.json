@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "MoFlow",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "identifier": "app.moflow.editor",
   "build": {
     "frontendDist": "../dist",

@@ -43,10 +43,11 @@ MoFlow is a desktop Markdown editor built with Tauri v2 + React + TypeScript + V
 src/                    # Frontend (React + TypeScript)
   components/
     AISidebar/          # AI chat sidebar (doCompact, auto-compact, UsageBadge)
-                          AISidebar.css — sidebar layout + chat bubble styles (trimmed)
+                          AISidebar.css — sidebar layout + chat bubble + callout + question bar styles
                           MessageContent.css — Markdown element selectors (retained)
                           ContextView.tsx — context inspection panel
                           PermissionBar.tsx — inline permission consent bar (allow/always/deny)
+                          QuestionBar.tsx — wizard-style question form (radio/checkbox/custom input)
     ConfirmCloseDialog/ # Unsaved changes dialog (Tailwind, no CSS file)
     Editor/             # Milkdown editor wrapper + SelectionAIPanel
                           Editor.css — ProseMirror/Crepe/CodeMirror DOM overrides (retained)
@@ -61,7 +62,7 @@ src/                    # Frontend (React + TypeScript)
                           Keyframes, animations, shadows, scrollbar styles
   stores/
     appStore.ts         # Re-exports from tabStore, themeStore, etc.
-    chatStore.ts        # AI chat state (streamingContentMap, contextMap, cleanupIncompleteToolCalls)
+    chatStore.ts        # AI chat state (streamingContentMap, contextMap, inputHistoryMap, cleanupIncompleteToolCalls)
     permissionStore.ts  # Session permission rules (per-chatKey, alwaysAllow cascade)
     skillStore.ts       # Skill discovery, remote registry, install/update/uninstall
     aiSelectionStore.ts # Selection AI panel state
@@ -80,7 +81,8 @@ src/                    # Frontend (React + TypeScript)
       ja.ts             # Japanese locale (AI-generated)
       ko.ts             # Korean locale (AI-generated)
   lib/
-    chatPersistence.ts  # JSONL chat history (chatKey-based, safeFileName, append, load, repair)
+    chatPersistence.ts  # JSONL chat history (chats/{safeFileName}/messages.jsonl, safeFileName exported, clearChat, removeChat, migrateOldChatDir)
+    inputHistory.ts     # Per-session input history (loadInputHistory/saveInputHistory/appendInputHistory, 200 max, dedup)
     contextBuilder.ts   # System prompt builder (TOOLS_GUIDE replaces WS_FILE_TOOLS/DOC_FILE_TOOLS)
     fileOps.ts          # File read/write/open folder via Tauri FS plugin
     imageManager.ts     # Image save/resolve (saveImageToFile, resolveImagePath)
@@ -91,7 +93,7 @@ src/                    # Frontend (React + TypeScript)
     exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
     themeCSS.ts         # Dynamic theme CSS generation
     permission.ts       # Permission engine (wildcard matching, evaluateWithSession, generateAlwaysPattern)
-    tools.ts            # AI tool definitions + execution (outline, read, readSection, grep, find, glob, ls, webfetch, write, edit, skill, runSkillScript) — descriptions hardcoded English, no i18n
+    tools.ts            # AI tool definitions + execution (outline, read, readSection, grep, find, glob, ls, webfetch, write, edit, question, skill, runSkillScript) — descriptions hardcoded English, no i18n
     skillManager.ts     # Skill discovery, SKILL.md parsing, script execution (cwd support)
     types.ts            # Shared types (ToolCall, ToolDefinition, ChatMessage, SkillMeta)
     updater.ts          # Auto-update with proxy support
@@ -128,7 +130,7 @@ src-tauri/              # Backend (Rust + Tauri)
 - Export supports HTML (frontend) and PDF (Rust backend via WebView2 PrintToPdf API)
 - Windows taskbar icon fix: `fix_taskbar_icon()` in `lib.rs` uses Win32 `LoadImageW` + `SendMessageW(WM_SETICON)` to set both ICON_SMALL and ICON_BIG from the EXE embedded resource (ID 32512)
 - Dynamic FS scope: Rust `allow_paths` command + `fs_scope().allow_file()` instead of wildcard scope
-- Chat history persisted as JSONL per chat: `{appDataDir}/chat/{chatKey}.jsonl`
+- Chat history persisted as JSONL per chat: `{appDataDir}/chats/{safeFileName}/messages.jsonl` + `input_history.json` per session directory
 - Chat key dual-mode: workspace → `"dir:" + normalized path` (one chat per workspace, survives tab switch/close); single-file → `tabId` (deleted on tab close)
 - `promptTokens` stored on assistant messages in JSONL (no separate meta file)
 - Assistant messages only written to JSONL when content is complete (one-shot `addMessage` + `appendMessage`); streaming content stored in `streamingContentMap` (temporary, not persisted)
@@ -151,7 +153,7 @@ src-tauri/              # Backend (Rust + Tauri)
 - `closeWorkspace` only closes workspace-related tabs (files under workspaceRoot), preserves other tabs; returns `false` if user cancels unsaved dialog
 - Opening a new directory auto-closes current workspace first (with unsaved confirm)
 - Shortcuts centralized in `src/lib/shortcuts.ts`, platform-aware display (Ctrl vs ⌘)
-- 12 AI tools: outline/read/readSection/grep/find/glob/ls/webfetch/write/edit/skill/runSkillScript; `getToolDefinitions(needsDocTools, workspaceRoot, activeFilePath)` combines by mode
+- 13 AI tools: outline/read/readSection/grep/find/glob/ls/webfetch/write/edit/question/skill/runSkillScript; `getToolDefinitions(needsDocTools, workspaceRoot, activeFilePath)` combines by mode
 - Permission system: `checkPathAccess()` replaces `isPathAllowed()` — workspace-internal paths auto-allow, workspace-external paths evaluate via permission engine (session rules > global rules > default `ask`); `allowFsScope()` extends Tauri FS scope on allow
 - `executeTool` signature: `(name, args, signal, ctx, onPermission?)` — `onPermission` callback shows PermissionBar UI for external path access
 - Permission keys: `externalPath` (file read), `runSkillScript` (skill script), `edit` (file write); three actions: allow/ask/deny; wildcard patterns (`*`, `?`, `**`)
@@ -159,4 +161,9 @@ src-tauri/              # Backend (Rust + Tauri)
 - Theme variables include `--moflow-warn`/`--moflow-warn-text` per editor theme (for PermissionBar "always allow" button)
 - `runSkillScript` script param requires `skillName/scriptName` format (e.g. `markdown-to-ppt/convert.js`); `executeSkillScript` accepts `cwd` param (activeFile dir > workspaceRoot); bun resolves `node_modules` from script's directory regardless of cwd
 - `toolWrite` returns `"File written successfully."`, `toolEdit` returns `"Edit applied successfully."` — minimal results to LLM; UI `EditToolResult` builds diff display from `item.info.args`
+- Tool outputs wrapped in XML tags (`<file>`, `<grep>`, `<outline>`, `<find>`, `<glob>`, `<ls>`) following opencode's approach; line number format stays `N: ` (not opencode's `    N|`)
+- Error messages shown as `|?` (red callout), warnings as `|!` (yellow callout)
+- Question tool: `makeQuestionTool()` with `questions[]` array; wizard-style QuestionBar; question tool does NOT count toward `maxToolRounds`; intercepted via `pendingQuestion` state + `resolveQuestionRef` Promise (same pattern as PermissionBar)
+- Input history: `inputHistoryMap` in `chatStore`; `/new` clears messages but preserves input history; session directory deletion only on session destroy (close tab/workspace)
+- `chatStore` is the sole frontend entry point for chat data — no component imports `chatPersistence` or `inputHistory` directly
 - Selection AI: `getSelectionMarkdown(ctx, view)` serializes ProseMirror selection to Markdown via `serializerCtx` (preserves bold, links, code, math, lists); translate uses empty system prompt (no docContent), explain/rewrite keep full document context

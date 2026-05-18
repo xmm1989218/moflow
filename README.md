@@ -34,8 +34,9 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **Accessibility** — WAI-ARIA patterns, keyboard navigation, focus management across all interactive components
 - **Export** — HTML and PDF export
 - **AI Sidebar** — Integrated AI chat with context management, auto-compact, and usage tracking
-- **AI Tool-Calling** — AI can actively explore documents via tools (outline, grep, read_lines, read_section) and fetch web content instead of relying on truncated context
-- **Workspace-aware AI** — Open a folder as workspace, AI gets project-level tools (grep, find, glob, ls, read) to explore the entire codebase; workspace chat persists across tab switches
+- **AI Tool-Calling** — AI can actively explore documents via tools (outline, grep, read, readSection) and fetch web content instead of relying on truncated context
+- **Interactive Questions** — AI asks clarifying questions via a wizard-style form before executing non-trivial tasks
+- **Workspace-aware AI** — Open a folder as workspace, AI gets project-level tools (grep, find, glob, ls, read, write, edit) to explore and modify the entire codebase; workspace chat persists across tab switches
 - **Context View** — Inspect token usage, context breakdown, and raw messages in a dedicated panel
 - **Selection AI** — Explain, translate, or ask questions about selected text; Markdown formatting preserved in translations and rewrites
 - **Settings Tab** — Unified settings panel with appearance, AI config, proxy, and about sections

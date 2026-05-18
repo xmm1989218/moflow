@@ -1,5 +1,44 @@
 # Changelog
 
+## v0.9.6 (2026-05-19)
+
+### New Features
+
+- **Interactive Question Tool** — AI can ask users questions via a wizard-style form before executing non-trivial tasks
+  - `makeQuestionTool()` — tool definition with `questions[]` array, each containing `question`, `options[{label, description?}]`, and optional `multiple` flag
+  - QuestionBar component — wizard-style multi-step form with progress indicator, radio/checkbox selection, custom "Other" input, Continue/Confirm/Back buttons
+  - Question tool does not count toward `maxToolRounds`
+  - System prompt: "First principle: Understand before you act" — non-trivial tasks must ask first
+
+- **Input History** — Chat input box now remembers sent messages, navigate with ↑/↓ arrow keys
+  - `inputHistory.ts` — per-session persistence (`input_history.json`), max 200 entries, dedup latest
+  - Slash commands (`/new`, `/compact`) also added to history
+  - Arrow history navigation no longer blocked by slash menu
+
+- **Chat Storage Restructuring** — Each chat session now has its own directory
+  - `{appDataDir}/chat/` → `{appDataDir}/chats/{safeFileName}/messages.jsonl`
+  - `/new` clears messages only (preserves session directory + input history)
+  - `migrateOldChatDir()` auto-migrates on startup
+
+- **Callout UI** — Error and warning messages rendered as styled callout blocks
+  - `|?` prefix → red error callout with icon
+  - `|!` prefix → yellow warning callout with icon
+  - `/compact` "nothing to compact" now shows as yellow warning callout
+
+- **Tool Output XML Wrapping** — Tool results wrapped in XML tags for clearer structure
+  - `<file>` for read/readSection (with line count hint and truncation notice)
+  - `<grep>`, `<outline>`, `<find>`, `<glob>`, `<ls>` for respective tools
+  - `readSection` now includes line numbers for LLM positioning
+  - Truncation hints changed from `...(total N lines)` to natural language inside XML tags
+
+### Improvements
+
+- **System prompt** — Removed contradictory "Follow instructions without questioning" rule; merged clarify+plan into "Understand before you act"
+- **Env var descriptions** — `MOFLOW_WORKSPACE_ROOT` and `MOFLOW_ACTIVE_FILE` now say "Absolute path of..."
+- **`chatStore` centralized I/O** — All chat data access goes through `chatStore`; components no longer import `chatPersistence` or `inputHistory` directly
+- **Arrow key history** — History navigation with `historyIndexRef !== -1` check prevents conflict with slash menu
+- **`/compact` and `/new`** — Now handled when typed directly in input (not just via slash menu)
+
 ## v0.9.5 (2026-05-18)
 
 ### New Features
