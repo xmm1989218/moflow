@@ -87,19 +87,14 @@ describe("contextBuilder", () => {
       expect(prompt).toContain("switch files");
     });
 
-    it("includes all tools in workspace mode", () => {
+    it("includes tool guidance in workspace mode", () => {
       const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "D:/projects/foo/README.md");
-      expect(prompt).toContain("find:");
-      expect(prompt).toContain("glob:");
-      expect(prompt).toContain("ls:");
+      expect(prompt).toContain("provided tools");
     });
 
-    it("workspace with no file includes tool list", () => {
+    it("workspace with no file includes tool guidance", () => {
       const { prompt } = buildSystemPrompt("", 128000, false, "D:/projects/foo", null);
-      expect(prompt).toContain("find:");
-      expect(prompt).toContain("glob:");
-      expect(prompt).toContain("ls:");
-      expect(prompt).toContain("read:");
+      expect(prompt).toContain("provided tools");
     });
 
     it("workspace with no file shows workspace message", () => {
@@ -124,11 +119,9 @@ describe("contextBuilder", () => {
       expect(prompt).toContain("<document_structure>");
     });
 
-    it("no workspace prompt does not include workspace-specific tools", () => {
+    it("no workspace prompt does not include workspace-specific tool guidance", () => {
       const { prompt } = buildSystemPrompt(sampleDoc, 128000);
-      expect(prompt).not.toContain("find:");
-      expect(prompt).not.toContain("glob:");
-      expect(prompt).not.toContain("ls:");
+      expect(prompt).not.toContain("provided tools");
     });
 
     it("no workspace prompt does not include switch-file note", () => {
