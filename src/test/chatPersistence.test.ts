@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-
-function safeFileName(chatKey: string): string {
-  return chatKey.replace(/[:/\\]/g, "_");
-}
+import { safeFileName } from "../lib/chatPersistence";
 
 describe("chatPersistence safeFileName", () => {
   it("leaves simple IDs unchanged", () => {

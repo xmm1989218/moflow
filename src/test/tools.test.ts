@@ -67,7 +67,7 @@ describe('tools', () => {
 
     it('getToolDefinitions returns correct sets', () => {
       const noTools = getToolDefinitions(false, null)
-      expect(noTools.map((d) => d.function.name)).toEqual(['webfetch'])
+      expect(noTools.map((d) => d.function.name)).toEqual(['webfetch', 'question'])
 
       const docOnly = getToolDefinitions(true, null)
       expect(docOnly.map((d) => d.function.name)).toContain('outline')

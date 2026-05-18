@@ -597,12 +597,20 @@ export default function AISidebar() {
         tailStart = i;
       }
     }
-    if (turnCount === 0) return;
+    if (turnCount === 0) {
+      const msg = addMessage(chatKey, { role: "assistant", content: `|!${t("ai.compact.nothingToCompact")}` });
+      await appendMessage(chatKey, msg);
+      return;
+    }
 
     const headMsgs = contextMsgs.slice(0, tailStart);
     const tailMsgs = contextMsgs.slice(tailStart);
 
-    if (headMsgs.length === 0) return;
+    if (headMsgs.length === 0) {
+      const msg = addMessage(chatKey, { role: "assistant", content: `|!${t("ai.compact.nothingToCompact")}` });
+      await appendMessage(chatKey, msg);
+      return;
+    }
 
     const pruneThreshold = contextTokens * 0.1;
     const keepBudget = contextTokens * 0.15;
@@ -803,6 +811,7 @@ export default function AISidebar() {
     historyIndexRef.current = -1;
     const userMsg = addMessage(chatKey, { role: "user", content: text });
     await appendMessage(chatKey, userMsg);
+    useChatStore.getState().appendInputHistory(chatKey, text);
 
     setStreaming(true);
     clearStreamingContent(chatKey);
@@ -1093,14 +1102,7 @@ if (id === "compact") {
   };
 
   const getUserHistory = useCallback((): string[] => {
-    const msgs = useChatStore.getState().messagesMap[chatKey] ?? [];
-    const history: string[] = [];
-    for (let i = msgs.length - 1; i >= 0; i--) {
-      if (msgs[i].role === "user") {
-        history.push(msgs[i].content);
-      }
-    }
-    return history;
+    return useChatStore.getState().inputHistoryMap[chatKey] ?? [];
   }, [chatKey]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

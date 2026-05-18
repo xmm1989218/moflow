@@ -53,6 +53,7 @@ function App() {
         if (!ok) {
           await initSession();
         }
+        await import("./lib/chatPersistence").then(({ migrateOldChatDir }) => migrateOldChatDir());
         window.__startupMark?.("session-loaded", "react-mount");
         window.__startupMark?.("window-shown", "session-loaded");
         startupReport();

@@ -1,23 +1,32 @@
 import { appDataDir, join } from "@tauri-apps/api/path";
-import { readFile, writeFile, mkdir, remove, exists, rename } from "@tauri-apps/plugin-fs";
+import { readFile, writeFile, mkdir, remove, exists, rename, readDir } from "@tauri-apps/plugin-fs";
 import type { Message } from "../stores/chatStore";
 
-function safeFileName(chatKey: string): string {
+export function safeFileName(chatKey: string): string {
   return chatKey.replace(/[:/\\]/g, "_");
 }
 
-async function ensureChatDir(): Promise<string> {
+async function ensureChatsDir(): Promise<string> {
   const dir = await appDataDir();
-  const chatDirPath = await join(dir, "chat");
-  if (!(await exists(chatDirPath))) {
-    await mkdir(chatDirPath, { recursive: true });
+  const chatsDir = await join(dir, "chats");
+  if (!(await exists(chatsDir))) {
+    await mkdir(chatsDir, { recursive: true });
   }
-  return chatDirPath;
+  return chatsDir;
+}
+
+async function chatDirPath(chatKey: string): Promise<string> {
+  const chatsDir = await ensureChatsDir();
+  const sessionDir = await join(chatsDir, safeFileName(chatKey));
+  if (!(await exists(sessionDir))) {
+    await mkdir(sessionDir, { recursive: true });
+  }
+  return sessionDir;
 }
 
 async function chatFilePath(chatKey: string): Promise<string> {
-  const dir = await ensureChatDir();
-  return await join(dir, `${safeFileName(chatKey)}.jsonl`);
+  const dir = await chatDirPath(chatKey);
+  return await join(dir, "messages.jsonl");
 }
 
 function serializeMessage(msg: Message): string {
@@ -60,9 +69,7 @@ export async function appendMessage(chatKey: string, msg: Message): Promise<void
 export async function clearChat(chatKey: string): Promise<void> {
   try {
     const path = await chatFilePath(chatKey);
-    if (await exists(path)) {
-      await remove(path);
-    }
+    await writeFile(path, new TextEncoder().encode(""));
   } catch (e) {
     console.error("[chatPersistence] clearChat error:", e);
   }
@@ -70,19 +77,19 @@ export async function clearChat(chatKey: string): Promise<void> {
 
 export async function removeChat(chatKey: string): Promise<void> {
   try {
-    const path = await chatFilePath(chatKey);
-    if (await exists(path)) {
-      await remove(path);
+    const dir = await chatDirPath(chatKey);
+    if (await exists(dir)) {
+      await remove(dir, { recursive: true });
     }
-  } catch { /* file may not exist */ }
+  } catch { /* dir may not exist */ }
 }
 
 async function repairIfNeeded(chatKey: string, path: string, lines: string[], msgs: Message[]): Promise<void> {
   if (msgs.length === lines.length) return;
   if (msgs.length === 0) return;
   try {
-    const dir = await ensureChatDir();
-    const tmpPath = await join(dir, `${safeFileName(chatKey)}.jsonl.repair`);
+    const dir = await chatDirPath(chatKey);
+    const tmpPath = await join(dir, "messages.jsonl.repair");
     const content = msgs.map(serializeMessage).join("\n") + "\n";
     await writeFile(tmpPath, new TextEncoder().encode(content));
     try {
@@ -119,5 +126,40 @@ export async function loadChat(chatKey: string): Promise<Message[]> {
     performance.mark(`loadChat-end-${chatKey}`);
     performance.measure(`loadChat-${chatKey}`, `loadChat-start-${chatKey}`, `loadChat-end-${chatKey}`);
     return [];
+  }
+}
+
+export async function migrateOldChatDir(): Promise<void> {
+  try {
+    const dir = await appDataDir();
+    const oldDir = await join(dir, "chat");
+    if (!(await exists(oldDir))) return;
+
+    const newDir = await join(dir, "chats");
+    if (!(await exists(newDir))) {
+      await mkdir(newDir, { recursive: true });
+    }
+
+    const entries = await readDir(oldDir);
+    for (const entry of entries) {
+      if (!entry.name?.endsWith(".jsonl")) continue;
+      const safeName = entry.name.replace(/\.jsonl$/, "");
+      const sessionDir = await join(newDir, safeName);
+      if (!(await exists(sessionDir))) {
+        await mkdir(sessionDir, { recursive: true });
+      }
+      const oldPath = await join(oldDir, entry.name);
+      const newPath = await join(sessionDir, "messages.jsonl");
+      const data = await readFile(oldPath);
+      await writeFile(newPath, data);
+      await remove(oldPath);
+    }
+
+    const remaining = await readDir(oldDir);
+    if (remaining.length === 0) {
+      await remove(oldDir, { recursive: true });
+    }
+  } catch (e) {
+    console.error("[chatPersistence] migrateOldChatDir error:", e);
   }
 }

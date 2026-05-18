@@ -103,6 +103,7 @@ export default {
 
   "ai.compact.summaryWithPrevious": "<previous-summary>\n{prev}\n</previous-summary>\n\nPlease summarize the previous summary above together with the new conversation below into an updated summary, preserving key information:\n\n{content}",
   "ai.compact.summaryNew": "Please summarize the following conversation history concisely, preserving key information:\n\n{content}",
+  "ai.compact.nothingToCompact": "Not enough conversation to compact. Send some messages first.",
 
   "ai.rewrite.rewriting": "AI rewriting...",
   "ai.rewrite.placeholder": "Enter rewrite instruction…",

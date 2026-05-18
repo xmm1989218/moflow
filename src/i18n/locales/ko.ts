@@ -103,6 +103,7 @@ export default {
 
   "ai.compact.summaryWithPrevious": "<previous-summary>\n{prev}\n</previous-summary>\n\n위의 이전 요약과 아래의 새 대화를 함께 합쳐서 핵심 정보를 보존하여 업데이트된 요약을 작성해 주세요:\n\n{content}",
   "ai.compact.summaryNew": "다음 대화 기록을 핵심 정보를 보존하여 간결하게 요약해 주세요:\n\n{content}",
+  "ai.compact.nothingToCompact": "압축할 대화가 부족합니다. 먼저 메시지를 보내세요.",
 
   "ai.rewrite.rewriting": "AI 다시쓰는 중...",
   "ai.rewrite.placeholder": "다시쓰기 지시를 입력하세요…",

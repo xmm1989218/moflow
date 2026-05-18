@@ -103,6 +103,7 @@ export default {
 
   "ai.compact.summaryWithPrevious": "<previous-summary>\n{prev}\n</previous-summary>\n\n请将以上历史摘要和以下新对话一起总结为一份更新后的摘要，保留关键信息：\n\n{content}",
   "ai.compact.summaryNew": "请将以下对话历史总结为简洁的摘要，保留关键信息：\n\n{content}",
+  "ai.compact.nothingToCompact": "对话内容不足，无法压缩。请先发送一些消息。",
 
   "ai.rewrite.rewriting": "AI 正在改写...",
   "ai.rewrite.placeholder": "输入改写要求…",

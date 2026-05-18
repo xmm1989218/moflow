@@ -138,7 +138,6 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     }
 
     if (!state.workspaceRoot) {
-      import("../lib/chatPersistence").then(({ removeChat }) => removeChat(id));
       useChatStore.getState().deleteChat(id);
       import("./permissionStore").then(({ usePermissionStore }) => {
         usePermissionStore.getState().clearSessionRules(id);
@@ -318,7 +317,6 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     const prev = get().workspaceRoot;
     if (prev && prev !== root) {
       const oldKey = "dir:" + prev.replace(/\\/g, "/").toLowerCase();
-      import("../lib/chatPersistence").then(({ removeChat }) => removeChat(oldKey));
       useChatStore.getState().deleteChat(oldKey);
     }
     set({ workspaceRoot: root });
@@ -369,8 +367,6 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     }
 
     const chatKey = "dir:" + wsRoot;
-    const { removeChat } = await import("../lib/chatPersistence");
-    removeChat(chatKey);
     useChatStore.getState().deleteChat(chatKey);
     const { usePermissionStore } = await import("./permissionStore");
     usePermissionStore.getState().clearSessionRules(chatKey);

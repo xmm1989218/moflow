@@ -123,6 +123,7 @@ export default {
 
   "ai.compact.summaryWithPrevious": "<previous-summary>\n{prev}\n</previous-summary>\n\n上記の前回の要約と以下の新しい会話を合わせて要約し、重要な情報を保持した更新された要約を作成してください：\n\n{content}",
   "ai.compact.summaryNew": "以下の会話履歴を簡潔に要約し、重要な情報を保持してください：\n\n{content}",
+  "ai.compact.nothingToCompact": "圧縮する会話が不足しています。先にメッセージを送信してください。",
 
   "ai.rewrite.rewriting": "AI推敲中...",
   "ai.rewrite.placeholder": "推敲の指示を入力…",

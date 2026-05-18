@@ -15,6 +15,7 @@ describe("chatStore", () => {
       isStreaming: false,
       abortController: null,
       streamingContentMap: {},
+      inputHistoryMap: {},
     });
   });
 
@@ -185,6 +186,47 @@ describe("chatStore", () => {
     it("adds message to messagesMap", () => {
       useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "test" });
       expect(useChatStore.getState().messagesMap[TEST_TAB]).toHaveLength(1);
+    });
+  });
+
+  describe("inputHistoryMap", () => {
+    it("initial state has empty inputHistoryMap", () => {
+      expect(useChatStore.getState().inputHistoryMap).toEqual({});
+    });
+
+    it("appendInputHistory adds text to map", () => {
+      useChatStore.getState().appendInputHistory(TEST_TAB, "hello");
+      expect(useChatStore.getState().inputHistoryMap[TEST_TAB]).toEqual(["hello"]);
+    });
+
+    it("appendInputHistory deduplicates latest entry", () => {
+      useChatStore.getState().appendInputHistory(TEST_TAB, "hello");
+      useChatStore.getState().appendInputHistory(TEST_TAB, "hello");
+      expect(useChatStore.getState().inputHistoryMap[TEST_TAB]).toEqual(["hello"]);
+    });
+
+    it("appendInputHistory prepends new entry", () => {
+      useChatStore.getState().appendInputHistory(TEST_TAB, "first");
+      useChatStore.getState().appendInputHistory(TEST_TAB, "second");
+      expect(useChatStore.getState().inputHistoryMap[TEST_TAB]).toEqual(["second", "first"]);
+    });
+
+    it("appendInputHistory ignores empty/whitespace text", () => {
+      useChatStore.getState().appendInputHistory(TEST_TAB, "");
+      useChatStore.getState().appendInputHistory(TEST_TAB, "  ");
+      expect(useChatStore.getState().inputHistoryMap[TEST_TAB]).toBeUndefined();
+    });
+
+    it("clearMessages does not clear inputHistoryMap", () => {
+      useChatStore.getState().appendInputHistory(TEST_TAB, "hello");
+      useChatStore.getState().clearMessages(TEST_TAB);
+      expect(useChatStore.getState().inputHistoryMap[TEST_TAB]).toEqual(["hello"]);
+    });
+
+    it("deleteChat clears inputHistoryMap", () => {
+      useChatStore.getState().appendInputHistory(TEST_TAB, "hello");
+      useChatStore.getState().deleteChat(TEST_TAB);
+      expect(useChatStore.getState().inputHistoryMap[TEST_TAB]).toBeUndefined();
     });
   });
 });

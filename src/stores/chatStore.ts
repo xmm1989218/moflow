@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { appendMessage, clearChat, removeChat, loadChat } from "../lib/chatPersistence";
+import { appendInputHistory, loadInputHistory as loadInputHistoryFromFile } from "../lib/inputHistory";
 import type { ToolCall } from "../lib/types";
 
 export const COMPACT_TAIL_TURNS = 2;
@@ -29,6 +30,7 @@ interface ChatState {
   isStreaming: boolean;
   abortController: AbortController | null;
   streamingContentMap: Record<string, string>;
+  inputHistoryMap: Record<string, string[]>;
 
   getContext: (tabId: string) => Message[];
   addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
@@ -43,6 +45,8 @@ interface ChatState {
   cleanupIncompleteToolCalls: (tabId: string) => void;
   loadChatHistory: (tabId: string) => Promise<void>;
   deleteChat: (tabId: string) => void;
+  appendInputHistory: (tabId: string, text: string) => void;
+  loadInputHistory: (tabId: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -55,6 +59,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isStreaming: false,
   abortController: null,
   streamingContentMap: {},
+  inputHistoryMap: {},
 
   getContext: (tabId: string) => {
     const existing = get().contextMap[tabId];
@@ -267,6 +272,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         chatLoadedMap: { ...state.chatLoadedMap, [tabId]: true },
       }));
     }
+    get().loadInputHistory(tabId);
   },
 
   deleteChat: (tabId) => {
@@ -284,6 +290,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       delete newTotalTokens[tabId];
       const newCost = { ...state.costMap };
       delete newCost[tabId];
+      const newInputHistory = { ...state.inputHistoryMap };
+      delete newInputHistory[tabId];
       return {
         messagesMap: newMessages,
         chatLoadedMap: newChatLoaded,
@@ -291,7 +299,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
         contextTokensMap: newContextTokens,
         totalTokensMap: newTotalTokens,
         costMap: newCost,
+        inputHistoryMap: newInputHistory,
       };
     });
+  },
+
+  appendInputHistory: (tabId, text) => {
+    if (!text.trim()) return;
+    set((state) => {
+      const history = state.inputHistoryMap[tabId] ?? [];
+      if (history.length > 0 && history[0] === text) return state;
+      return {
+        inputHistoryMap: {
+          ...state.inputHistoryMap,
+          [tabId]: [text, ...history],
+        },
+      };
+    });
+    appendInputHistory(tabId, text);
+  },
+
+  loadInputHistory: async (tabId) => {
+    const history = await loadInputHistoryFromFile(tabId);
+    set((state) => ({
+      inputHistoryMap: { ...state.inputHistoryMap, [tabId]: history },
+    }));
   },
 }));
