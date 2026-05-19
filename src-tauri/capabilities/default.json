@@ -38,6 +38,7 @@
     "fs:allow-home-write-recursive",
     "updater:default",
     "process:allow-restart",
-    "opener:default"
+    "opener:default",
+    "os:default"
   ]
 }

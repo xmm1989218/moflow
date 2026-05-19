@@ -2,7 +2,8 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { readFile, writeFile } from "@tauri-apps/plugin-fs";
 import { useTabStore, type CloseDialogResult, type TabState } from "../stores/appStore";
 import { useThemeStore } from "../stores/themeStore";
-import { exportAsHtml } from "./exportHtml";
+import { exportAsHtml, exportPdfFrontend } from "./exportHtml";
+import { platform } from "@tauri-apps/plugin-os";
 import { showConfirmCloseDialog, showAlertDialog } from "./closeDialog";
 import { invoke } from "@tauri-apps/api/core";
 import { invalidateDirCache } from "../components/FileTree/FileTree";
@@ -139,12 +140,17 @@ export async function exportPdf() {
 
   if (!selected) return;
 
-  const bodyHtml = getHTMLFn ? getHTMLFn() : "";
-  const html = await exportAsHtml(bodyHtml, editorTheme);
+  try {
+    const bodyHtml = getHTMLFn ? getHTMLFn() : "";
+    const html = await exportAsHtml(bodyHtml, editorTheme);
 
-  const ok: boolean = await invoke("export_pdf", { html, path: selected });
-  if (!ok) {
-    console.error("PDF export failed");
+    if (platform() === "windows") {
+      await invoke("export_pdf", { html, path: selected });
+    } else {
+      await exportPdfFrontend(html, selected);
+    }
+  } catch (e) {
+    await showAlertDialog(`PDF export failed: ${e}`);
   }
 }
 

@@ -1,6 +1,6 @@
 import { t } from "../i18n/core";
 
-const isMac = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(navigator.platform ?? "");
+const isMac = typeof navigator !== "undefined" && /Mac|iPod|iPhone|iPad/.test(((navigator as unknown) as { userAgentData?: { platform?: string }; platform?: string }).userAgentData?.platform ?? navigator.platform ?? "");
 
 export interface ShortcutDef {
   id: string;

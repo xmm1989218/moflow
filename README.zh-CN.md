@@ -16,9 +16,13 @@
 
 从 [Releases 页面](https://github.com/xmm1989218/moflow/releases/latest) 下载最新安装包。
 
-| 平台 | 下载 |
-|---|---|
-| Windows | `MoFlow_x.y.z_x64-setup.exe` |
+| 平台 | 下载 | 状态 |
+|---|---|---|
+| Windows | `MoFlow_x.y.z_x64-setup.exe` | 完整测试 |
+| macOS | `MoFlow_x.y.z_x64.dmg` | 社区构建版 — 未经实机测试 |
+| Linux | `MoFlow_x.y.z_amd64.deb` / `.AppImage` | 社区构建版 — 未经实机测试 |
+
+> **说明**：macOS 和 Linux 版本为社区构建版，开发者没有 Mac 和 Linux 机器进行实机测试。如在使用中遇到问题，请在 [GitHub Issues](https://github.com/anomalyco/moflow/issues) 反馈，帮助改进跨平台支持。
 
 > 安装后，MoFlow 会在启动时自动检查更新，有新版本时通知您一键安装。
 

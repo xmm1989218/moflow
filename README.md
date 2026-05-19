@@ -16,9 +16,13 @@
 
 Download the latest installer from the [Releases page](https://github.com/xmm1989218/moflow/releases/latest).
 
-| Platform | Download |
-|---|---|
-| Windows | `MoFlow_x.y.z_x64-setup.exe` |
+| Platform | Download | Status |
+|---|---|---|
+| Windows | `MoFlow_x.y.z_x64-setup.exe` | Fully tested |
+| macOS | `MoFlow_x.y.z_x64.dmg` | Community build — not tested on real hardware |
+| Linux | `MoFlow_x.y.z_amd64.deb` / `.AppImage` | Community build — not tested on real hardware |
+
+> **Note**: macOS and Linux builds are community builds. The developer does not have Mac or Linux machines for real-device testing. If you encounter any issues on these platforms, please [report them on GitHub](https://github.com/anomalyco/moflow/issues) — your feedback helps improve cross-platform support.
 
 > After installation, MoFlow will automatically check for updates on startup and notify you when a new version is available.
 

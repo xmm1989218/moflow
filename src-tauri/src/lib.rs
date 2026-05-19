@@ -8,7 +8,12 @@ use tokio_util::sync::CancellationToken;
 
 const WEBFETCH_MAX_BODY: usize = 5 * 1024 * 1024;
 const WEBFETCH_TIMEOUT_SECS: u64 = 30;
+#[cfg(target_os = "windows")]
 const CHROME_UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
+#[cfg(target_os = "macos")]
+const CHROME_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
+#[cfg(target_os = "linux")]
+const CHROME_UA: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36";
 const REAL_UA: &str = "opencode";
 
 struct ProxyState {
@@ -853,6 +858,7 @@ async fn export_pdf(app: tauri::AppHandle, html: String, path: String) -> Result
         .skip_taskbar(true)
         .inner_size(1024.0, 768.0);
 
+        #[cfg(target_os = "windows")]
         if let Some(proxy_state) = app.try_state::<ProxyState>() {
             if let Some(ref url) = *proxy_state.proxy_url.lock().map_err(|e| e.to_string())? {
                 if !url.is_empty() {
@@ -986,6 +992,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_os::init())
         .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, get_startup_data, fetch_skill_registry, download_and_install_skill, uninstall_skill, clean_skill_temp, check_bun_available, execute_script])
         .setup(move |app| {
             log::info!("[startup] setup-enter: {}ms", app_start.elapsed().as_millis());
@@ -1005,16 +1012,31 @@ pub fn run() {
             .inner_size(1200.0, 800.0)
             .resizable(true)
             .center()
-            .decorations(false)
             .visible(false);
 
+            #[cfg(target_os = "macos")]
+            {
+                window_builder = window_builder
+                    .decorations(true)
+                    .title_bar_style(tauri::TitleBarStyle::Overlay);
+            }
+
+            #[cfg(not(target_os = "macos"))]
+            {
+                window_builder = window_builder.decorations(false);
+            }
+
+            #[cfg(target_os = "windows")]
             if let Some(ref url) = proxy_url {
                 if let Ok(parsed) = url.parse::<url::Url>() {
                     window_builder = window_builder.proxy_url(parsed);
                     log::info!("[startup] WebView2 proxy enabled: {}", url);
                 }
-            } else {
-                log::info!("[startup] no proxy configured for WebView2");
+            }
+
+            #[cfg(not(target_os = "windows"))]
+            if proxy_url.is_some() {
+                log::info!("[startup] proxy configured (system/webfetch only): {}", proxy_url.as_deref().unwrap());
             }
 
             window_builder.build().map_err(|e| format!("Failed to create main window: {}", e))?;
