@@ -209,8 +209,9 @@ describe("shortcuts", () => {
 
   describe("formatShortcutDisplay", () => {
     it("formats Ctrl+key", () => {
-      expect(formatShortcutDisplay({ key: "s", modifiers: ["ctrl"] })).toContain("Ctrl");
-      expect(formatShortcutDisplay({ key: "s", modifiers: ["ctrl"] })).toContain("S");
+      const result = formatShortcutDisplay({ key: "s", modifiers: ["ctrl"] });
+      const upper = result.toUpperCase();
+      expect(upper === "CTRL+S" || upper === "⌘S").toBe(true);
     });
 
     it("formats bare function key", () => {
