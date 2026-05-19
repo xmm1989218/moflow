@@ -26,6 +26,7 @@ tauri-plugin-fs = "2"
 tauri-plugin-single-instance = "2"
 tauri-plugin-opener = "2"
 reqwest = { version = "0.12", features = ["rustls-tls", "socks"], default-features = false }
+reqwest_v13 = { package = "reqwest", version = "0.13", features = ["socks"], default-features = false }
 regex = "1"
 htmd = "0.5"
 base64 = "0.22"

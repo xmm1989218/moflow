@@ -18,6 +18,7 @@ export type UpdateStatus =
 export async function checkForUpdate(): Promise<Update | null> {
   const settings = await readSettings();
   const proxy = settings.proxyUrl || undefined;
+  console.log("[updater] checking for update, proxy:", proxy || "none");
   return await check(proxy ? { proxy } : undefined);
 }
 
