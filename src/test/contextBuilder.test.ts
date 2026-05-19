@@ -142,7 +142,7 @@ describe("contextBuilder", () => {
     it("plan mode injects <mode>plan</mode> tag", () => {
       const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, undefined, undefined, "plan");
       expect(prompt).toContain("<mode>plan</mode>");
-      expect(prompt).toContain("Do NOT use write, edit, or runSkillScript");
+      expect(prompt).toContain("MUST NOT write, edit, or modify");
     });
 
     it("build mode does not inject plan mode tag", () => {

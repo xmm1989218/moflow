@@ -55,7 +55,9 @@ export const usePermissionStore = create<PermissionState>((set, get) => ({
     set((state) => {
       const nextRules = { ...state.sessionRules };
       delete nextRules[chatKey];
-      return { sessionRules: nextRules };
+      const nextAiModeMap = { ...state.sessionAiModeMap };
+      delete nextAiModeMap[chatKey];
+      return { sessionRules: nextRules, sessionAiModeMap: nextAiModeMap };
     });
   },
 
