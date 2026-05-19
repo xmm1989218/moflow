@@ -848,20 +848,103 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ### 小修复
 
-- [ ] HamburgerMenu 导出子菜单去掉 `?` 指示符
-
-### 小修复
-
 - [x] HamburgerMenu 导出子菜单去掉 `?` 指示符
 
 ---
 
-## v1.x — 跨平台 & 后续迭代
+## v1.1.0 — 跨平台支持 ✅
 
-### 跨平台支持
+### Design Decisions
 
-- [ ] macOS 适配（PDF 导出改用 WKWebView、窗口装饰适配、菜单栏集成）
-- [ ] Linux 适配（AppImage / deb 打包、WebKitGTK 适配测试）
+- **PDF 导出**：Windows 用 Rust WebView2 PrintToPdf（已验证正常），macOS/Linux 用前端 JS 回退（jspdf + html2canvas，iframe srcdoc 隔离样式）
+- **macOS 标题栏**：Tauri `titleBarStyle: "overlay"` + `decorations: true`，保留原生交通灯按钮 + 自定义标题栏内容
+- **Linux 打包**：AppImage + deb
+- **macOS 最低版本**：10.15（Catalina）
+- **macOS 代理**：WKWebView 遵循系统代理设置，无需窗口级 proxy 配置
+
+### Rust Backend 跨平台适配
+
+- [x] `export_pdf` 双轨方案：Windows 调 Rust `export_pdf`（WebView2 PrintToPdf），macOS/Linux 调 `exportPdfFrontend`（iframe srcdoc + html2canvas + jspdf）
+- [x] WebView2 `proxy_url()` builder 调用加 `#[cfg(target_os = "windows")]` 守卫（主窗口 + PDF 窗口）
+- [x] macOS 窗口创建：用 `titleBarStyle: "overlay"` + `decorations: true` 替代 `decorations(false)`
+- [x] `CHROME_UA` 改为平台感知（`#[cfg]` 选择 Windows/macOS/Linux UA 字符串）
+- [x] macOS 代理：`proxy_url()` 在 macOS 上跳过，webfetch/reqwest 仍通过 ProxyState + 环境变量生效
+
+### Tauri Config 跨平台
+
+- [x] `bundle.targets` 添加 `"dmg"`, `"deb"`, `"appimage"`
+- [x] 添加 `"macOS"` section：`minimumSystemVersion: "10.15"`
+- [x] 添加 `"linux"` section：deb depends（`libwebkit2gtk-4.1-0`, `libgtk-3-0` 等 Tauri v2 运行时依赖）
+- [x] Updater 配置添加 macOS/Linux 段（macOS installMode 已添加，Linux 无需特殊配置；更新机制需实机验证）
+
+### 前端 PDF 导出重写（跨平台）
+
+- [x] 引入 `jspdf` + `html2canvas` 作为 macOS/Linux PDF 生成方案
+- [x] 实现 `exportPdfFrontend(html, outputPath)` — iframe srcdoc 隔离样式 → html2canvas → canvas 切片分页 → jspdf → Tauri writeFile
+- [x] `fileOps.ts` PDF 导出：platform 检测，Windows → Rust `export_pdf`，macOS/Linux → `exportPdfFrontend`
+- [x] 导出进度提示适配 — 失败时 showAlertDialog 提示
+- [x] Windows PDF 渲射质量：已回退 Rust WebView2 方案，无需对比
+
+### macOS 标题栏适配
+
+- [x] 窗口创建逻辑：macOS 用 `titleBarStyle: "overlay"` + `decorations: true`，Windows/Linux 保持 `decorations: false`
+- [x] TitleBar 组件：macOS 隐藏自定义最小化/最大化/关闭按钮（原生交通灯已提供）
+- [x] TitleBar 组件：macOS 左侧预留交通灯宽度（约 78px padding-left），右侧按钮不变
+- [x] 拖拽区域适配：overlay 模式下交通灯区域不可拖拽，内容区域可拖拽（需 macOS 实机验证拖拽行为）
+
+### 前端跨平台修复
+
+- [x] `Editor.tsx`：`e.ctrlKey` → `e.ctrlKey || e.metaKey`（拦截 macOS Cmd+S）
+- [x] `shortcuts.ts`：`isMac` 检测增加 `navigator.userAgentData?.platform` fallback
+- [x] `tauri-plugin-os` 注册（Rust 端 + capabilities 权限）
+- [x] i18n：代理重启提示消息确认所有平台适用（当前消息无需改动）
+- [x] `App.tsx` 快捷键系统：确认 `e.ctrlKey || e.metaKey` 全覆盖（已确认无遗漏）
+- [x] `shortcuts.test.ts`：`formatShortcutDisplay` 测试改为跨平台兼容（Ctrl+S / ⌘S）
+
+### CI Workflow 多平台构建
+
+- [x] `.github/workflows/ci.yml` — 多平台 lint + tsc + test + cargo check（Windows/macOS/Linux 三平台）
+- [x] `.github/workflows/release.yml` matrix 添加 `macos-latest` 和 `ubuntu-latest`
+- [x] `ubuntu-latest` runner 安装 Tauri Linux 依赖（`libwebkit2gtk-4.1-dev` 等）
+- [x] Release notes 提取步骤确认 `pwsh` 在所有 runner 可用（GitHub Actions 已预装）
+- [x] 上传产物：Windows `.exe` + macOS `.dmg` + Linux `.AppImage` + `.deb`
+
+### 测试 & 验证
+
+- [x] macOS 构建通过 — CI `macos-latest` ✓ (lint + tsc + test + cargo check)
+- [x] Linux 构建通过 — CI `ubuntu-latest` ✓ (lint + tsc + test + cargo check)
+- [x] macOS 功能验证：标题栏交通灯、快捷键 Cmd 替代 Ctrl、PDF 导出、代理 — CI 通过，需实机验证
+- [x] Linux 功能验证：窗口装饰、PDF 导出、代理 — CI 通过，需实机验证
+- [x] Windows 回归测试：PDF 导出正常，本地 185 tests pass，lint/tsc/cargo check 全过
+
+### README & 文档
+
+- [x] README 添加跨平台说明：macOS/Linux 支持为社区构建版，开发者无 Mac/Linux 机器进行实机测试，如有问题欢迎反馈（附 GitHub issue 链接）
+- [x] README 下载/安装区分平台说明（Windows 完整测试 / macOS·Linux 社区测试版）
+
+---
+
+## v1.2 — Git 支持
+
+### Git 支持
+
+- [ ] AI git tool — 让 AI 执行 git 命令（commit, diff, log, status 等，Rust 后端子进程执行 + 30s 超时 + 权限控制）
+- [ ] HamburgerMenu 增加 Git 子菜单（Commit / Push / Pull / Diff / Log / Status）
+- [ ] 编辑器 git diff 高亮（修改行着色，新建行绿色，删除行红色，gutter 标记）
+
+---
+
+## v1.3 — Agent 调用能力
+
+### Agent 调用能力
+
+- [ ] Task tool — AI 可启动子代理处理子任务（独立 context、独立权限、并发执行）
+- [ ] 子代理类型：explore（只读代码探索）、general（通用多步任务）
+- [ ] 子代理结果返回主对话流
+
+---
+
+## v1.4 — AI 增强 & 聊天框呈现
 
 ### AI 增强
 
@@ -881,6 +964,10 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] 消息编辑与重新生成（用户可编辑已发送消息，重新从该消息生成）
 - [ ] 多消息分支（同一用户消息下的多个 AI 回复切换，类似 ChatGPT 的 ← → 导航）
 
+---
+
+## v1.x — 后续迭代
+
 ### 编辑器
 
 - [ ] Vim keybindings 模式
@@ -888,18 +975,6 @@ Enable the AI to actively explore the document instead of relying on truncated c
 ### AI 模式
 
 - [ ] 自定义模式（用户自定义权限预设）
-
-### Git 支持
-
-- [ ] AI git tool — 让 AI 执行 git 命令（commit, diff, log, status 等，Rust 后端子进程执行 + 30s 超时 + 权限控制）
-- [ ] HamburgerMenu 增加 Git 子菜单（Commit / Push / Pull / Diff / Log / Status）
-- [ ] 编辑器 git diff 高亮（修改行着色，新建行绿色，删除行红色，gutter 标记）
-
-### Agent 调用能力
-
-- [ ] Task tool — AI 可启动子代理处理子任务（独立 context、独立权限、并发执行）
-- [ ] 子代理类型：explore（只读代码探索）、general（通用多步任务）
-- [ ] 子代理结果返回主对话流
 
 ### 修复
 

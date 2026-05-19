@@ -1,6 +1,8 @@
 import type { EditorTheme } from "../stores/appStore";
 import { getThemeCSS } from "./themeCSS";
-import { readFile } from "@tauri-apps/plugin-fs";
+import { readFile, writeFile } from "@tauri-apps/plugin-fs";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 
 const ASSET_HOST_RE = /https?:\/\/asset\.localhost\//gi;
 
@@ -85,4 +87,91 @@ export async function exportAsHtml(bodyHtml: string, themeName: EditorTheme): Pr
 ${processedHtml}
 </body>
 </html>`;
+}
+
+async function waitForImages(el: HTMLElement): Promise<void> {
+  const images = el.querySelectorAll("img");
+  if (images.length === 0) return;
+  await Promise.all(
+    Array.from(images).map((img) =>
+      img.complete
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          }),
+    ),
+  );
+}
+
+export async function exportPdfFrontend(html: string, outputPath: string): Promise<void> {
+  const iframe = document.createElement("iframe");
+  iframe.style.cssText = "position:fixed;left:-99999px;top:0;width:980px;height:12000px;border:none;visibility:hidden;";
+  iframe.srcdoc = html;
+  document.body.appendChild(iframe);
+
+  try {
+    await new Promise<void>((resolve) => {
+      iframe.addEventListener("load", () => resolve(), { once: true });
+      if (iframe.contentDocument?.readyState === "complete") resolve();
+    });
+
+    const iframeDoc = iframe.contentDocument!;
+    await iframeDoc.fonts.ready;
+    await waitForImages(iframeDoc.body);
+
+    const canvas = await html2canvas(iframeDoc.body, {
+      width: 980,
+      windowWidth: 980,
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+    });
+
+    const imgWidth = 210;
+    const pageHeight = 297;
+    const marginX = 6.35;
+    const marginY = 12.7;
+    const contentWidth = imgWidth - marginX * 2;
+    const contentHeight = pageHeight - marginY * 2;
+    const imgHeight = (canvas.height * contentWidth) / canvas.width;
+    const pxPerMm = canvas.width / contentWidth;
+    const totalPages = Math.ceil(imgHeight / contentHeight);
+
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) pdf.addPage();
+
+      const pageTopMm = page * contentHeight;
+      const pageBottomMm = pageTopMm + contentHeight;
+      const sliceTopPx = Math.floor(pageTopMm * pxPerMm);
+      const sliceBottomPx = Math.min(Math.ceil(pageBottomMm * pxPerMm), canvas.height);
+      const sliceHeightPx = sliceBottomPx - sliceTopPx;
+      const sliceHeightMm = sliceHeightPx / pxPerMm;
+
+      if (sliceHeightPx <= 0) continue;
+
+      const pageCanvas = document.createElement("canvas");
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sliceHeightPx;
+      const ctx = pageCanvas.getContext("2d")!;
+      ctx.drawImage(canvas, 0, sliceTopPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+
+      pdf.addImage(
+        pageCanvas.toDataURL("image/jpeg", 0.95),
+        "JPEG",
+        marginX,
+        marginY,
+        contentWidth,
+        sliceHeightMm,
+      );
+    }
+
+    const pdfBytes = new Uint8Array(pdf.output("arraybuffer") as ArrayBuffer);
+    await writeFile(outputPath, pdfBytes);
+  } finally {
+    document.body.removeChild(iframe);
+  }
 }

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { platform } from "@tauri-apps/plugin-os";
 import { useThemeStore } from "../../stores/themeStore";
 import TabBar from "../TabBar/TabBar";
 import { getShortcutDisplay, getShortcutLabel } from "../../lib/shortcuts";
@@ -9,6 +10,7 @@ import { useT } from "../../i18n/useT";
 const HamburgerMenu = lazy(() => import("../HamburgerMenu/HamburgerMenu"));
 
 const appWindow = getCurrentWindow();
+const isMacOs = platform() === "macos";
 
 export default function TitleBar() {
   const showAISidebar = useThemeStore((s) => s.showAISidebar);
@@ -39,7 +41,7 @@ export default function TitleBar() {
   };
 
   return (
-    <div className="h-10 flex items-center bg-ui-titlebar-bg text-ui-titlebar-text border-b border-ui-border select-none shrink-0">
+    <div className={`h-10 flex items-center bg-ui-titlebar-bg text-ui-titlebar-text border-b border-ui-border select-none shrink-0 ${isMacOs ? "pl-[78px]" : ""}`}>
       <div className="flex items-center gap-0.5 pl-1 relative z-[100]">
         <button
           className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-10 px-2 transition-[background-color] duration-150"
@@ -86,6 +88,7 @@ export default function TitleBar() {
         <TabBar />
       </div>
 
+      {!isMacOs && (
       <div className="flex items-center h-full">
         <button
           className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-10 px-2 transition-[background-color] duration-150 hover:bg-ui-hover px-2.5"
@@ -137,6 +140,7 @@ export default function TitleBar() {
           </svg>
         </button>
       </div>
+      )}
     </div>
   );
 }
