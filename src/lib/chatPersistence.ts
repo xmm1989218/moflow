@@ -29,6 +29,11 @@ async function chatFilePath(chatKey: string): Promise<string> {
   return await join(dir, "messages.jsonl");
 }
 
+async function traceFilePath(chatKey: string): Promise<string> {
+  const dir = await chatDirPath(chatKey);
+  return await join(dir, "trace.jsonl");
+}
+
 function serializeMessage(msg: Message): string {
   return JSON.stringify(msg);
 }
@@ -126,6 +131,25 @@ export async function loadChat(chatKey: string): Promise<Message[]> {
     performance.mark(`loadChat-end-${chatKey}`);
     performance.measure(`loadChat-${chatKey}`, `loadChat-start-${chatKey}`, `loadChat-end-${chatKey}`);
     return [];
+  }
+}
+
+export async function appendTraceEvent(chatKey: string, event: Record<string, unknown>): Promise<void> {
+  try {
+    const path = await traceFilePath(chatKey);
+    const line = new TextEncoder().encode(JSON.stringify(event) + "\n");
+    await writeFile(path, line, { append: true });
+  } catch (e) {
+    console.error("[chatPersistence] appendTraceEvent error:", e);
+  }
+}
+
+export async function clearTrace(chatKey: string): Promise<void> {
+  try {
+    const path = await traceFilePath(chatKey);
+    await writeFile(path, new TextEncoder().encode(""));
+  } catch (e) {
+    console.error("[chatPersistence] clearTrace error:", e);
   }
 }
 

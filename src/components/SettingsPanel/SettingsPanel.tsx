@@ -162,6 +162,8 @@ function AISection() {
   const setAIConfig = useThemeStore((s) => s.setAIConfig);
   const maxToolRounds = useThemeStore((s) => s.maxToolRounds);
   const setMaxToolRounds = useThemeStore((s) => s.setMaxToolRounds);
+  const enableTrace = useThemeStore((s) => s.enableTrace);
+  const toggleEnableTrace = useThemeStore((s) => s.toggleEnableTrace);
   const [draft, setDraft] = useState<AIConfig>({ ...aiConfig });
   const [draftMaxToolRounds, setDraftMaxToolRounds] = useState(maxToolRounds);
   const [showToken, setShowToken] = useState(false);
@@ -411,6 +413,18 @@ function AISection() {
             else if (e.target.value === "") setDraftMaxToolRounds(1);
           }}
         />
+      </div>
+
+      <div className="flex flex-row items-center justify-between mt-5 mb-5">
+        <label htmlFor="settings-ai-enable-trace" className="block text-[13px] font-medium text-ui-text-secondary mb-0">{t("settings.ai.enableTrace")}</label>
+        <button
+          id="settings-ai-enable-trace"
+          aria-pressed={enableTrace}
+          className={`w-9 h-5 rounded-full cursor-pointer relative transition-[background-color,border-color] duration-200 shrink-0 ${enableTrace ? "bg-ui-accent border-ui-accent" : "bg-ui-input-bg border-ui-border"}`}
+          onClick={toggleEnableTrace}
+        >
+          <span className={`absolute top-[3px] left-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200${enableTrace ? " translate-x-4" : ""}`} />
+        </button>
       </div>
 
       <div className="flex items-center gap-3 mt-6">

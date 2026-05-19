@@ -10,6 +10,8 @@ import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
 import { getToolDefinitions, executeTool, WEBFETCH_LIMIT, makeSkillTool, makeRunSkillScriptTool, shouldAddRunSkillScriptTool, type QuestionItem } from "../../lib/tools";
+import { createTracer, truncateArgsSummary } from "../../lib/tracer";
+import type { TracerHandle } from "../../lib/tracer";
 import type { ToolContext, OnPermissionCallback } from "../../lib/tools";
 import type { PermissionRequest, PermissionAction } from "../../lib/permission";
 import { useShallow } from "zustand/react/shallow";
@@ -705,6 +707,10 @@ export default function AISidebar() {
     const compactMsg = addMessage(chatKey, { role: "user", content: "/compact" });
     await appendMessage(chatKey, compactMsg);
 
+    const messagesBefore = contextMsgs.length;
+    const compactTracer = createTracer(chatKey, "/compact", aiConfig.model);
+    const compactSpanId = compactTracer.startSpan("compact", "compact");
+
     setStreaming(true);
     clearStreamingContent(chatKey);
 
@@ -715,6 +721,7 @@ export default function AISidebar() {
       const client = getLLMClient(aiConfig);
       const maxContext = getModelInfo(aiConfig.providerId, aiConfig.model).maxContext;
       const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, false, workspaceRoot, activeFilePath, usePermissionStore.getState().getSessionAiMode(chatKey));
+
       const result = await client.chat(
         [
           { role: "system", content: systemPrompt },
@@ -731,17 +738,29 @@ export default function AISidebar() {
 
       const promptTokens = result.usage.promptTokens;
       const completionTokens = result.usage.completionTokens;
+      const cachedTokens = result.usage.cachedTokens;
       const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
-      useChatStore.getState().recordUsage(chatKey, promptTokens, completionTokens, costVal);
+      useChatStore.getState().recordUsage(chatKey, promptTokens, completionTokens, costVal, cachedTokens);
 
       const content = useChatStore.getState().streamingContentMap[chatKey] ?? "";
-      const summaryMsg = addMessage(chatKey, { role: "assistant", content, isCompactSummary: true });
+      const summaryMsg = addMessage(chatKey, { role: "assistant", content, isCompactSummary: true, promptTokens });
       await appendMessage(chatKey, summaryMsg);
+
+      compactTracer.endSpan(compactSpanId, {
+        messagesBefore,
+        messagesAfter: tailMsgs.length + 1,
+        promptTokens,
+        completionTokens,
+        ttfbMs: result.ttfbMs,
+        chunkCount: result.chunkCount,
+        status: "ok",
+      });
 
       useChatStore.setState((state) => ({
         contextMap: { ...state.contextMap, [chatKey]: [...tailMsgs, summaryMsg] },
       }));
     } catch (e) {
+      compactTracer.endSpan(compactSpanId, { status: "error", error: e instanceof Error ? e.message : String(e) });
       if (e instanceof TimeoutError) {
         console.error(`[AISidebar] Request timeout: ${e.message}`);
         appendStreamingContent(chatKey, `\n\n? ${t("ai.error.timeout")}`);
@@ -763,6 +782,9 @@ export default function AISidebar() {
       setStreaming(false);
       abortRef.current = null;
       clearStreamingContent(chatKey);
+      const totalTokens = useChatStore.getState().totalTokensMap[chatKey] ?? 0;
+      const totalCost = useChatStore.getState().costMap[chatKey] ?? 0;
+      compactTracer.endTrace("ok", { totalTokens, totalCost });
     }
   };
 
@@ -875,6 +897,9 @@ export default function AISidebar() {
       chatKey,
     };
 
+    const tracer: TracerHandle = createTracer(chatKey, text, aiConfig.model);
+    let traceStatus: "ok" | "error" | "cancelled" = "ok";
+
     try {
       const client = getLLMClient(aiConfig);
       let round = 0;
@@ -906,6 +931,8 @@ export default function AISidebar() {
           ...historyMsgs,
         ];
 
+        const llmSpanId = tracer.startSpan("llm", `llm.round.${round}`, { roundIndex: round });
+
         const result = await client.chat(
           chatMessages,
           (chunk) => {
@@ -915,10 +942,22 @@ export default function AISidebar() {
           { tools }
         );
 
+        tracer.endSpan(llmSpanId, {
+          roundIndex: round,
+          promptTokens: result.usage.promptTokens,
+          completionTokens: result.usage.completionTokens,
+          finishReason: result.finishReason,
+          ttfbMs: result.ttfbMs,
+          chunkCount: result.chunkCount,
+          toolCallCount: result.toolCalls?.length ?? 0,
+          status: "ok",
+        });
+
         const promptTokens = result.usage.promptTokens;
         const completionTokens = result.usage.completionTokens;
+        const cachedTokens = result.usage.cachedTokens;
         const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
-        useChatStore.getState().recordUsage(chatKey, promptTokens, completionTokens, costVal);
+        useChatStore.getState().recordUsage(chatKey, promptTokens, completionTokens, costVal, cachedTokens);
 
         const content = useChatStore.getState().streamingContentMap[chatKey] ?? "";
 
@@ -927,6 +966,7 @@ export default function AISidebar() {
             role: "assistant",
             content,
             reasoningContent: result.reasoningContent || undefined,
+            promptTokens,
           });
           await appendMessage(chatKey, assistantMsg);
           clearStreamingContent(chatKey);
@@ -934,8 +974,9 @@ export default function AISidebar() {
         }
 
         if (controller.signal.aborted) {
+          traceStatus = "cancelled";
           if (content) {
-            const assistantMsg = addMessage(chatKey, { role: "assistant", content });
+const assistantMsg = addMessage(chatKey, { role: "assistant", content, promptTokens });
             await appendMessage(chatKey, assistantMsg);
           }
           clearStreamingContent(chatKey);
@@ -947,12 +988,13 @@ export default function AISidebar() {
           content,
           toolCalls: result.toolCalls,
           reasoningContent: result.reasoningContent || undefined,
+          promptTokens,
         });
         await appendMessage(chatKey, assistantMsg);
         clearStreamingContent(chatKey);
 
         for (const tc of result.toolCalls) {
-          if (controller.signal.aborted) break;
+          if (controller.signal.aborted) { traceStatus = "cancelled"; break; }
 
           let args: Record<string, unknown> = {};
           try {
@@ -1016,6 +1058,11 @@ export default function AISidebar() {
 
           setToolCallStatus({ name: tc.name, args });
 
+          const toolSpanId = tracer.startSpan("tool", `tool.${tc.name}`, {
+            roundIndex: round,
+            toolName: tc.name,
+          });
+
           let toolResult: string;
           try {
             toolResult = await executeTool(tc.name, args, controller.signal, toolCtx, onPermission);
@@ -1023,7 +1070,17 @@ export default function AISidebar() {
             toolResult = `|?${t("ai.error.toolExecution")}: ${e instanceof Error ? e.message : String(e)}`;
           }
 
-          if (controller.signal.aborted) break;
+          const resultSize = new TextEncoder().encode(toolResult).length;
+          tracer.endSpan(toolSpanId, {
+            roundIndex: round,
+            toolName: tc.name,
+            argsSummary: truncateArgsSummary(args),
+            resultSize,
+            wasTruncated: resultSize >= 30 * 1024,
+            status: toolResult.startsWith("|?") ? "error" : "ok",
+          });
+
+          if (controller.signal.aborted) { traceStatus = "cancelled"; break; }
 
           const toolMsg = addMessage(chatKey, {
             role: "tool",
@@ -1034,7 +1091,7 @@ export default function AISidebar() {
           await appendMessage(chatKey, toolMsg);
         }
 
-        if (controller.signal.aborted) break;
+        if (controller.signal.aborted) { traceStatus = "cancelled"; break; }
 
         setToolCallStatus(null);
 
@@ -1048,11 +1105,12 @@ export default function AISidebar() {
         }
       }
     } catch (e) {
+      traceStatus = "error";
       if (e instanceof TimeoutError) {
         console.error(`[AISidebar] Request timeout: ${e.message}`);
         appendStreamingContent(chatKey, `\n\n? ${t("ai.error.timeout")}`);
       } else if (e instanceof DOMException && e.name === "AbortError") {
-        // handled in finally
+        traceStatus = "cancelled";
       } else {
         const errorMsg = e instanceof Error ? e.message : String(e);
         appendStreamingContent(chatKey, `\n\n|?${t("ai.error.requestFailed")}: ${errorMsg}`);
@@ -1079,6 +1137,9 @@ export default function AISidebar() {
         resolveQuestionRef.current = null;
       }
       setPendingQuestion(null);
+      const totalTokens = useChatStore.getState().totalTokensMap[chatKey] ?? 0;
+      const totalCost = useChatStore.getState().costMap[chatKey] ?? 0;
+      tracer.endTrace(traceStatus, { totalTokens, totalCost });
     }
   };
 

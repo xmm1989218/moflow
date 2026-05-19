@@ -162,7 +162,9 @@ function MessageRow({ msg }: { msg: ContextMessage }) {
 export default function ContextView({ tabId, providerId, model, docContent }: ContextViewProps) {
   useT();
   const contextTokens = useChatStore((s) => s.contextTokensMap[tabId] ?? 0);
+  const totalTokens = useChatStore((s) => s.totalTokensMap[tabId] ?? 0);
   const cost = useChatStore((s) => s.costMap[tabId] ?? 0);
+  const cachedTokens = useChatStore((s) => s.cachedTokensMap[tabId] ?? 0);
   const contextMsgs = useChatStore((s) => s.contextMap[tabId] ?? EMPTY_MESSAGES);
 
   const modelInfo = useMemo(() => getModelInfo(providerId, model), [providerId, model]);
@@ -190,6 +192,14 @@ export default function ContextView({ tabId, providerId, model, docContent }: Co
         <div className="moflow-ctx-stat-row">
           <span>{t("ai.context.context")}</span>
           <span>{contextTokens.toLocaleString()} / {maxContext.toLocaleString()} tokens</span>
+        </div>
+        <div className="moflow-ctx-stat-row">
+          <span>{t("ai.usage.cache")}</span>
+          <span>{cachedTokens.toLocaleString()} tokens</span>
+        </div>
+        <div className="moflow-ctx-stat-row">
+          <span>{t("ai.usage.total")}</span>
+          <span>{totalTokens.toLocaleString()} tokens</span>
         </div>
         {tools.length > 0 && (
           <div className="moflow-ctx-stat-row">

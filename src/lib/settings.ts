@@ -40,6 +40,7 @@ export interface AppSettings {
   envVars: Record<string, string>;
   maxToolRounds: number;
   aiMode: AiMode;
+  enableTrace: boolean;
   shortcutOverrides: Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>;
 }
 
@@ -57,6 +58,7 @@ export const defaultSettings: AppSettings = {
   envVars: {},
   maxToolRounds: 20,
   aiMode: "build",
+  enableTrace: false,
   shortcutOverrides: {},
 };
 
@@ -82,6 +84,7 @@ export async function readSettings(): Promise<AppSettings> {
       envVars: parsed.envVars ?? {},
       maxToolRounds: parsed.maxToolRounds ?? 20,
       aiMode: parsed.aiMode ?? "build",
+      enableTrace: parsed.enableTrace ?? false,
       shortcutOverrides: parsed.shortcutOverrides ?? {},
     };
     return settings;

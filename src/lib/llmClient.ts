@@ -24,6 +24,7 @@ export interface ChatUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  cachedTokens?: number;
 }
 
 export interface ChatResult {
@@ -31,6 +32,8 @@ export interface ChatResult {
   toolCalls?: ToolCall[];
   finishReason?: string;
   reasoningContent?: string;
+  ttfbMs?: number;
+  chunkCount?: number;
 }
 
 export interface ChatOptions {
@@ -149,6 +152,9 @@ class OpenAICompatibleClient implements LLMClient {
     let reasoningContent = "";
     const toolCallsMap = new Map<number, ToolCall>();
     let finishReason: string | undefined;
+    let chunkCount = 0;
+    let firstChunkTime: number | undefined;
+    const requestStartTime = performance.now();
 
     try {
       const body: Record<string, unknown> = {
@@ -208,10 +214,13 @@ class OpenAICompatibleClient implements LLMClient {
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta;
             if (delta?.content) {
+              if (firstChunkTime === undefined) firstChunkTime = performance.now();
+              chunkCount++;
               onChunk(delta.content);
               fullResponse += delta.content;
             }
             if (delta?.reasoning_content) {
+              if (firstChunkTime === undefined) firstChunkTime = performance.now();
               reasoningContent += delta.reasoning_content;
             }
             if (delta?.tool_calls) {
@@ -238,6 +247,7 @@ class OpenAICompatibleClient implements LLMClient {
                 promptTokens: parsed.usage.prompt_tokens ?? 0,
                 completionTokens: parsed.usage.completion_tokens ?? 0,
                 totalTokens: parsed.usage.total_tokens ?? 0,
+                cachedTokens: parsed.usage.prompt_tokens_details?.cached_tokens ?? undefined,
               };
             }
           } catch {
@@ -272,6 +282,10 @@ class OpenAICompatibleClient implements LLMClient {
     if (reasoningContent) {
       result.reasoningContent = reasoningContent;
     }
+    if (firstChunkTime !== undefined) {
+      result.ttfbMs = Math.round(firstChunkTime - requestStartTime);
+    }
+    result.chunkCount = chunkCount;
     return result;
   }
 }
@@ -375,6 +389,9 @@ class ClaudeCompatibleClient implements LLMClient {
 
     const toolUseBlocks: Map<number, { id: string; name: string; arguments: string }> = new Map();
     let stopReason: string | undefined;
+    let firstChunkTime: number | undefined;
+    let chunkCount = 0;
+    const requestStartTime = performance.now();
 
     try {
       const modelInfo = getModelInfo(this.providerId, this.model);
@@ -445,6 +462,8 @@ class ClaudeCompatibleClient implements LLMClient {
           try {
             const parsed = JSON.parse(data);
             if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta" && parsed.delta.text) {
+              if (firstChunkTime === undefined) firstChunkTime = performance.now();
+              chunkCount++;
               onChunk(parsed.delta.text);
               fullResponse += parsed.delta.text;
             }
@@ -500,6 +519,10 @@ class ClaudeCompatibleClient implements LLMClient {
       if (toolUseBlocks.size > 0) {
         result.toolCalls = Array.from(toolUseBlocks.values());
       }
+      if (firstChunkTime !== undefined) {
+        result.ttfbMs = Math.round(firstChunkTime - requestStartTime);
+      }
+      result.chunkCount = chunkCount;
       return result;
     }
 
@@ -513,6 +536,10 @@ class ClaudeCompatibleClient implements LLMClient {
     if (toolUseBlocks.size > 0) {
       result.toolCalls = Array.from(toolUseBlocks.values());
     }
+    if (firstChunkTime !== undefined) {
+      result.ttfbMs = Math.round(firstChunkTime - requestStartTime);
+    }
+    result.chunkCount = chunkCount;
     return result;
   }
 }

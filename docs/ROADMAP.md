@@ -808,7 +808,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v1.0.0 — 正式版 & AI 模式
+## v1.0.0 — 正式版 & AI 模式 ✅
 
 ### Skill 市场
 
@@ -831,24 +831,28 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ### AI 模式
 
-- [ ] Plan 模式（edit + runSkillScript → deny，AI 只分析不改文档；system prompt 声明 Plan 模式限制 + 权限硬拦截双保险）
-- [ ] Build 模式（默认模式，edit + runSkillScript → ask，保留全部能力）
-- [ ] AISidebar header 模式切换按钮（Plan / Build，session 级别）
-- [ ] Tab 键快捷切换 Plan/Build 模式（仅 AISidebar 内生效）
+- [x] Plan 模式（edit + runSkillScript → deny，AI 只分析不改文档；system prompt 声明 Plan 模式限制 + 权限硬拦截双保险）
+- [x] Build 模式（默认模式，edit + runSkillScript → ask，保留全部能力）
+- [x] AISidebar header 模式切换按钮（Plan / Build，session 级别）
+- [x] Tab 键快捷切换 Plan/Build 模式（仅 AISidebar 内生效）
 
 ### 快捷键自定义
 
-- [ ] Settings 新增 Shortcuts section（列表显示所有快捷键，点击某项可重新绑定按键）
-- [ ] 快捷键绑定 UI（按下新组合键捕获，支持 Ctrl/Shift/Alt + 字母/数字/F键）
-- [ ] `settings.ts` 持久化自定义快捷键映射（`shortcutOverrides: Record<string, ShortcutDef>`）
-- [ ] `shortcuts.ts` 加载自定义覆盖（`getShortcut(id)` 合并 override）
-- [ ] App.tsx 键盘事件监听读取覆盖后的快捷键定义（动态匹配取代硬编码 if-else）
-- [ ] Reset 某项快捷键 / Reset All 恢复默认
-- [ ] 快捷键冲突检测（新组合键已被占用则提示拒绝）
+- [x] Settings 新增 Shortcuts section（列表显示所有快捷键，点击某项可重新绑定按键）
+- [x] 快捷键绑定 UI（按下新组合键捕获，支持 Ctrl/Shift/Alt + 字母/数字/F键）
+- [x] `settings.ts` 持久化自定义快捷键映射（`shortcutOverrides: Record<string, ShortcutDef>`）
+- [x] `shortcuts.ts` 加载自定义覆盖（`getShortcut(id)` 合并 override）
+- [x] App.tsx 键盘事件监听读取覆盖后的快捷键定义（动态匹配取代硬编码 if-else）
+- [x] Reset 某项快捷键 / Reset All 恢复默认
+- [x] 快捷键冲突检测（新组合键已被占用则提示拒绝）
 
 ### 小修复
 
 - [ ] HamburgerMenu 导出子菜单去掉 `?` 指示符
+
+### 小修复
+
+- [x] HamburgerMenu 导出子菜单去掉 `?` 指示符
 
 ---
 
@@ -867,6 +871,8 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] `runSkillScript` 硬停机制（`skillScriptExecuted` flag + 拦截逻辑 + 动态移除 tool schema）
 - [ ] `runSkillScript` tool description 简化（行为约束移至 system prompt）
 - [ ] `SKILL_INSTRUCTION` 拆分为 `SKILL_BASE` + `SKILL_SCRIPT`（按条件拼接）
+- [ ] Tool result 截断重构：截断时完整内容写入临时文件，返回预览 + 提示 LLM 用 read/grep 按需读取（参考 opencode Truncate 机制，MAX_LINES=2000 / MAX_BYTES=50KB，截断不影响 UI 显示）
+- [ ] Prompt caching 完整支持：Anthropic 加 cache_control breakpoint、OpenAI cached_tokens 追踪、UsageBadge 区分显示缓存 token
 
 ### 聊天框呈现
 

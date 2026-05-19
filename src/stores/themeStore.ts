@@ -45,6 +45,7 @@ function persistSettings(get: () => ThemeState) {
     envVars: s.envVars,
     maxToolRounds: s.maxToolRounds,
     aiMode: s.aiMode,
+    enableTrace: s.enableTrace,
     shortcutOverrides: s.shortcutOverrides,
   });
 }
@@ -63,6 +64,7 @@ interface ThemeState {
   envVars: Record<string, string>;
   maxToolRounds: number;
   aiMode: AiMode;
+  enableTrace: boolean;
   shortcutOverrides: Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>;
   showSettingsTab: boolean;
   settingsTabActive: boolean;
@@ -90,6 +92,7 @@ interface ThemeState {
   setEnvVars: (vars: Record<string, string>) => void;
   setMaxToolRounds: (n: number) => void;
   setAiMode: (mode: AiMode) => void;
+  toggleEnableTrace: () => void;
   setShortcutOverrides: (overrides: Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>) => void;
 }
 
@@ -107,6 +110,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   envVars: {},
   maxToolRounds: 20,
   aiMode: "build",
+  enableTrace: false,
   shortcutOverrides: {},
   showSettingsTab: false,
   settingsTabActive: false,
@@ -205,6 +209,11 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
       ? { externalPath: { "*": "ask" } as import("../lib/permission").PermissionRules, runSkillScript: { "*": "deny" } as import("../lib/permission").PermissionRules, edit: { "*": "deny" } as import("../lib/permission").PermissionRules }
       : { ...DEFAULT_PERMISSIONS };
     set({ aiMode, permissions });
+    persistSettings(get);
+  },
+
+  toggleEnableTrace: () => {
+    set((state) => ({ enableTrace: !state.enableTrace }));
     persistSettings(get);
   },
 

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { appendMessage, clearChat, removeChat, loadChat } from "../lib/chatPersistence";
+import { appendMessage, clearChat, removeChat, loadChat, clearTrace } from "../lib/chatPersistence";
 import { appendInputHistory, loadInputHistory as loadInputHistoryFromFile } from "../lib/inputHistory";
 import type { ToolCall } from "../lib/types";
 
@@ -27,6 +27,7 @@ interface ChatState {
   contextTokensMap: Record<string, number>;
   totalTokensMap: Record<string, number>;
   costMap: Record<string, number>;
+  cachedTokensMap: Record<string, number>;
   isStreaming: boolean;
   abortController: AbortController | null;
   streamingContentMap: Record<string, string>;
@@ -36,8 +37,8 @@ interface ChatState {
   addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
   appendStreamingContent: (tabId: string, chunk: string) => void;
   clearStreamingContent: (tabId: string) => void;
-  recordUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number) => void;
-  recordStandaloneUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number) => void;
+  recordUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number, cachedTokens?: number) => void;
+  recordStandaloneUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number, cachedTokens?: number) => void;
   setStreaming: (v: boolean) => void;
   setAbortController: (ctrl: AbortController | null) => void;
   stopGeneration: () => void;
@@ -56,6 +57,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   contextTokensMap: {},
   totalTokensMap: {},
   costMap: {},
+  cachedTokensMap: {},
   isStreaming: false,
   abortController: null,
   streamingContentMap: {},
@@ -159,7 +161,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return { streamingContentMap: newMap };
     }),
 
-  recordUsage: (tabId, promptTokens, completionTokens, cost) =>
+  recordUsage: (tabId, promptTokens, completionTokens, cost, cachedTokens) =>
     set((state) => ({
       contextTokensMap: {
         ...state.contextTokensMap,
@@ -173,9 +175,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ...state.costMap,
         [tabId]: (state.costMap[tabId] ?? 0) + cost,
       },
+      cachedTokensMap: cachedTokens != null ? {
+        ...state.cachedTokensMap,
+        [tabId]: (state.cachedTokensMap[tabId] ?? 0) + cachedTokens,
+      } : state.cachedTokensMap,
     })),
 
-  recordStandaloneUsage: (tabId, promptTokens, completionTokens, cost) =>
+  recordStandaloneUsage: (tabId, promptTokens, completionTokens, cost, cachedTokens) =>
     set((state) => ({
       totalTokensMap: {
         ...state.totalTokensMap,
@@ -185,6 +191,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ...state.costMap,
         [tabId]: (state.costMap[tabId] ?? 0) + cost,
       },
+      cachedTokensMap: cachedTokens != null ? {
+        ...state.cachedTokensMap,
+        [tabId]: (state.cachedTokensMap[tabId] ?? 0) + cachedTokens,
+      } : state.cachedTokensMap,
     })),
 
   setStreaming: (isStreaming) => set({ isStreaming }),
@@ -201,6 +211,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   clearMessages: (tabId) => {
     clearChat(tabId);
+    clearTrace(tabId);
     set((state) => ({
       messagesMap: {
         ...state.messagesMap,
@@ -220,6 +231,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       },
       costMap: {
         ...state.costMap,
+        [tabId]: 0,
+      },
+      cachedTokensMap: {
+        ...state.cachedTokensMap,
         [tabId]: 0,
       },
     }));
@@ -290,6 +305,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       delete newTotalTokens[tabId];
       const newCost = { ...state.costMap };
       delete newCost[tabId];
+      const newCachedTokens = { ...state.cachedTokensMap };
+      delete newCachedTokens[tabId];
       const newInputHistory = { ...state.inputHistoryMap };
       delete newInputHistory[tabId];
       return {
@@ -299,6 +316,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         contextTokensMap: newContextTokens,
         totalTokensMap: newTotalTokens,
         costMap: newCost,
+        cachedTokensMap: newCachedTokens,
         inputHistoryMap: newInputHistory,
       };
     });
