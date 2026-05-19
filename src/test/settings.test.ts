@@ -17,6 +17,16 @@ describe("settings", () => {
       expect(keys).toContain("sidebarWidth");
       expect(keys).toContain("aiConfig");
       expect(keys).toContain("proxyUrl");
+      expect(keys).toContain("aiMode");
+      expect(keys).toContain("shortcutOverrides");
+    });
+
+    it("aiMode defaults to build", () => {
+      expect(defaultSettings.aiMode).toBe("build");
+    });
+
+    it("shortcutOverrides defaults to empty object", () => {
+      expect(defaultSettings.shortcutOverrides).toEqual({});
     });
   });
 

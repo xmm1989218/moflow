@@ -9,7 +9,12 @@ export interface ShortcutDef {
   labelKey: string;
 }
 
-const shortcuts: ShortcutDef[] = [
+export interface ShortcutOverride {
+  key: string;
+  modifiers: ("ctrl" | "shift" | "alt")[];
+}
+
+export const defaultShortcuts: ShortcutDef[] = [
   { id: "newFile", key: "n", modifiers: ["ctrl"], labelKey: "shortcut.newFile" },
   { id: "openFile", key: "o", modifiers: ["ctrl"], labelKey: "shortcut.openFile" },
   { id: "openFolder", key: "o", modifiers: ["ctrl", "shift"], labelKey: "shortcut.openFolder" },
@@ -29,27 +34,38 @@ const shortcuts: ShortcutDef[] = [
   { id: "devtools", key: "F12", modifiers: [], labelKey: "shortcut.devtools" },
 ];
 
-const shortcutMap = new Map(shortcuts.map((s) => [s.id, s]));
+let overrides: Record<string, ShortcutOverride> = {};
+
+export function applyShortcutOverrides(userOverrides: Record<string, ShortcutOverride>): void {
+  overrides = userOverrides;
+}
 
 export function getShortcut(id: string): ShortcutDef | undefined {
-  return shortcutMap.get(id);
+  const base = defaultShortcuts.find((s) => s.id === id);
+  if (!base) return undefined;
+  const ovr = overrides[id];
+  if (ovr) return { ...base, key: ovr.key, modifiers: ovr.modifiers };
+  return base;
 }
 
 export function getAllShortcuts(): ShortcutDef[] {
-  return shortcuts;
+  return defaultShortcuts.map((s) => {
+    const ovr = overrides[s.id];
+    if (ovr) return { ...s, key: ovr.key, modifiers: ovr.modifiers };
+    return s;
+  });
 }
 
-export function getShortcutDisplay(id: string): string {
-  const def = shortcutMap.get(id);
-  if (!def) return "";
+export function formatShortcutDisplay(def: ShortcutDef | ShortcutOverride & { key: string }): string {
   const parts: string[] = [];
-  if (def.modifiers.includes("ctrl")) {
+  const mods = "modifiers" in def ? def.modifiers : [];
+  if (mods.includes("ctrl")) {
     parts.push(isMac ? "⌘" : "Ctrl");
   }
-  if (def.modifiers.includes("shift")) {
+  if (mods.includes("shift")) {
     parts.push(isMac ? "⇧" : "Shift");
   }
-  if (def.modifiers.includes("alt")) {
+  if (mods.includes("alt")) {
     parts.push(isMac ? "⌥" : "Alt");
   }
   const keyDisplay = def.key === "," ? "," : def.key.length === 1 ? def.key.toUpperCase() : def.key;
@@ -57,8 +73,36 @@ export function getShortcutDisplay(id: string): string {
   return parts.join(isMac ? "" : "+");
 }
 
+export function getShortcutDisplay(id: string): string {
+  const def = getShortcut(id);
+  if (!def) return "";
+  return formatShortcutDisplay(def);
+}
+
 export function getShortcutLabel(id: string): string {
-  const def = shortcutMap.get(id);
+  const def = getShortcut(id);
   if (!def) return "";
   return t(def.labelKey);
+}
+
+export function findConflict(id: string, key: string, modifiers: ("ctrl" | "shift" | "alt")[]): string | null {
+  const all = getAllShortcuts();
+  for (const s of all) {
+    if (s.id === id) continue;
+    if (s.key === key && s.modifiers.length === modifiers.length && s.modifiers.every((m) => modifiers.includes(m))) {
+      return s.id;
+    }
+  }
+  return null;
+}
+
+export function parseKeyEvent(e: KeyboardEvent): ShortcutOverride | null {
+  if (e.key === "Control" || e.key === "Shift" || e.key === "Alt" || e.key === "Meta") return null;
+  const modifiers: ("ctrl" | "shift" | "alt")[] = [];
+  if (e.ctrlKey || e.metaKey) modifiers.push("ctrl");
+  if (e.shiftKey) modifiers.push("shift");
+  if (e.altKey) modifiers.push("alt");
+  const key = e.key === "," ? "," : e.key;
+  if (!key || key.length === 0) return null;
+  return { key, modifiers };
 }

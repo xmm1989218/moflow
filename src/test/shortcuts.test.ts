@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { getShortcut, getAllShortcuts, getShortcutDisplay, getShortcutLabel } from "../lib/shortcuts";
+import {
+  getShortcut,
+  getAllShortcuts,
+  getShortcutDisplay,
+  getShortcutLabel,
+  applyShortcutOverrides,
+  findConflict,
+  parseKeyEvent,
+  defaultShortcuts,
+  formatShortcutDisplay,
+} from "../lib/shortcuts";
 
 describe("shortcuts", () => {
   describe("getShortcut", () => {
@@ -67,8 +77,8 @@ describe("shortcuts", () => {
   });
 
   describe("getAllShortcuts", () => {
-    it("returns all 17 shortcuts", () => {
-      expect(getAllShortcuts()).toHaveLength(17);
+    it("returns all default shortcuts", () => {
+      expect(getAllShortcuts()).toHaveLength(defaultShortcuts.length);
     });
 
     it("includes all expected shortcut ids", () => {
@@ -92,6 +102,119 @@ describe("shortcuts", () => {
     it("no duplicate ids", () => {
       const ids = getAllShortcuts().map((s) => s.id);
       expect(new Set(ids).size).toBe(ids.length);
+    });
+  });
+
+  describe("shortcut overrides", () => {
+    it("applyShortcutOverrides changes getShortcut result", () => {
+      applyShortcutOverrides({ newFile: { key: "N", modifiers: ["ctrl", "shift"] } });
+      const def = getShortcut("newFile");
+      expect(def!.key).toBe("N");
+      expect(def!.modifiers).toEqual(["ctrl", "shift"]);
+    });
+
+    it("applyShortcutOverrides with empty object restores defaults", () => {
+      applyShortcutOverrides({ newFile: { key: "N", modifiers: ["ctrl", "shift"] } });
+      applyShortcutOverrides({});
+      const def = getShortcut("newFile");
+      expect(def!.key).toBe("n");
+      expect(def!.modifiers).toEqual(["ctrl"]);
+    });
+
+    it("override affects getShortcutDisplay", () => {
+      applyShortcutOverrides({ fullscreen: { key: "F9", modifiers: [] } });
+      expect(getShortcutDisplay("fullscreen")).toBe("F9");
+      applyShortcutOverrides({});
+    });
+
+    it("override does not affect other shortcuts", () => {
+      applyShortcutOverrides({ newFile: { key: "N", modifiers: ["ctrl", "shift"] } });
+      const saveDef = getShortcut("saveFile");
+      expect(saveDef!.key).toBe("s");
+      expect(saveDef!.modifiers).toEqual(["ctrl"]);
+      applyShortcutOverrides({});
+    });
+
+    it("getAllShortcuts reflects overrides", () => {
+      applyShortcutOverrides({ find: { key: "F", modifiers: ["ctrl"] } });
+      const all = getAllShortcuts();
+      const find = all.find((s) => s.id === "find");
+      expect(find!.key).toBe("F");
+      applyShortcutOverrides({});
+    });
+  });
+
+  describe("findConflict", () => {
+    it("returns null when no conflict", () => {
+      const result = findConflict("newFile", "q", ["ctrl"]);
+      expect(result).toBeNull();
+    });
+
+    it("returns conflicting shortcut id", () => {
+      const result = findConflict("newFile", "s", ["ctrl"]);
+      expect(result).toBe("saveFile");
+    });
+
+    it("returns null for same id", () => {
+      const result = findConflict("newFile", "n", ["ctrl"]);
+      expect(result).toBeNull();
+    });
+
+    it("detects F-key conflicts", () => {
+      const result = findConflict("find", "F7", []);
+      expect(result).toBe("outline");
+    });
+
+    it("does not conflict if modifiers differ", () => {
+      const result = findConflict("newFile", "F7", ["ctrl"]);
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("parseKeyEvent", () => {
+    it("returns null for modifier-only key", () => {
+      const e = { key: "Control", ctrlKey: true, shiftKey: false, altKey: false, metaKey: false } as KeyboardEvent;
+      expect(parseKeyEvent(e)).toBeNull();
+    });
+
+    it("parses Ctrl+letter", () => {
+      const e = { key: "s", ctrlKey: true, shiftKey: false, altKey: false, metaKey: false } as KeyboardEvent;
+      const result = parseKeyEvent(e);
+      expect(result).toEqual({ key: "s", modifiers: ["ctrl"] });
+    });
+
+    it("parses Ctrl+Shift+letter", () => {
+      const e = { key: "S", ctrlKey: true, shiftKey: true, altKey: false, metaKey: false } as KeyboardEvent;
+      const result = parseKeyEvent(e);
+      expect(result).toEqual({ key: "S", modifiers: ["ctrl", "shift"] });
+    });
+
+    it("parses function key without modifiers", () => {
+      const e = { key: "F7", ctrlKey: false, shiftKey: false, altKey: false, metaKey: false } as KeyboardEvent;
+      const result = parseKeyEvent(e);
+      expect(result).toEqual({ key: "F7", modifiers: [] });
+    });
+
+    it("parses Ctrl+comma", () => {
+      const e = { key: ",", ctrlKey: true, shiftKey: false, altKey: false, metaKey: false } as KeyboardEvent;
+      const result = parseKeyEvent(e);
+      expect(result).toEqual({ key: ",", modifiers: ["ctrl"] });
+    });
+
+    it("returns null for null/empty key", () => {
+      const e = { key: "Shift", ctrlKey: false, shiftKey: true, altKey: false, metaKey: false } as KeyboardEvent;
+      expect(parseKeyEvent(e)).toBeNull();
+    });
+  });
+
+  describe("formatShortcutDisplay", () => {
+    it("formats Ctrl+key", () => {
+      expect(formatShortcutDisplay({ key: "s", modifiers: ["ctrl"] })).toContain("Ctrl");
+      expect(formatShortcutDisplay({ key: "s", modifiers: ["ctrl"] })).toContain("S");
+    });
+
+    it("formats bare function key", () => {
+      expect(formatShortcutDisplay({ key: "F7", modifiers: [] })).toBe("F7");
     });
   });
 });

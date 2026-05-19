@@ -137,4 +137,40 @@ describe("contextBuilder", () => {
       expect(prompt).toContain("Tool usage policy");
     });
   });
+
+  describe("buildSystemPrompt — aiMode", () => {
+    it("plan mode injects <mode>plan</mode> tag", () => {
+      const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, undefined, undefined, "plan");
+      expect(prompt).toContain("<mode>plan</mode>");
+      expect(prompt).toContain("Do NOT use write, edit, or runSkillScript");
+    });
+
+    it("build mode does not inject plan mode tag", () => {
+      const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, undefined, undefined, "build");
+      expect(prompt).not.toContain("<mode>plan</mode>");
+    });
+
+    it("undefined aiMode does not inject plan mode tag", () => {
+      const { prompt } = buildSystemPrompt(sampleDoc, 128000);
+      expect(prompt).not.toContain("<mode>plan</mode>");
+    });
+
+    it("plan mode works in workspace mode", () => {
+      const { prompt } = buildSystemPrompt(sampleDoc, 128000, false, "D:/projects/foo", "D:/projects/foo/README.md", "plan");
+      expect(prompt).toContain("<mode>plan</mode>");
+      expect(prompt).toContain("workspace open");
+    });
+
+    it("plan mode works with empty document", () => {
+      const { prompt } = buildSystemPrompt("", 128000, false, undefined, undefined, "plan");
+      expect(prompt).toContain("<mode>plan</mode>");
+    });
+
+    it("plan mode works with truncated document", () => {
+      const longDoc = "x".repeat(200000);
+      const { prompt } = buildSystemPrompt(longDoc, 4000, true, undefined, undefined, "plan");
+      expect(prompt).toContain("<mode>plan</mode>");
+      expect(prompt).toContain("truncated");
+    });
+  });
 });

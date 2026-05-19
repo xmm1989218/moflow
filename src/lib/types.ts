@@ -30,6 +30,8 @@ export interface RemoteSkill {
   name: string;
   description: string;
   version: string;
+  category?: string;
+  tags?: string[];
   hasScripts: boolean;
   hasDeps: boolean;
   license?: string;
@@ -42,6 +44,8 @@ export type SkillInstallStatus =
       status: "new";
       remoteVersion: string;
       description: string;
+      category?: string;
+      tags?: string[];
       hasScripts: boolean;
       hasDeps: boolean;
       license?: string;
@@ -53,6 +57,8 @@ export type SkillInstallStatus =
       localVersion: string;
       remoteVersion: string;
       description: string;
+      category?: string;
+      tags?: string[];
       hasScripts: boolean;
       hasDeps: boolean;
       license?: string;
@@ -64,6 +70,8 @@ export type SkillInstallStatus =
       localVersion: string;
       remoteVersion: string;
       description: string;
+      category?: string;
+      tags?: string[];
       hasScripts: boolean;
       hasDeps: boolean;
       license?: string;
@@ -74,6 +82,8 @@ export type SkillInstallStatus =
       status: "local-only";
       localVersion?: string;
       description: string;
+      category?: string;
+      tags?: string[];
       hasScripts: boolean;
       hasDeps: boolean;
       license?: string;

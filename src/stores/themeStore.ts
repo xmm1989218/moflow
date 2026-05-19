@@ -7,6 +7,7 @@ import {
 } from "../lib/settings";
 import type { Permissions } from "../lib/permission";
 import { DEFAULT_PERMISSIONS } from "../lib/permission";
+import type { AiMode } from "../lib/settings";
 
 export type AppTheme = "system" | "light" | "dark";
 export type EditorTheme = EditorThemeType;
@@ -43,6 +44,8 @@ function persistSettings(get: () => ThemeState) {
     permissions: s.permissions,
     envVars: s.envVars,
     maxToolRounds: s.maxToolRounds,
+    aiMode: s.aiMode,
+    shortcutOverrides: s.shortcutOverrides,
   });
 }
 
@@ -59,6 +62,8 @@ interface ThemeState {
   permissions: Permissions;
   envVars: Record<string, string>;
   maxToolRounds: number;
+  aiMode: AiMode;
+  shortcutOverrides: Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>;
   showSettingsTab: boolean;
   settingsTabActive: boolean;
   showOutline: boolean;
@@ -84,6 +89,8 @@ interface ThemeState {
   setLeftPanelTab: (tab: "files" | "outline") => void;
   setEnvVars: (vars: Record<string, string>) => void;
   setMaxToolRounds: (n: number) => void;
+  setAiMode: (mode: AiMode) => void;
+  setShortcutOverrides: (overrides: Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>) => void;
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
@@ -99,6 +106,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   permissions: { ...DEFAULT_PERMISSIONS },
   envVars: {},
   maxToolRounds: 20,
+  aiMode: "build",
+  shortcutOverrides: {},
   showSettingsTab: false,
   settingsTabActive: false,
   showOutline: false,
@@ -188,6 +197,20 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   setMaxToolRounds: (maxToolRounds) => {
     set({ maxToolRounds });
+    persistSettings(get);
+  },
+
+  setAiMode: (aiMode) => {
+    const permissions = aiMode === "plan"
+      ? { externalPath: { "*": "ask" } as import("../lib/permission").PermissionRules, runSkillScript: { "*": "deny" } as import("../lib/permission").PermissionRules, edit: { "*": "deny" } as import("../lib/permission").PermissionRules }
+      : { ...DEFAULT_PERMISSIONS };
+    set({ aiMode, permissions });
+    persistSettings(get);
+  },
+
+  setShortcutOverrides: (shortcutOverrides) => {
+    import("../lib/shortcuts").then(({ applyShortcutOverrides }) => applyShortcutOverrides(shortcutOverrides));
+    set({ shortcutOverrides });
     persistSettings(get);
   },
 }));

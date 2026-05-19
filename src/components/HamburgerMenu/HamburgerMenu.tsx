@@ -183,7 +183,6 @@ function SubmenuItem({ item: menuItem, onAction }: { item: MenuItem; onAction: (
           {menuItem.checked ? "?" : ""}
         </span>
         <span className="flex-1">{menuItem.label}</span>
-        <span className="text-sm text-ui-text-secondary ml-2">?</span>
       </button>
       {open && menuItem.submenu && (
         <div className="absolute left-full top-0 min-w-[200px] bg-ui-menu-bg border border-ui-border rounded-lg shadow-menu p-1 z-[1001] animate-menu-fadein">

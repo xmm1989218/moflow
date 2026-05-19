@@ -90,4 +90,45 @@ describe("themeStore", () => {
       expect(useThemeStore.getState().showStatusBar).toBe(false);
     });
   });
+
+  describe("aiMode", () => {
+    it("initial aiMode is build", () => {
+      expect(useThemeStore.getState().aiMode).toBe("build");
+    });
+
+    it("setAiMode plan sets deny permissions", () => {
+      useThemeStore.getState().setAiMode("plan");
+      expect(useThemeStore.getState().aiMode).toBe("plan");
+      const perms = useThemeStore.getState().permissions;
+      expect(perms.edit).toEqual({ "*": "deny" });
+      expect(perms.runSkillScript).toEqual({ "*": "deny" });
+      expect(perms.externalPath).toEqual({ "*": "ask" });
+    });
+
+    it("setAiMode build restores default permissions", () => {
+      useThemeStore.getState().setAiMode("plan");
+      useThemeStore.getState().setAiMode("build");
+      expect(useThemeStore.getState().aiMode).toBe("build");
+      const perms = useThemeStore.getState().permissions;
+      expect(perms.edit).toEqual({ "*": "ask" });
+      expect(perms.runSkillScript).toEqual({ "*": "ask" });
+      expect(perms.externalPath).toEqual({ "*": "ask" });
+    });
+  });
+
+  describe("shortcutOverrides", () => {
+    it("initial shortcutOverrides is empty", () => {
+      expect(useThemeStore.getState().shortcutOverrides).toEqual({});
+    });
+
+    it("setShortcutOverrides updates overrides", () => {
+      useThemeStore.getState().setShortcutOverrides({
+        newFile: { key: "N", modifiers: ["ctrl", "shift"] },
+      });
+      expect(useThemeStore.getState().shortcutOverrides).toEqual({
+        newFile: { key: "N", modifiers: ["ctrl", "shift"] },
+      });
+      useThemeStore.getState().setShortcutOverrides({});
+    });
+  });
 });

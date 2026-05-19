@@ -498,6 +498,9 @@ export default function AISidebar() {
   const resolvePermissionRef = useRef<((action: PermissionAction) => void) | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState<{ questions: QuestionItem[]; toolCallId: string } | null>(null);
   const resolveQuestionRef = useRef<((answer: string) => void) | null>(null);
+  const currentAiMode = usePermissionStore((s) => s.sessionAiModeMap[chatKey] ?? "build");
+  const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
   useT();
 
   useEffect(() => {
@@ -505,6 +508,17 @@ export default function AISidebar() {
       inputRef.current?.focus();
     }
   }, [isStreaming]);
+
+  useEffect(() => {
+    if (!modeDropdownOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(e.target as Node)) {
+        setModeDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [modeDropdownOpen]);
 
   const slashMenuVisible = input.startsWith("/") && !input.includes(" ");
 
@@ -700,7 +714,7 @@ export default function AISidebar() {
     try {
       const client = getLLMClient(aiConfig);
       const maxContext = getModelInfo(aiConfig.providerId, aiConfig.model).maxContext;
-      const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext);
+      const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, false, workspaceRoot, activeFilePath, usePermissionStore.getState().getSessionAiMode(chatKey));
       const result = await client.chat(
         [
           { role: "system", content: systemPrompt },
@@ -840,14 +854,15 @@ export default function AISidebar() {
     const reserved = Math.floor(maxContext * (1 - docRatio));
     const needsDocTools = docTokens > (maxContext - reserved);
 
-    const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsDocTools, workspaceRoot, activeFilePath);
-    const tools = getToolDefinitions(needsDocTools, workspaceRoot, activeFilePath);
+    const currentMode = usePermissionStore.getState().getSessionAiMode(chatKey);
+    const { prompt: systemPrompt } = buildSystemPrompt(docContent, maxContext, needsDocTools, workspaceRoot, activeFilePath, currentMode);
+    const tools = getToolDefinitions(needsDocTools, workspaceRoot, activeFilePath, currentMode);
     const availableSkills = useSkillStore.getState().discoveredSkills.filter((s) => s.enabled);
     if (availableSkills.length > 0) {
       tools.push(makeSkillTool());
     }
     const hasRunScript = shouldAddRunSkillScriptTool();
-    if (hasRunScript) {
+    if (hasRunScript && currentMode !== "plan") {
       tools.push(makeRunSkillScriptTool());
     }
 
@@ -1130,6 +1145,13 @@ if (id === "compact") {
       if (handled) return;
     }
 
+    if (e.key === "Tab" && !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) {
+      e.preventDefault();
+      const next = currentAiMode === "plan" ? "build" : "plan";
+      usePermissionStore.getState().setSessionAiMode(chatKey, next);
+      return;
+    }
+
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -1200,14 +1222,44 @@ if (id === "compact") {
   }
 
   return (
-    <div className="moflow-ai-sidebar" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
+    <div className="moflow-ai-sidebar" style={{ width: sidebarWidth, minWidth: sidebarWidth }} onKeyDown={(e) => {
+      if (e.key === "Tab" && !e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey) {
+        e.preventDefault();
+        const next = currentAiMode === "plan" ? "build" : "plan";
+        usePermissionStore.getState().setSessionAiMode(chatKey, next);
+      }
+    }}>
       <div className="moflow-ai-resize-handle" onMouseDown={handleResizeStart} />
       <div className="moflow-ai-header">
         <span className="moflow-ai-header-title" style={{ flex: "none" }}>{showContext ? t("ai.header.context") : t("ai.header.title")}</span>
+        <div className="relative" ref={modeDropdownRef}>
+          <button
+            className={`moflow-ai-mode-toggle${currentAiMode === "plan" ? " moflow-ai-mode-toggle-plan" : " moflow-ai-mode-toggle-build"}`}
+            onClick={() => setModeDropdownOpen((v) => !v)}
+          >
+            <span>{currentAiMode === "plan" ? "Plan" : "Build"}</span>
+          </button>
+          {modeDropdownOpen && (
+            <div className="moflow-ai-mode-dropdown">
+              <button
+                className={`moflow-ai-mode-option${currentAiMode === "build" ? " moflow-ai-mode-option-active" : ""}`}
+                onClick={() => { usePermissionStore.getState().setSessionAiMode(chatKey, "build"); setModeDropdownOpen(false); }}
+              >
+                Build
+                {currentAiMode === "build" && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              </button>
+              <button
+                className={`moflow-ai-mode-option${currentAiMode === "plan" ? " moflow-ai-mode-option-active" : ""}`}
+                onClick={() => { usePermissionStore.getState().setSessionAiMode(chatKey, "plan"); setModeDropdownOpen(false); }}
+              >
+                Plan
+                {currentAiMode === "plan" && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              </button>
+            </div>
+          )}
+        </div>
         <span className="flex-1" />
-        <span className="moflow-ai-header-mode">
-          {aiConfig.mode === "mock" ? "Mock" : aiConfig.model || "API"}
-        </span>
+        <span className="moflow-ai-header-model">{aiConfig.model}</span>
         <UsageBadge tabId={chatKey} providerId={aiConfig.providerId} model={aiConfig.model} onClick={() => setShowContext((v) => !v)} active={showContext} />
       </div>
 

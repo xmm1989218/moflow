@@ -10,8 +10,9 @@ import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 import SkillsSection from "./SkillsSection";
 import EnvVarsSection from "./EnvVarsSection";
+import ShortcutsSection from "./ShortcutsSection";
 
-type Section = "appearance" | "ai" | "skills" | "envVars" | "proxy" | "about";
+type Section = "appearance" | "ai" | "shortcuts" | "skills" | "envVars" | "proxy" | "about";
 
 const sectionIcons: Record<Section, React.JSX.Element> = {
   appearance: (
@@ -32,6 +33,11 @@ const sectionIcons: Record<Section, React.JSX.Element> = {
   envVars: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
+    </svg>
+  ),
+  shortcuts: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" /><line x1="6" y1="8" x2="6.01" y2="8" /><line x1="10" y1="8" x2="10.01" y2="8" /><line x1="14" y1="8" x2="18" y2="8" /><line x1="6" y1="12" x2="18" y2="12" /><line x1="8" y1="16" x2="8.01" y2="16" /><line x1="12" y1="16" x2="16" y2="16" />
     </svg>
   ),
   proxy: (
@@ -128,10 +134,10 @@ function AppearanceSection() {
         <button
           id="settings-auto-save"
           aria-pressed={autoSave}
-          className={`w-9 h-5 rounded-full border border-ui-border bg-ui-input-bg cursor-pointer relative transition-[background-color,border-color] duration-200 shrink-0${autoSave ? " bg-ui-accent border-ui-accent" : ""}`}
+          className={`w-9 h-5 rounded-full cursor-pointer relative transition-[background-color,border-color] duration-200 shrink-0 ${autoSave ? "bg-ui-accent border-ui-accent" : "bg-ui-input-bg border-ui-border"}`}
           onClick={toggleAutoSave}
         >
-          <span className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200${autoSave ? " translate-x-4" : ""}`} />
+          <span className={`absolute top-[3px] left-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200${autoSave ? " translate-x-4" : ""}`} />
         </button>
       </div>
 
@@ -140,10 +146,10 @@ function AppearanceSection() {
         <button
           id="settings-show-status-bar"
           aria-pressed={showStatusBar}
-          className={`w-9 h-5 rounded-full border border-ui-border bg-ui-input-bg cursor-pointer relative transition-[background-color,border-color] duration-200 shrink-0${showStatusBar ? " bg-ui-accent border-ui-accent" : ""}`}
+          className={`w-9 h-5 rounded-full cursor-pointer relative transition-[background-color,border-color] duration-200 shrink-0 ${showStatusBar ? "bg-ui-accent border-ui-accent" : "bg-ui-input-bg border-ui-border"}`}
           onClick={toggleStatusBar}
         >
-          <span className={`absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200${showStatusBar ? " translate-x-4" : ""}`} />
+          <span className={`absolute top-[3px] left-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200${showStatusBar ? " translate-x-4" : ""}`} />
         </button>
       </div>
     </div>
@@ -568,6 +574,7 @@ export default function SettingsPanel() {
   const sections: { id: Section; label: string }[] = [
     { id: "appearance", label: t("settings.section.appearance") },
     { id: "ai", label: t("settings.section.ai") },
+    { id: "shortcuts", label: t("settings.section.shortcuts") },
     { id: "skills", label: t("settings.section.skills") },
     { id: "envVars", label: t("settings.section.envVars") },
     { id: "proxy", label: t("settings.section.proxy") },
@@ -591,6 +598,7 @@ export default function SettingsPanel() {
       <div className="flex-1 overflow-y-auto p-6 px-12 flex justify-center">
         {activeSection === "appearance" && <AppearanceSection />}
         {activeSection === "ai" && <AISection />}
+        {activeSection === "shortcuts" && <ShortcutsSection />}
         {activeSection === "skills" && <SkillsSection />}
         {activeSection === "envVars" && <EnvVarsSection />}
         {activeSection === "proxy" && <ProxySection />}

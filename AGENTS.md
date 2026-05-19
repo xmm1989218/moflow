@@ -64,13 +64,13 @@ src/                    # Frontend (React + TypeScript)
   stores/
     appStore.ts         # Re-exports from tabStore, themeStore, etc.
     chatStore.ts        # AI chat state (streamingContentMap, contextMap, inputHistoryMap, cleanupIncompleteToolCalls)
-    permissionStore.ts  # Session permission rules (per-chatKey, alwaysAllow cascade)
+    permissionStore.ts  # Session permission rules (per-chatKey, alwaysAllow cascade, session aiMode)
     skillStore.ts       # Skill discovery, remote registry, install/update/uninstall
     aiSelectionStore.ts # Selection AI panel state
     searchStore.ts      # Find & replace state (per-tab editorViewMap)
     sessionStore.ts     # Session persistence (workspaceRoot)
     tabStore.ts         # File tabs, workspaceRoot, getChatKey, closeWorkspace
-    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab, leftPanelTab, language
+    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab, leftPanelTab, language, aiMode, shortcutOverrides
     updateStore.ts      # Auto-update state
   i18n/
     core.ts             # Core i18n utilities (t, isZh, getLocale, setLanguage, resolveLanguage)
@@ -89,8 +89,8 @@ src/                    # Frontend (React + TypeScript)
     imageManager.ts     # Image save/resolve (saveImageToFile, resolveImagePath)
     modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
     llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling, Claude dynamic max_tokens)
-    shortcuts.ts        # Centralized shortcut registry (getShortcutDisplay, getShortcutLabel)
-    settings.ts         # App settings persistence (proxyUrl derived proxy state, permissions)
+    shortcuts.ts        # Centralized shortcut registry (defaultShortcuts, overrides, getShortcutDisplay, getShortcutLabel, findConflict, parseKeyEvent)
+    settings.ts         # App settings persistence (proxyUrl derived proxy state, permissions, aiMode, shortcutOverrides)
     exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
     themeCSS.ts         # Dynamic theme CSS generation
     permission.ts       # Permission engine (wildcard matching, evaluateWithSession, generateAlwaysPattern)
@@ -153,7 +153,9 @@ src-tauri/              # Backend (Rust + Tauri)
 - Active file tab background uses editor theme (`--moflow-bg`/`--moflow-accent`), settings tab uses app theme (`--ui-*` vars)
 - `closeWorkspace` only closes workspace-related tabs (files under workspaceRoot), preserves other tabs; returns `false` if user cancels unsaved dialog
 - Opening a new directory auto-closes current workspace first (with unsaved confirm)
-- Shortcuts centralized in `src/lib/shortcuts.ts`, platform-aware display (Ctrl vs ⌘)
+- Shortcuts centralized in `src/lib/shortcuts.ts`, platform-aware display (Ctrl vs ⌘); user overrides stored in `shortcutOverrides` (settings.json), applied via `applyShortcutOverrides()`; App.tsx uses dynamic matching via `getAllShortcuts()` instead of hardcoded if-else
+- AI mode (Plan/Build): `aiMode` stored in settings + `sessionAiModeMap` in permissionStore for per-session override; Plan mode injects deny session rules for `edit` + `runSkillScript` + adds `<mode>plan</mode>` to system prompt (double guarantee); Build mode is default (all ask); AISidebar header toggle + Tab key switch (sidebar-only, textarea not focused)
+- Shortcuts section in Settings Panel: `ShortcutsSection` component with key capture UI, conflict detection, per-item reset, reset all
 - 13 AI tools: outline/read/readSection/grep/find/glob/ls/webfetch/write/edit/question/skill/runSkillScript; `getToolDefinitions(needsDocTools, workspaceRoot, activeFilePath)` combines by mode
 - Permission system: `checkPathAccess()` replaces `isPathAllowed()` — workspace-internal paths auto-allow, workspace-external paths evaluate via permission engine (session rules > global rules > default `ask`); `allowFsScope()` extends Tauri FS scope on allow
 - `executeTool` signature: `(name, args, signal, ctx, onPermission?)` — `onPermission` callback shows PermissionBar UI for external path access

@@ -79,15 +79,22 @@ function buildSkillInstruction(workspaceRoot?: string | null, activeFilePath?: s
   return "\n" + SKILL_INSTRUCTION + "\n\n" + skillXml + envXml + "\n";
 }
 
+const PLAN_MODE_INSTRUCTION = `<mode>plan</mode>
+CRITICAL: Plan mode ACTIVE — you are in READ-ONLY phase. You MUST NOT write, edit, or modify any files. No file changes are allowed under any circumstances.
+You may ONLY read, search, analyze, and provide plans or suggestions. When the user asks you to make changes, respond with a detailed plan of what you would do, but do NOT execute any file modifications.
+This constraint is absolute and has zero exceptions.`;
+
 export function buildSystemPrompt(
   docContent: string,
   maxContext: number,
   needsDocTools: boolean = false,
   workspaceRoot?: string | null,
   activeFilePath?: string | null,
+  aiMode?: "plan" | "build",
 ): SystemPromptResult {
   const base = DEFAULT_PROMPT;
   const skillSection = buildSkillInstruction(workspaceRoot, activeFilePath);
+  const modeSection = aiMode === "plan" ? "\n" + PLAN_MODE_INSTRUCTION + "\n" : "";
   const hasWorkspace = !!workspaceRoot;
 
   if (hasWorkspace) {
@@ -106,6 +113,7 @@ export function buildSystemPrompt(
           "",
           WEBFETCH_INSTRUCTION,
           skillSection,
+          modeSection,
         ].join("\n"),
         needsDocTools: true,
       };
@@ -129,6 +137,7 @@ export function buildSystemPrompt(
           "",
           WEBFETCH_INSTRUCTION,
           skillSection,
+          modeSection,
         ].join("\n"),
         needsDocTools: true,
       };
@@ -165,6 +174,7 @@ export function buildSystemPrompt(
       "",
       "When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.",
       skillSection,
+      modeSection,
     ].join("\n");
 
     return { prompt, needsDocTools: true };
@@ -183,6 +193,7 @@ export function buildSystemPrompt(
         "",
         WEBFETCH_INSTRUCTION,
         skillSection,
+        modeSection,
       ].join("\n"),
       needsDocTools: false,
     };
@@ -205,6 +216,7 @@ export function buildSystemPrompt(
           writeNote,
           WEBFETCH_INSTRUCTION,
           skillSection,
+          modeSection,
         ].join("\n"),
         needsDocTools: false,
       };
@@ -237,6 +249,7 @@ export function buildSystemPrompt(
     "",
     "When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.",
     skillSection,
+    modeSection,
   ].join("\n");
 
   return { prompt, needsDocTools: true };

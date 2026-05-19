@@ -18,6 +18,7 @@ import { useChatStore } from "./stores/chatStore";
 import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab, openFolder } from "./lib/fileOps";
 import { t } from "./i18n/core";
 import { I18nProvider } from "./i18n";
+import { getAllShortcuts } from "./lib/shortcuts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -162,92 +163,81 @@ function App() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      const mod = e.ctrlKey || e.metaKey;
+      const allShortcuts = getAllShortcuts();
+      let matched: string | null = null;
 
-      if (mod && e.key === "o") {
-        e.preventDefault();
-        if (e.shiftKey) {
-          openFolder();
-        } else {
-          openFile();
+      for (const s of allShortcuts) {
+        const ctrlMatch = s.modifiers.includes("ctrl") ? (e.ctrlKey || e.metaKey) : !e.ctrlKey && !e.metaKey;
+        const shiftMatch = s.modifiers.includes("shift") ? e.shiftKey : !e.shiftKey;
+        const altMatch = s.modifiers.includes("alt") ? e.altKey : !e.altKey;
+        const keyMatch = e.key.toLowerCase() === s.key.toLowerCase() || e.key === s.key;
+        if (ctrlMatch && shiftMatch && altMatch && keyMatch) {
+          matched = s.id;
+          break;
         }
-      } else if (mod && e.key === "s" && !e.shiftKey) {
-        e.preventDefault();
-        saveFile();
-      } else if (mod && e.key === "s" && e.shiftKey) {
-        e.preventDefault();
-        saveFileAs();
-      } else if (mod && e.key === "n") {
-        e.preventDefault();
-        useTabStore.getState().newFile();
-      } else if (mod && e.key === "w") {
-        e.preventDefault();
-        const state = useTabStore.getState();
-        if (state.files.length === 0) return;
-        const active = state.getActiveFile();
+      }
 
-        if (state.files.length === 1) {
-          closeLastTab(active);
-          return;
-        }
+      if (!matched) return;
+      e.preventDefault();
 
-        const needConfirm = active.isModified || (active.filePath === null && active.content.length > 0);
-        if (needConfirm) {
-          const message = active.filePath === null
-            ? t("common.draftUnsaved")
-            : t("common.fileUnsaved", { fileName: active.fileName });
-          confirmCloseTab(message).then((result) => {
-            if (result === "cancel") return;
-            if (result === "save") {
-              state.switchTab(active.id);
-              if (active.filePath) {
-                saveFile().then(() => state.closeTab(active.id));
-              } else {
-                saveFileAs().then(() => {
-                  const saved = useTabStore.getState().files.find((f) => f.id === active.id);
-                  if (saved?.filePath) state.closeTab(active.id);
-                });
-              }
-            } else {
-              state.closeTab(active.id);
-            }
-          });
-        } else {
-          state.closeTab(active.id);
+      switch (matched) {
+        case "openFile": openFile(); break;
+        case "openFolder": openFolder(); break;
+        case "saveFile": saveFile(); break;
+        case "saveFileAs": saveFileAs(); break;
+        case "newFile": useTabStore.getState().newFile(); break;
+        case "closeTab": {
+          const state = useTabStore.getState();
+          if (state.files.length === 0) return;
+          const active = state.getActiveFile();
+          if (state.files.length === 1) { closeLastTab(active); return; }
+          const needConfirm = active.isModified || (active.filePath === null && active.content.length > 0);
+          if (needConfirm) {
+            const message = active.filePath === null ? t("common.draftUnsaved") : t("common.fileUnsaved", { fileName: active.fileName });
+            confirmCloseTab(message).then((result) => {
+              if (result === "cancel") return;
+              if (result === "save") {
+                state.switchTab(active.id);
+                if (active.filePath) { saveFile().then(() => state.closeTab(active.id)); }
+                else { saveFileAs().then(() => { const saved = useTabStore.getState().files.find((f) => f.id === active.id); if (saved?.filePath) state.closeTab(active.id); }); }
+              } else { state.closeTab(active.id); }
+            });
+          } else { state.closeTab(active.id); }
+          break;
         }
-      } else if (mod && e.key === "Tab") {
-        e.preventDefault();
-        const state = useTabStore.getState();
-        const files = state.files;
-        if (files.length <= 1) return;
-        const idx = files.findIndex((f) => f.id === state.activeFileId);
-        const dir = e.shiftKey ? -1 : 1;
-        const nextIdx = (idx + dir + files.length) % files.length;
-        state.switchTab(files[nextIdx].id);
-      } else if (mod && e.key === ",") {
-        e.preventDefault();
-        useThemeStore.getState().openSettingsTab();
-      } else if (mod && e.key === "f") {
-        e.preventDefault();
-        useSearchStore.getState().toggleSearch(false);
-      } else if (mod && e.key === "h") {
-        e.preventDefault();
-        useSearchStore.getState().toggleSearch(true);
-      } else if (e.key === "F7") {
-        e.preventDefault();
-        e.stopPropagation();
-        useThemeStore.getState().toggleOutline();
-      } else if (e.key === "F8") {
-        e.preventDefault();
-        e.stopPropagation();
-        useThemeStore.getState().toggleAISidebar();
-      } else if (e.key === "F11") {
-        e.preventDefault();
-        const appWindow = getCurrentWindow();
-        appWindow.isFullscreen().then((fs) => appWindow.setFullscreen(!fs));
-      } else if (e.key === "F12") {
-        e.preventDefault();
-        invoke("toggle_devtools");
+        case "nextTab": {
+          const state = useTabStore.getState();
+          const files = state.files;
+          if (files.length <= 1) return;
+          const idx = files.findIndex((f) => f.id === state.activeFileId);
+          state.switchTab(files[(idx + 1) % files.length].id);
+          break;
+        }
+        case "prevTab": {
+          const state = useTabStore.getState();
+          const files = state.files;
+          if (files.length <= 1) return;
+          const idx = files.findIndex((f) => f.id === state.activeFileId);
+          state.switchTab(files[(idx - 1 + files.length) % files.length].id);
+          break;
+        }
+        case "settings": useThemeStore.getState().openSettingsTab(); break;
+        case "find": useSearchStore.getState().toggleSearch(false); break;
+        case "replace": useSearchStore.getState().toggleSearch(true); break;
+        case "outline": useThemeStore.getState().toggleOutline(); break;
+        case "aiSidebar": useThemeStore.getState().toggleAISidebar(); break;
+        case "fullscreen": { const appWindow = getCurrentWindow(); appWindow.isFullscreen().then((fs) => appWindow.setFullscreen(!fs)); break; }
+        case "devtools": invoke("toggle_devtools"); break;
+        case "undo": {
+          const activeId = useTabStore.getState().activeFileId;
+          useTabStore.getState().editorActionMap.get(activeId)?.undo?.();
+          break;
+        }
+        case "redo": {
+          const activeId = useTabStore.getState().activeFileId;
+          useTabStore.getState().editorActionMap.get(activeId)?.redo?.();
+          break;
+        }
       }
     }
 

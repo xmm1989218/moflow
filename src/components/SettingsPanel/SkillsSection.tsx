@@ -1,10 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSkillStore } from "../../stores/skillStore";
 import { showConfirmDialog, showAlertDialog } from "../../lib/closeDialog";
 import { checkBunAvailable } from "../../lib/skillRegistry";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 import type { SkillInstallStatus } from "../../lib/types";
+
+const SKILL_CATEGORIES = ["writing", "coding", "data", "productivity", "media"] as const;
+type SkillCategory = typeof SKILL_CATEGORIES[number];
+
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const idx = lowerText.indexOf(lowerQuery);
+  if (idx === -1) return <>{text}</>;
+  const before = text.slice(0, idx);
+  const match = text.slice(idx, idx + query.length);
+  const after = text.slice(idx + query.length);
+  return (
+    <>
+      {before}
+      <mark className="bg-ui-accent/30 text-ui-text rounded-[2px] px-0.5">{match}</mark>
+      {after}
+    </>
+  );
+}
 
 export default function SkillsSection() {
   useT();
@@ -19,11 +40,47 @@ export default function SkillsSection() {
   const installSkill = useSkillStore((s) => s.installSkill);
   const uninstallSkill = useSkillStore((s) => s.uninstallSkill);
   const [installingName, setInstallingName] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<SkillCategory | "all">("all");
 
   useEffect(() => {
     discoverSkills();
     fetchRemoteSkills();
   }, [discoverSkills, fetchRemoteSkills]);
+
+  const localMap = new Map(discoveredSkills.map((s) => [s.name, s]));
+
+  const matchesSearch = (status: SkillInstallStatus, query: string): boolean => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      status.name.toLowerCase().includes(q) ||
+      status.description.toLowerCase().includes(q) ||
+      (status.tags?.some((tag) => tag.toLowerCase().includes(q)) ?? false)
+    );
+  };
+
+  const matchesCategory = (status: SkillInstallStatus, cat: SkillCategory | "all"): boolean => {
+    if (cat === "all") return true;
+    return status.category === cat;
+  };
+
+  const filteredStatuses = useMemo(() => {
+    return installStatuses.filter(
+      (s) => matchesSearch(s, searchQuery) && matchesCategory(s, selectedCategory),
+    );
+  }, [installStatuses, searchQuery, selectedCategory]);
+
+  const remoteSkills = filteredStatuses.filter((s) => s.status !== "local-only");
+  const localOnlySkills = filteredStatuses.filter((s) => s.status === "local-only");
+
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>();
+    installStatuses.forEach((s) => {
+      if (s.category) cats.add(s.category);
+    });
+    return SKILL_CATEGORIES.filter((c) => cats.has(c));
+  }, [installStatuses]);
 
   const handleInstall = async (status: SkillInstallStatus) => {
     if (status.hasScripts) {
@@ -68,10 +125,6 @@ export default function SkillsSection() {
   const handleToggle = (name: string, enabled: boolean) => {
     setSkillEnabled(name, !enabled);
   };
-
-  const remoteSkills = installStatuses.filter((s) => s.status !== "local-only");
-  const localOnlySkills = installStatuses.filter((s) => s.status === "local-only");
-  const localMap = new Map(discoveredSkills.map((s) => [s.name, s]));
 
   const renderVersion = (status: SkillInstallStatus) => {
     if (status.status === "update") {
@@ -160,6 +213,44 @@ export default function SkillsSection() {
     );
   };
 
+  const renderSkillCard = (status: SkillInstallStatus) => (
+    <div key={status.name} className="border border-ui-border rounded-lg p-3">
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-[13px] font-semibold text-ui-text">
+          <HighlightedText text={status.name} query={searchQuery} />
+        </span>
+        {renderVersion(status)}
+        {renderStatusBadge(status)}
+        {status.category && (
+          <span className="text-[11px] px-1.5 py-0.5 rounded bg-ui-bg-secondary text-ui-text-secondary font-medium">
+            {t(`settings.skills.category.${status.category}`)}
+          </span>
+        )}
+        {status.hasScripts && (
+          <span className="text-[11px] text-ui-accent">{t("settings.skills.hasScripts")}</span>
+        )}
+      </div>
+      <div className="text-[12px] text-ui-text-secondary mb-2">
+        <HighlightedText text={status.description} query={searchQuery} />
+      </div>
+      {status.tags && status.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {status.tags.map((tag) => (
+            <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded bg-ui-bg-secondary text-ui-text-secondary">
+              <HighlightedText text={tag} query={searchQuery} />
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center justify-between">
+        {renderActionButton(status)}
+        {(status.status === "installed" || status.status === "update" || status.status === "local-only") && renderToggle(status.name)}
+      </div>
+    </div>
+  );
+
+  const isFiltering = searchQuery || selectedCategory !== "all";
+
   return (
     <div className="max-w-[720px] w-full">
       <div className="flex items-center justify-between pb-2 border-b border-ui-border mb-5">
@@ -187,6 +278,37 @@ export default function SkillsSection() {
         </button>
       </div>
 
+      <div className="flex items-center gap-3 mb-4">
+        <input
+          className="flex-1 py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary"
+          placeholder={t("settings.skills.searchPlaceholder")}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          type="text"
+        />
+        {availableCategories.length > 0 && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              className={`px-2.5 py-1 rounded-md text-[12px] font-medium cursor-pointer border transition-[background-color,border-color,color] duration-150 ${selectedCategory === "all" ? "bg-ui-accent text-white border-ui-accent" : "bg-transparent text-ui-text-secondary border-ui-border hover:bg-ui-bg-secondary"}`}
+              onClick={() => setSelectedCategory("all")}
+              type="button"
+            >
+              {t("settings.skills.allCategories")}
+            </button>
+            {availableCategories.map((cat) => (
+              <button
+                key={cat}
+                className={`px-2.5 py-1 rounded-md text-[12px] font-medium cursor-pointer border transition-[background-color,border-color,color] duration-150 ${selectedCategory === cat ? "bg-ui-accent text-white border-ui-accent" : "bg-transparent text-ui-text-secondary border-ui-border hover:bg-ui-bg-secondary"}`}
+                onClick={() => setSelectedCategory(cat)}
+                type="button"
+              >
+                {t(`settings.skills.category.${cat}`)}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {remoteError && (
         <div className="mb-4 px-3 py-2 rounded-md bg-red-500/10 text-[12px] text-red-500">
           {t("settings.skills.remoteError")}: {remoteError}
@@ -201,23 +323,7 @@ export default function SkillsSection() {
         <div className="mb-6">
           <h4 className="text-[12px] font-semibold text-ui-text-secondary uppercase tracking-wide mb-3">{t("settings.skills.available")}</h4>
           <div className="flex flex-col gap-2">
-            {remoteSkills.map((status) => (
-              <div key={status.name} className="border border-ui-border rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[13px] font-semibold text-ui-text">{status.name}</span>
-                  {renderVersion(status)}
-                  {renderStatusBadge(status)}
-                  {status.hasScripts && (
-                    <span className="text-[11px] text-ui-accent">{t("settings.skills.hasScripts")}</span>
-                  )}
-                </div>
-                <div className="text-[12px] text-ui-text-secondary mb-2">{status.description}</div>
-                <div className="flex items-center justify-between">
-                  {renderActionButton(status)}
-                  {(status.status === "installed" || status.status === "update") && renderToggle(status.name)}
-                </div>
-              </div>
-            ))}
+            {remoteSkills.map(renderSkillCard)}
           </div>
         </div>
       )}
@@ -226,29 +332,17 @@ export default function SkillsSection() {
         <div>
           <h4 className="text-[12px] font-semibold text-ui-text-secondary uppercase tracking-wide mb-3">{t("settings.skills.installedLocal")}</h4>
           <div className="flex flex-col gap-2">
-            {localOnlySkills.map((status) => (
-              <div key={status.name} className="border border-ui-border rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[13px] font-semibold text-ui-text">{status.name}</span>
-                  {renderVersion(status)}
-                  <span className="text-[11px] px-1.5 py-0.5 rounded bg-ui-bg-secondary text-ui-text-secondary font-medium">{t("settings.skills.localOnly")}</span>
-                  {status.hasScripts && (
-                    <span className="text-[11px] text-ui-accent">{t("settings.skills.hasScripts")}</span>
-                  )}
-                </div>
-                <div className="text-[12px] text-ui-text-secondary mb-2">{status.description}</div>
-                <div className="flex items-center justify-between">
-                  {renderActionButton(status)}
-                  {renderToggle(status.name)}
-                </div>
-              </div>
-            ))}
+            {localOnlySkills.map(renderSkillCard)}
           </div>
         </div>
       )}
 
       {!skillLoading && !isLoadingRemote && installStatuses.length === 0 && discoveredSkills.length === 0 && (
         <div className="text-[13px] text-ui-text-secondary">{t("settings.skills.noRemoteSkills")}</div>
+      )}
+
+      {isFiltering && filteredStatuses.length === 0 && installStatuses.length > 0 && (
+        <div className="text-[13px] text-ui-text-secondary">{t("settings.skills.noResults")}</div>
       )}
     </div>
   );

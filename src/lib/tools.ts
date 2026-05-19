@@ -353,19 +353,20 @@ export function getNetworkToolDefinitions(): ToolDefinition[] {
 
 export const WEBFETCH_LIMIT = 3;
 
-export function getToolDefinitions(needsDocTools: boolean, workspaceRoot?: string | null, activeFilePath?: string | null): ToolDefinition[] {
+export function getToolDefinitions(needsDocTools: boolean, workspaceRoot?: string | null, activeFilePath?: string | null, aiMode?: "plan" | "build"): ToolDefinition[] {
   const tools: ToolDefinition[] = [makeWebfetchTool(), makeQuestionTool()];
   const fileDefs = [makeOutlineTool(), makeReadTool(), makeReadSectionTool()];
   const grepDef = makeGrepTool();
   const projectDefs = [makeFindTool(), makeGlobTool(), makeLsTool()];
+  const writeDefs = aiMode === "plan" ? [] : [makeWriteTool(), makeEditTool()];
   if (needsDocTools) {
     tools.push(...fileDefs, grepDef);
   }
   if (workspaceRoot) {
     if (!needsDocTools) tools.push(...fileDefs, grepDef);
-    tools.push(...projectDefs, makeWriteTool(), makeEditTool());
+    tools.push(...projectDefs, ...writeDefs);
   } else if (activeFilePath) {
-    tools.push(...fileDefs, grepDef, makeWriteTool(), makeEditTool());
+    tools.push(...fileDefs, grepDef, ...writeDefs);
   }
   return tools;
 }

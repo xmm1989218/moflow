@@ -808,7 +808,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v1.0.0 — 正式版（Skill 市场增强）
+## v1.0.0 — 正式版 & AI 模式
 
 ### Skill 市场
 
@@ -816,8 +816,39 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [x] 一键安装（从 GitHub monorepo 下载 skill 到本地）
 - [x] Skill 版本管理与更新
 - [x] GitHub 仓库作为 skill 源（moflow-skills monorepo）
-- [ ] Skill 搜索与分类
-- [ ] 社区 skill 分享与提交
+- [x] 远程 registry 增加 `category` / `tags` 字段（moflow-skills 项目）
+
+### Skill 搜索与分类
+
+- [x] Settings Skill 面板搜索框（关键词匹配 name + description + tags）
+- [x] 分类筛选栏（全部 / writing / coding / data / productivity / media）
+- [x] 搜索结果高亮匹配词
+
+### UI 修复
+
+- [x] 外观 toggle 背景色冲突修复（`bg-ui-input-bg` 与 `bg-ui-accent` 互斥）
+- [x] 暗色模式 accent 蓝色加深（`#89b4fa` → `#6aa0f7`）
+
+### AI 模式
+
+- [ ] Plan 模式（edit + runSkillScript → deny，AI 只分析不改文档；system prompt 声明 Plan 模式限制 + 权限硬拦截双保险）
+- [ ] Build 模式（默认模式，edit + runSkillScript → ask，保留全部能力）
+- [ ] AISidebar header 模式切换按钮（Plan / Build，session 级别）
+- [ ] Tab 键快捷切换 Plan/Build 模式（仅 AISidebar 内生效）
+
+### 快捷键自定义
+
+- [ ] Settings 新增 Shortcuts section（列表显示所有快捷键，点击某项可重新绑定按键）
+- [ ] 快捷键绑定 UI（按下新组合键捕获，支持 Ctrl/Shift/Alt + 字母/数字/F键）
+- [ ] `settings.ts` 持久化自定义快捷键映射（`shortcutOverrides: Record<string, ShortcutDef>`）
+- [ ] `shortcuts.ts` 加载自定义覆盖（`getShortcut(id)` 合并 override）
+- [ ] App.tsx 键盘事件监听读取覆盖后的快捷键定义（动态匹配取代硬编码 if-else）
+- [ ] Reset 某项快捷键 / Reset All 恢复默认
+- [ ] 快捷键冲突检测（新组合键已被占用则提示拒绝）
+
+### 小修复
+
+- [ ] HamburgerMenu 导出子菜单去掉 `?` 指示符
 
 ---
 
@@ -850,17 +881,20 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ### AI 模式
 
-- [ ] 只读模式（edit: deny，AI 只能分析不能改文档）
-- [ ] 审查模式（execute: deny，AI 只能用内置 tool，不能执行脚本）
 - [ ] 自定义模式（用户自定义权限预设）
+
+### Git 支持
+
+- [ ] AI git tool — 让 AI 执行 git 命令（commit, diff, log, status 等，Rust 后端子进程执行 + 30s 超时 + 权限控制）
+- [ ] HamburgerMenu 增加 Git 子菜单（Commit / Push / Pull / Diff / Log / Status）
+- [ ] 编辑器 git diff 高亮（修改行着色，新建行绿色，删除行红色，gutter 标记）
+
+### Agent 调用能力
+
+- [ ] Task tool — AI 可启动子代理处理子任务（独立 context、独立权限、并发执行）
+- [ ] 子代理类型：explore（只读代码探索）、general（通用多步任务）
+- [ ] 子代理结果返回主对话流
 
 ### 修复
 
 - [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边）
-
-### webfetch 增强（已移至 v0.4.1）
-
-- [x] nav/footer/aside/header/button/form 整块删除 → v0.4.1 markdown/text 模式 strip_noise
-- [x] class/style 属性剥离 → v0.4.1 markdown/text 模式 strip_class_style
-- [x] scraper 结构化提取 → v0.4.1 markdown 模式（html2md crate）
-- [x] webfetch raw 参数 → v0.4.1 html 模式（最小剔除，保留结构和属性）

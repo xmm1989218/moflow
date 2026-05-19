@@ -452,7 +452,11 @@ export async function initFromStartupData(): Promise<boolean> {
       language: (settings.language as import("../lib/settings").SupportedLanguage) ?? "system",
       permissions: settings.permissions as import("../lib/permission").Permissions | undefined,
       envVars: (settings.envVars as Record<string, string>) ?? {},
+      aiMode: ((data.settings as Record<string, unknown>).aiMode as "build" | "plan") ?? "build",
+      shortcutOverrides: ((data.settings as Record<string, unknown>).shortcutOverrides as Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>) ?? {},
     });
+    const { applyShortcutOverrides } = await import("../lib/shortcuts");
+    applyShortcutOverrides(useThemeStore.getState().shortcutOverrides);
     await invoke("set_proxy", { proxyUrl: settings.proxyUrl || null });
     performance.mark("apply-settings-end");
     performance.measure("apply-settings", "apply-settings-start", "apply-settings-end");
@@ -541,7 +545,12 @@ export async function initSession() {
     permissions: settings.permissions,
     envVars: settings.envVars ?? {},
     maxToolRounds: settings.maxToolRounds ?? 20,
+    aiMode: settings.aiMode ?? "build",
+    shortcutOverrides: settings.shortcutOverrides ?? {},
   });
+
+  const { applyShortcutOverrides } = await import("../lib/shortcuts");
+  applyShortcutOverrides(settings.shortcutOverrides ?? {});
 
   const { invoke } = await import("@tauri-apps/api/core");
   await invoke("set_proxy", { proxyUrl: settings.proxyUrl || null });

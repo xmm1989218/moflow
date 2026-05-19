@@ -24,6 +24,8 @@ export const defaultAIConfig: AIConfig = {
   model: "",
 };
 
+export type AiMode = "build" | "plan";
+
 export interface AppSettings {
   appTheme: "system" | "light" | "dark";
   editorTheme: EditorTheme;
@@ -37,6 +39,8 @@ export interface AppSettings {
   permissions: import("./permission").Permissions;
   envVars: Record<string, string>;
   maxToolRounds: number;
+  aiMode: AiMode;
+  shortcutOverrides: Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>;
 }
 
 export const defaultSettings: AppSettings = {
@@ -52,6 +56,8 @@ export const defaultSettings: AppSettings = {
   permissions: { ...DEFAULT_PERMISSIONS },
   envVars: {},
   maxToolRounds: 20,
+  aiMode: "build",
+  shortcutOverrides: {},
 };
 
 export async function readSettings(): Promise<AppSettings> {
@@ -75,6 +81,8 @@ export async function readSettings(): Promise<AppSettings> {
       permissions: { ...DEFAULT_PERMISSIONS, ...(parsed.permissions || {}) },
       envVars: parsed.envVars ?? {},
       maxToolRounds: parsed.maxToolRounds ?? 20,
+      aiMode: parsed.aiMode ?? "build",
+      shortcutOverrides: parsed.shortcutOverrides ?? {},
     };
     return settings;
   } catch {

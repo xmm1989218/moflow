@@ -33,21 +33,16 @@ function escapeRegex(str: string): string {
 
 function wildcardToRegex(pattern: string, key: "externalPath" | "runSkillScript" | "edit"): RegExp {
   const normalized = pattern.replace(/\\/g, "/");
+  const parts = normalized.split("**");
+  const escapedParts = parts.map((p) => escapeRegex(p));
 
-  let regexStr = escapeRegex(normalized);
-
+  let regexStr: string;
   if (key === "externalPath" || key === "edit") {
-    regexStr = regexStr
-      .replace(/\{\{GLOBSTAR\}\}/g, "{{GLOBSTAR_PLACEHOLDER}}")
-      .replace(/\*/g, "[^/]*")
-      .replace(/\?/g, "[^/]")
-      .replace(/\{\{GLOBSTAR_PLACEHOLDER\}\}/g, ".*");
+    const processedParts = escapedParts.map((p) => p.replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]"));
+    regexStr = processedParts.join(".*");
   } else {
-    regexStr = regexStr
-      .replace(/\{\{GLOBSTAR\}\}/g, "{{GLOBSTAR_PLACEHOLDER}}")
-      .replace(/\*/g, "[^:]*")
-      .replace(/\?/g, "[^:]")
-      .replace(/\{\{GLOBSTAR_PLACEHOLDER\}\}/g, ".*");
+    const processedParts = escapedParts.map((p) => p.replace(/\*/g, "[^:]*").replace(/\?/g, "[^:]"));
+    regexStr = processedParts.join(".*");
   }
 
   try {

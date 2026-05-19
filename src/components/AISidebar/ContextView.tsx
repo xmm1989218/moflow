@@ -116,6 +116,10 @@ function MessageRow({ msg }: { msg: ContextMessage }) {
     extra = msg.toolName;
   }
 
+  const timeStr = msg.timestamp
+    ? new Date(msg.timestamp).toLocaleString(undefined, { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })
+    : "";
+
   return (
     <details className={`moflow-ctx-msg moflow-ctx-msg-${role}${isCompactSummary ? " moflow-ctx-msg-summary" : ""}`}>
       <summary className="moflow-ctx-msg-header">
@@ -127,6 +131,7 @@ function MessageRow({ msg }: { msg: ContextMessage }) {
         </span>
         <span className="moflow-ctx-msg-id">{idShort}</span>
         {extra && <span className="moflow-ctx-msg-extra">{extra}</span>}
+        {timeStr && <span className="moflow-ctx-msg-time">{timeStr}</span>}
       </summary>
       <div className="moflow-ctx-msg-body">
         {msg.reasoningContent && (
