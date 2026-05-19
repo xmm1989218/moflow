@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.1.1 (2026-05-20)
+
+### Bug Fixes
+
+- **Updater Proxy Support** — Fixed socks5/http/https proxy not working for auto-update checks and downloads
+  - `tauri-plugin-updater` internally uses reqwest 0.13 without the `socks` feature, causing socks5 proxy URLs to fail
+  - Added `reqwest_v13` dependency with `socks` feature so Cargo merges it into the updater's reqwest, enabling all proxy types
+  - Added `console.log` in `updater.ts` for proxy debugging
+
 ## v1.1.0 (2026-05-19)
 
 ### New Features
