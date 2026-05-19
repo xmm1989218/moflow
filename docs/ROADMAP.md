@@ -856,12 +856,96 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v1.x — 跨平台 & 后续迭代
+## v1.1 — 跨平台支持
 
-### 跨平台支持
+### Design Decisions
 
-- [ ] macOS 适配（PDF 导出改用 WKWebView、窗口装饰适配、菜单栏集成）
-- [ ] Linux 适配（AppImage / deb 打包、WebKitGTK 适配测试）
+- **PDF 导出**：前端 JS 方案（jspdf + html2canvas / html2pdf.js），所有平台统一，不再依赖 WebView2 COM API
+- **macOS 标题栏**：Tauri `titleBarStyle: "overlay"` + `decorations: true`，保留原生交通灯按钮 + 自定义标题栏内容
+- **Linux 打包**：AppImage + deb
+- **macOS 最低版本**：10.15（Catalina）
+- **macOS 代理**：WKWebView 遵循系统代理设置，无需窗口级 proxy 配置
+
+### Rust Backend 跨平台适配
+
+- [ ] `export_pdf` 重构：Windows 保留 WebView2 方案，macOS/Linux 返回标记让前端调 JS PDF 方案（或全部走前端，Rust 仅保留路径写入辅助）
+- [ ] WebView2 `proxy_url()` builder 调用加 `#[cfg(target_os = "windows")]` 守卫
+- [ ] macOS 窗口创建：用 `titleBarStyle: "overlay"` + `decorations: true` 替代 `decorations(false)`
+- [ ] `CHROME_UA` 改为平台感知（`#[cfg]` 选择 Windows/macOS/Linux UA 字符串）
+- [ ] macOS 代理：`proxy_url()` 在 macOS 上跳过，webfetch/reqwest 仍通过 ProxyState + 环境变量生效
+
+### Tauri Config 跨平台
+
+- [ ] `bundle.targets` 添加 `"dmg"`, `"deb"`, `"appimage"`
+- [ ] 添加 `"macOS"` section：`minimumSystemVersion: "10.15"`
+- [ ] 添加 `"linux"` section：deb depends（`libwebkit2gtk-4.1-0`, `libgtk-3-0` 等 Tauri v2 运行时依赖）
+- [ ] Updater 配置添加 macOS/Linux 段
+
+### 前端 PDF 导出重写（跨平台）
+
+- [ ] 引入 `jspdf` + `html2canvas`（或 `html2pdf.js`）作为前端 PDF 生成方案
+- [ ] 实现 `exportPdfFrontend(html, outputPath)` — 前端渲染 HTML → canvas → PDF → 调 Tauri `writeFile` 保存
+- [ ] HamburgerMenu PDF 导出改为调用前端方案（不再依赖 Rust `export_pdf` 命令）
+- [ ] 导出进度提示适配
+- [ ] Windows 上对比测试渲染质量，确认可接受后替换
+
+### macOS 标题栏适配
+
+- [ ] 窗口创建逻辑：macOS 用 `titleBarStyle: "overlay"` + `decorations: true`，Windows/Linux 保持 `decorations: false`
+- [ ] TitleBar 组件：macOS 隐藏自定义最小化/最大化/关闭按钮（原生交通灯已提供）
+- [ ] TitleBar 组件：macOS 左侧预留交通灯宽度（约 78px padding-left），右侧按钮不变
+- [ ] 拖拽区域适配：overlay 模式下交通灯区域不可拖拽，内容区域可拖拽
+
+### 前端跨平台修复
+
+- [ ] `Editor.tsx`：`e.ctrlKey` → `e.ctrlKey || e.metaKey`（拦截 macOS Cmd+S）
+- [ ] `shortcuts.ts`：`isMac` 检测改用 Tauri `@tauri-apps/plugin-os` 的 `platform()` 替代已废弃的 `navigator.platform`
+- [ ] i18n：代理重启提示消息按平台区分（macOS/Linux 代理即时代效无需重启的场景）
+- [ ] `App.tsx` 快捷键系统：确认 `e.ctrlKey || e.metaKey` 全覆盖（已部分实现，排查遗漏）
+
+### CI Workflow 多平台构建
+
+- [ ] `release.yml` matrix 添加 `macos-latest` 和 `ubuntu-latest`
+- [ ] `ubuntu-latest` runner 安装 Tauri Linux 依赖（`libwebkit2gtk-4.1-dev` 等）
+- [ ] Release notes 提取步骤确认 `pwsh` 在所有 runner 可用（GitHub Actions 已预装）
+- [ ] 上传产物：Windows `.exe` + macOS `.dmg` + Linux `.AppImage` + `.deb`
+
+### 测试 & 验证
+
+- [ ] macOS 构建通过（`cargo build` + `bun run tauri build`）
+- [ ] Linux 构建通过（同上）
+- [ ] macOS 功能验证：标题栏交通灯、快捷键 Cmd 替代 Ctrl、PDF 导出、代理
+- [ ] Linux 功能验证：窗口装饰、PDF 导出、代理
+- [ ] Windows 回归测试：确认所有改动不影响现有功能
+
+### README & 文档
+
+- [ ] README 添加跨平台说明：macOS/Linux 支持为社区构建版，开发者无 Mac/Linux 机器进行实机测试，如有问题欢迎反馈（附 GitHub issue 链接）
+- [ ] README 下载/安装区分平台说明（Windows 完整测试 / macOS·Linux 社区测试版）
+
+---
+
+## v1.2 — Git 支持
+
+### Git 支持
+
+- [ ] AI git tool — 让 AI 执行 git 命令（commit, diff, log, status 等，Rust 后端子进程执行 + 30s 超时 + 权限控制）
+- [ ] HamburgerMenu 增加 Git 子菜单（Commit / Push / Pull / Diff / Log / Status）
+- [ ] 编辑器 git diff 高亮（修改行着色，新建行绿色，删除行红色，gutter 标记）
+
+---
+
+## v1.3 — Agent 调用能力
+
+### Agent 调用能力
+
+- [ ] Task tool — AI 可启动子代理处理子任务（独立 context、独立权限、并发执行）
+- [ ] 子代理类型：explore（只读代码探索）、general（通用多步任务）
+- [ ] 子代理结果返回主对话流
+
+---
+
+## v1.4 — AI 增强 & 聊天框呈现
 
 ### AI 增强
 
@@ -881,6 +965,10 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [ ] 消息编辑与重新生成（用户可编辑已发送消息，重新从该消息生成）
 - [ ] 多消息分支（同一用户消息下的多个 AI 回复切换，类似 ChatGPT 的 ← → 导航）
 
+---
+
+## v1.x — 后续迭代
+
 ### 编辑器
 
 - [ ] Vim keybindings 模式
@@ -888,18 +976,6 @@ Enable the AI to actively explore the document instead of relying on truncated c
 ### AI 模式
 
 - [ ] 自定义模式（用户自定义权限预设）
-
-### Git 支持
-
-- [ ] AI git tool — 让 AI 执行 git 命令（commit, diff, log, status 等，Rust 后端子进程执行 + 30s 超时 + 权限控制）
-- [ ] HamburgerMenu 增加 Git 子菜单（Commit / Push / Pull / Diff / Log / Status）
-- [ ] 编辑器 git diff 高亮（修改行着色，新建行绿色，删除行红色，gutter 标记）
-
-### Agent 调用能力
-
-- [ ] Task tool — AI 可启动子代理处理子任务（独立 context、独立权限、并发执行）
-- [ ] 子代理类型：explore（只读代码探索）、general（通用多步任务）
-- [ ] 子代理结果返回主对话流
 
 ### 修复
 
