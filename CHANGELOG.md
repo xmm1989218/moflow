@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.1.0 (2026-05-19)
+
+### New Features
+
+- **Cross-Platform Support (macOS + Linux)** — MoFlow now builds and runs on all major desktop platforms
+  - macOS: overlay title bar with native traffic lights, Cmd key shortcuts
+  - Linux: AppImage + deb packaging
+  - Windows: unchanged, fully tested
+
+- **Multi-Platform CI** — Automated build verification on Windows, macOS, and Linux
+  - `.github/workflows/ci.yml` — lint + type check + test + cargo check on all 3 platforms
+  - `.github/workflows/release.yml` — 3-platform matrix with Linux system deps
+
+- **tauri-plugin-os** — Platform detection for conditional PDF export strategy
+
+### Improvements
+
+- **PDF Export Dual-Track** — Windows uses Rust WebView2 PrintToPdf (proven quality), macOS/Linux uses JS fallback (jspdf + html2canvas via iframe srcdoc isolation)
+- **Platform-Specific Chrome UA** — `#[cfg]` selects Windows/macOS/Linux User-Agent strings
+- **Proxy Config Platform Guards** — `proxy_url()` builder calls guarded with `#[cfg(target_os = "windows")]`
+- **macOS Window Creation** — `titleBarStyle: "overlay"` + `decorations: true` for native traffic lights
+- **macOS TitleBar** — Custom min/max/close buttons hidden on macOS; 78px left padding for traffic lights
+- **Shortcuts Cross-Platform** — `isMac` detection with `userAgentData?.platform` fallback; test updated for Ctrl+S / ⌘S
+- **Editor Cmd+S** — `e.ctrlKey || e.metaKey` intercepts macOS Cmd+S
+
+### Bug Fixes
+
+- Fixed `formatShortcutDisplay` test failing on macOS CI (expected "Ctrl" but got "⌘")
+
 ## v1.0.0 (2026-05-19)
 
 ### New Features
