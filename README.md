@@ -36,10 +36,12 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **AI Sidebar** — Integrated AI chat with context management, auto-compact, and usage tracking
 - **AI Tool-Calling** — AI can actively explore documents via tools (outline, grep, read, readSection) and fetch web content instead of relying on truncated context
 - **Interactive Questions** — AI asks clarifying questions via a wizard-style form before executing non-trivial tasks
+- **AI Mode (Plan / Build)** — Plan mode for analysis-only (no file writes), Build mode for full capabilities; switch via sidebar toggle or Tab key
+- **Skill Marketplace** — Browse, install, update, and uninstall AI skills from a GitHub-based remote registry
 - **Workspace-aware AI** — Open a folder as workspace, AI gets project-level tools (grep, find, glob, ls, read, write, edit) to explore and modify the entire codebase; workspace chat persists across tab switches
-- **Context View** — Inspect token usage, context breakdown, and raw messages in a dedicated panel
+- **Context View** — Inspect token usage (including cached tokens), context breakdown, and raw messages in a dedicated panel
 - **Selection AI** — Explain, translate, or ask questions about selected text; Markdown formatting preserved in translations and rewrites
-- **Settings Tab** — Unified settings panel with appearance, AI config, proxy, and about sections
+- **Settings Tab** — Unified settings panel with appearance, AI config, shortcut customization, proxy, and about sections
 - **Proxy Support** — HTTP/HTTPS/SOCKS5 proxy for AI requests and web content fetching
 - **Find & Replace** — Regex support, case-sensitive search, replace all
 - **Outline Sidebar** — Document heading tree with click-to-navigate and active heading tracking

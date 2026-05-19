@@ -43,10 +43,10 @@ MoFlow is a desktop Markdown editor built with Tauri v2 + React + TypeScript + V
 ```
 src/                    # Frontend (React + TypeScript)
   components/
-    AISidebar/          # AI chat sidebar (doCompact, auto-compact, UsageBadge)
+    AISidebar/          # AI chat sidebar (doCompact, auto-compact, UsageBadge, tracer instrumentation)
                           AISidebar.css — sidebar layout + chat bubble + callout + question bar styles
                           MessageContent.css — Markdown element selectors (retained)
-                          ContextView.tsx — context inspection panel
+                          ContextView.tsx — context inspection panel (statistics, cached tokens, total tokens, breakdown, raw messages)
                           PermissionBar.tsx — inline permission consent bar (allow/always/deny)
                           QuestionBar.tsx — wizard-style question form (radio/checkbox/custom input)
     ConfirmCloseDialog/ # Unsaved changes dialog (Tailwind, no CSS file)
@@ -63,14 +63,14 @@ src/                    # Frontend (React + TypeScript)
                           Keyframes, animations, shadows, scrollbar styles
   stores/
     appStore.ts         # Re-exports from tabStore, themeStore, etc.
-    chatStore.ts        # AI chat state (streamingContentMap, contextMap, inputHistoryMap, cleanupIncompleteToolCalls)
+    chatStore.ts        # AI chat state (streamingContentMap, contextMap, inputHistoryMap, cachedTokensMap, cleanupIncompleteToolCalls)
     permissionStore.ts  # Session permission rules (per-chatKey, alwaysAllow cascade, session aiMode)
     skillStore.ts       # Skill discovery, remote registry, install/update/uninstall
     aiSelectionStore.ts # Selection AI panel state
     searchStore.ts      # Find & replace state (per-tab editorViewMap)
     sessionStore.ts     # Session persistence (workspaceRoot)
     tabStore.ts         # File tabs, workspaceRoot, getChatKey, closeWorkspace
-    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab, leftPanelTab, language, aiMode, shortcutOverrides
+    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab, leftPanelTab, language, aiMode, shortcutOverrides, enableTrace
     updateStore.ts      # Auto-update state
   i18n/
     core.ts             # Core i18n utilities (t, isZh, getLocale, setLanguage, resolveLanguage)
@@ -82,20 +82,22 @@ src/                    # Frontend (React + TypeScript)
       ja.ts             # Japanese locale (AI-generated)
       ko.ts             # Korean locale (AI-generated)
   lib/
-    chatPersistence.ts  # JSONL chat history (chats/{safeFileName}/messages.jsonl, safeFileName exported, clearChat, removeChat, migrateOldChatDir)
+    chatPersistence.ts  # JSONL chat history (chats/{safeFileName}/messages.jsonl, safeFileName exported, clearChat, removeChat, migrateOldChatDir, appendTraceEvent, clearTrace)
     inputHistory.ts     # Per-session input history (loadInputHistory/saveInputHistory/appendInputHistory, 200 max, dedup)
     contextBuilder.ts   # System prompt builder (TOOLS_GUIDE replaces WS_FILE_TOOLS/DOC_FILE_TOOLS)
     fileOps.ts          # File read/write/open folder via Tauri FS plugin
     imageManager.ts     # Image save/resolve (saveImageToFile, resolveImagePath)
     modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
-    llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling, Claude dynamic max_tokens)
+    llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling, Claude dynamic max_tokens, ChatUsage.cachedTokens, ChatResult.ttfbMs/chunkCount)
     shortcuts.ts        # Centralized shortcut registry (defaultShortcuts, overrides, getShortcutDisplay, getShortcutLabel, findConflict, parseKeyEvent)
-    settings.ts         # App settings persistence (proxyUrl derived proxy state, permissions, aiMode, shortcutOverrides)
+    settings.ts         # App settings persistence (proxyUrl derived proxy state, permissions, aiMode, shortcutOverrides, enableTrace)
     exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
     themeCSS.ts         # Dynamic theme CSS generation
     permission.ts       # Permission engine (wildcard matching, evaluateWithSession, generateAlwaysPattern)
     tools.ts            # AI tool definitions + execution (outline, read, readSection, grep, find, glob, ls, webfetch, write, edit, question, skill, runSkillScript) — descriptions hardcoded English, no i18n
     skillManager.ts     # Skill discovery, SKILL.md parsing, script execution (cwd support)
+    tracer.ts           # Tracer + NoOpTracer + createTracer factory (JSONL trace output, zero overhead when disabled)
+    traceTypes.ts       # TraceSpan, TraceStartEvent, TraceSpanEvent, TraceEndEvent types
     types.ts            # Shared types (ToolCall, ToolDefinition, ChatMessage, SkillMeta)
     updater.ts          # Auto-update with proxy support
   App.tsx               # Root component
@@ -133,7 +135,7 @@ src-tauri/              # Backend (Rust + Tauri)
 - Dynamic FS scope: Rust `allow_paths` command + `fs_scope().allow_file()` instead of wildcard scope
 - Chat history persisted as JSONL per chat: `{appDataDir}/chats/{safeFileName}/messages.jsonl` + `input_history.json` per session directory
 - Chat key dual-mode: workspace → `"dir:" + normalized path` (one chat per workspace, survives tab switch/close); single-file → `tabId` (deleted on tab close)
-- `promptTokens` stored on assistant messages in JSONL (no separate meta file)
+- `promptTokens` persisted on assistant messages in JSONL — `contextTokensMap` restored on restart via `getContext()` reading last assistant's `promptTokens`
 - Assistant messages only written to JSONL when content is complete (one-shot `addMessage` + `appendMessage`); streaming content stored in `streamingContentMap` (temporary, not persisted)
 - `cleanupIncompleteToolCalls` — appends "Tool call interrupted" error results for toolCalls missing corresponding tool results; called in `finally` after abort and in `loadChatHistory`
 - `stopGeneration` does NOT set `isStreaming=false` — only `finally` blocks control it, preventing race conditions
@@ -144,7 +146,8 @@ src-tauri/              # Backend (Rust + Tauri)
 - `buildSystemPrompt` uses model's actual `maxContext` (not hardcoded); workspace mode: filename label + switch-file note; no-workspace mode: unchanged; tool descriptions only in API `tools` parameter (not duplicated in system prompt)
 - Damaged JSONL lines are skipped on load; if any corruption detected, a repair file is written and renamed to replace the original (best-effort)
 - Usage badge shows: context tokens, usage %, cumulative total tokens, cumulative cost
-- `completionTokensMap`, `totalTokensMap`, `costMap` are memory-only (reset on restart)
+- `completionTokensMap`, `totalTokensMap`, `costMap`, `cachedTokensMap` are memory-only (reset on restart)
+- `promptTokens` persisted on assistant messages in JSONL — `contextTokensMap` restored on restart via `getContext()` reading last assistant's `promptTokens`
 - i18n: `src/i18n/core.ts` exports `t(key, params?)`, `isZh()`, `setLanguage()`, `resolveLanguage()`; `src/i18n/useT.ts` exports `useT()` hook for React reactivity; `src/i18n/index.tsx` exports `I18nProvider`; 4 locale files in `src/i18n/locales/`; dot-notation keys (e.g. `"common.confirm"`, `"ai.send"`)
 - **IMPORTANT**: All React components that call `t()` must also call `useT()` to re-render on language change; `t()` from `core.ts` is a module-level function with no React reactivity
 - Tool definitions use factory functions (e.g. `makeOutlineTool()`) but descriptions are hardcoded English strings (not i18n) — LLM prompts should always be English
@@ -169,4 +172,6 @@ src-tauri/              # Backend (Rust + Tauri)
 - Question tool: `makeQuestionTool()` with `questions[]` array; wizard-style QuestionBar; question tool does NOT count toward `maxToolRounds`; intercepted via `pendingQuestion` state + `resolveQuestionRef` Promise (same pattern as PermissionBar)
 - Input history: `inputHistoryMap` in `chatStore`; `/new` clears messages but preserves input history; session directory deletion only on session destroy (close tab/workspace)
 - `chatStore` is the sole frontend entry point for chat data — no component imports `chatPersistence` or `inputHistory` directly
+- Trace: `createTracer(chatKey, input, model)` returns `TracerHandle`; writes JSONL to `chats/{safeFileName}/trace.jsonl`; NoOpTracer when `enableTrace=false`; `traceStatus` tracked in handleSend for abort/error; tracer.endTrace in finally block
+- `ChatResult.ttfbMs` / `chunkCount` tracked in OpenAI and Claude streaming clients; `ChatUsage.cachedTokens` parsed from OpenAI `prompt_tokens_details.cached_tokens`
 - Selection AI: `getSelectionMarkdown(ctx, view)` serializes ProseMirror selection to Markdown via `serializerCtx` (preserves bold, links, code, math, lists); translate uses empty system prompt (no docContent), explain/rewrite keep full document context

@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.0.0 (2026-05-19)
+
+### New Features
+
+- **Skill Marketplace** — Browse, install, update, and uninstall skills from a GitHub-based remote registry
+  - Available + Installed sections with search, category filter, and keyword highlighting
+  - One-click install from `moflow-skills` monorepo; version management and updates
+  - Skill categories: writing / coding / data / productivity / media
+
+- **AI Mode (Plan / Build)** — Switch between two AI interaction modes
+  - Plan mode: `edit` + `runSkillScript` denied; AI analyzes only, never modifies files
+  - Build mode (default): all tools available with permission checks
+  - AISidebar header toggle button + Tab key shortcut (sidebar-only)
+
+- **Shortcut Customization** — Rebind any keyboard shortcut from Settings
+  - Key capture UI with conflict detection
+  - Per-item reset + reset all
+  - `shortcutOverrides` persisted in `settings.json`
+
+- **Trace Observability** — Operation-level tracing for AI agent interactions
+  - JSONL trace output (`chats/{safeFileName}/trace.jsonl`)
+  - LLM round spans, tool execution spans, compact spans
+  - `enableTrace` toggle in Settings AI section (default: off)
+  - NoOpTracer pattern for zero overhead when disabled
+
+- **Cached Tokens Tracking** — OpenAI `prompt_tokens_details.cached_tokens` now tracked and displayed
+  - Cached tokens + cumulative total tokens shown in ContextView statistics
+  - `cachedTokensMap` in chatStore (memory-only, resets on restart)
+
+- **Streaming Metrics** — `ttfbMs` (time-to-first-byte) and `chunkCount` per LLM request
+  - Tracked in both OpenAI and Claude streaming clients
+  - Available in trace span data
+
+- **promptTokens Persistence** — Assistant messages now store `promptTokens` in JSONL
+  - Context usage (`contextTokensMap`) correctly restored on app restart
+
+### Improvements
+
+- **ContextView statistics** — Always shows Cache and Total rows (not conditional on > 0)
+- **HamburgerMenu export submenu** — Removed `?` indicator from sub-menu items
+
 ## v0.9.6 (2026-05-19)
 
 ### New Features
