@@ -174,39 +174,23 @@ describe("contextBuilder", () => {
     });
   });
 
-  describe("buildSystemPrompt — subagent section", () => {
-    it("includes available_subagents in no-workspace mode", () => {
-      const { prompt } = buildSystemPrompt("hello", 128000);
-      expect(prompt).toContain("<available_subagents>");
-      expect(prompt).toContain('name="explore"');
-      expect(prompt).toContain('name="general"');
-    });
-
-    it("includes available_subagents in workspace mode", () => {
-      const { prompt } = buildSystemPrompt("hello", 128000, false, "/ws", "/ws/a.md");
-      expect(prompt).toContain("<available_subagents>");
-    });
-
-    it("includes available_subagents with empty document", () => {
-      const { prompt } = buildSystemPrompt("", 128000);
-      expect(prompt).toContain("<available_subagents>");
-    });
-
-    it("includes available_subagents in truncated document", () => {
-      const longDoc = "x".repeat(200000);
-      const { prompt } = buildSystemPrompt(longDoc, 4000, true);
-      expect(prompt).toContain("<available_subagents>");
-    });
-
-    it("includes available_subagents in workspace with no file", () => {
-      const { prompt } = buildSystemPrompt("", 128000, false, "/ws", null);
-      expect(prompt).toContain("<available_subagents>");
-    });
-
-    it("includes available_subagents in plan mode", () => {
+  describe("buildSystemPrompt — mode sections", () => {
+    it("includes PLAN_MODE_INSTRUCTION in plan mode", () => {
       const { prompt } = buildSystemPrompt("hello", 128000, false, undefined, undefined, "plan");
-      expect(prompt).toContain("<available_subagents>");
       expect(prompt).toContain("<mode>plan</mode>");
+      expect(prompt).toContain("Responsibility");
+      expect(prompt).toContain("Important");
+    });
+
+    it("includes BUILD_MODE_INSTRUCTION in build mode", () => {
+      const { prompt } = buildSystemPrompt("hello", 128000, false, undefined, undefined, "build");
+      expect(prompt).toContain("<mode>build</mode>");
+    });
+
+    it("excludes mode section when no aiMode", () => {
+      const { prompt } = buildSystemPrompt("hello", 128000);
+      expect(prompt).not.toContain("<mode>plan</mode>");
+      expect(prompt).not.toContain("<mode>build</mode>");
     });
   });
 });
