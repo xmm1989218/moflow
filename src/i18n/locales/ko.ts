@@ -204,6 +204,15 @@ export default {
   "ai.toolLabel.explored": "탐색 완료",
   "ai.toolLabel.exploring": "탐색 중",
   "ai.toolLabel.question": "질문",
+  "ai.toolLabel.task": "에이전트",
+
+  "ai.task.backToMain": "← 메인 대화로 돌아가기",
+  "ai.task.explore": "탐색",
+  "ai.task.general": "일반",
+  "ai.task.rounds": "라운드",
+  "ai.task.noMessages": "메시지 없음",
+
+  "ai.toolStatus.task": "에이전트: {description}",
 
   "permission.allow": "허용",
   "permission.alwaysAllow": "항상 허용",

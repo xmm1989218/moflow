@@ -13,6 +13,43 @@ export interface ToolDefinition {
   };
 }
 
+export interface ToolCallSummary {
+  name: string;
+  argsBrief: string;
+  round: number;
+}
+
+export interface SubAgentResult {
+  content: string;
+  messages: import("../stores/chatStore").Message[];
+  toolCalls: ToolCallSummary[];
+  totalRounds: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cost: number;
+  cachedTokens: number;
+}
+
+export type SubAgentType = "explore" | "general";
+
+export type SubAgentStatus = "running" | "completed" | "cancelled" | "error";
+
+export interface SubAgentExecution {
+  taskId: string;
+  description: string;
+  subagentType: SubAgentType;
+  messages: import("../stores/chatStore").Message[];
+  totalRounds: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  cost: number;
+  cachedTokens: number;
+  status: SubAgentStatus;
+  parentChatKey: string;
+}
+
 export interface SkillMeta {
   name: string;
   description: string;

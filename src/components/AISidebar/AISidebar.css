@@ -1240,3 +1240,111 @@ color: var(--moflow-error);
   color: var(--moflow-text-secondary);
   font-family: var(--moflow-font-mono);
 }
+
+.moflow-ai-subagent-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--moflow-border);
+  background: var(--moflow-bg-secondary);
+  cursor: pointer;
+  text-align: left;
+  position: relative;
+  transition: border-color 0.15s;
+}
+
+.moflow-ai-subagent-card:hover {
+  border-color: var(--moflow-accent);
+}
+
+.moflow-ai-subagent-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--moflow-text-secondary);
+}
+
+.moflow-ai-subagent-card-type {
+  font-weight: 600;
+  color: var(--moflow-accent);
+}
+
+.moflow-ai-subagent-card-rounds {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--moflow-text-muted);
+}
+
+.moflow-ai-subagent-card-desc {
+  font-size: 13px;
+  color: var(--moflow-text);
+  line-height: 1.4;
+  padding-right: 20px;
+}
+
+.moflow-ai-subagent-card-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--moflow-text-muted);
+}
+
+.moflow-ai-subagent-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.moflow-ai-subagent-view-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--moflow-border);
+  font-size: 13px;
+}
+
+.moflow-ai-subagent-view-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--moflow-accent);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.moflow-ai-subagent-view-back:hover {
+  text-decoration: underline;
+}
+
+.moflow-ai-subagent-view-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--moflow-accent);
+  color: white;
+  font-weight: 600;
+}
+
+.moflow-ai-subagent-view-rounds {
+  font-size: 11px;
+  color: var(--moflow-text-muted);
+}
+
+.moflow-ai-subagent-view-desc {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--moflow-text-secondary);
+  border-bottom: 1px solid var(--moflow-border);
+}
+
+

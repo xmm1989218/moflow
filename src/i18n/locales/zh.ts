@@ -204,6 +204,15 @@ export default {
   "ai.toolLabel.explored": "已探索",
   "ai.toolLabel.exploring": "探索中",
   "ai.toolLabel.question": "提问",
+  "ai.toolLabel.task": "代理",
+
+  "ai.task.backToMain": "← 返回主对话",
+  "ai.task.explore": "探索",
+  "ai.task.general": "通用",
+  "ai.task.rounds": "轮",
+  "ai.task.noMessages": "无可用消息",
+
+  "ai.toolStatus.task": "代理: {description}",
 
   "permission.allow": "允许",
   "permission.alwaysAllow": "始终允许",

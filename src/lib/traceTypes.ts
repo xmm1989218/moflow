@@ -1,7 +1,7 @@
 export interface TraceSpan {
   id: string;
   traceId: string;
-  type: "llm" | "tool" | "permission" | "compact";
+  type: "llm" | "tool" | "permission" | "compact" | "subagent";
   name: string;
   startTime: number;
   endTime?: number;

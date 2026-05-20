@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { useChatStore } from "../stores/chatStore";
-import type { ToolCall } from "../lib/types";
+import type { ToolCall, SubAgentExecution } from "../lib/types";
 
 const TEST_TAB = "test-tab-id";
 
@@ -227,6 +227,90 @@ describe("chatStore", () => {
       useChatStore.getState().appendInputHistory(TEST_TAB, "hello");
       useChatStore.getState().deleteChat(TEST_TAB);
       expect(useChatStore.getState().inputHistoryMap[TEST_TAB]).toBeUndefined();
+    });
+  });
+
+  describe("subAgent state", () => {
+    const mockExecution: SubAgentExecution = {
+      taskId: "task-1",
+      description: "Explore API",
+      subagentType: "explore",
+      messages: [],
+      totalRounds: 3,
+      promptTokens: 100,
+      completionTokens: 50,
+      totalTokens: 150,
+      cost: 0.01,
+      cachedTokens: 0,
+      status: "completed",
+      parentChatKey: TEST_TAB,
+    };
+
+    it("initial state has null activeSubAgentView", () => {
+      expect(useChatStore.getState().activeSubAgentView).toBeNull();
+    });
+
+    it("initial state has empty subAgentResultsMap", () => {
+      expect(useChatStore.getState().subAgentResultsMap).toEqual({});
+    });
+
+    it("setActiveSubAgentView sets the view", () => {
+      useChatStore.getState().setActiveSubAgentView("task-1");
+      expect(useChatStore.getState().activeSubAgentView).toBe("task-1");
+    });
+
+    it("setActiveSubAgentView clears with null", () => {
+      useChatStore.getState().setActiveSubAgentView("task-1");
+      useChatStore.getState().setActiveSubAgentView(null);
+      expect(useChatStore.getState().activeSubAgentView).toBeNull();
+    });
+
+    it("addSubAgentResult stores execution", () => {
+      useChatStore.getState().addSubAgentResult("task-1", mockExecution);
+      expect(useChatStore.getState().subAgentResultsMap["task-1"]).toEqual(mockExecution);
+    });
+
+    it("addSubAgentResult stores multiple executions", () => {
+      const exec2: SubAgentExecution = { ...mockExecution, taskId: "task-2", description: "General task", subagentType: "general" };
+      useChatStore.getState().addSubAgentResult("task-1", mockExecution);
+      useChatStore.getState().addSubAgentResult("task-2", exec2);
+      expect(Object.keys(useChatStore.getState().subAgentResultsMap)).toHaveLength(2);
+    });
+
+    it("clearSubAgentViews removes executions for a chatKey", () => {
+      useChatStore.getState().addSubAgentResult("task-1", mockExecution);
+      useChatStore.getState().clearSubAgentViews(TEST_TAB);
+      expect(useChatStore.getState().subAgentResultsMap["task-1"]).toBeUndefined();
+    });
+
+    it("clearSubAgentViews resets activeSubAgentView if viewing cleared task", () => {
+      useChatStore.getState().addSubAgentResult("task-1", mockExecution);
+      useChatStore.getState().setActiveSubAgentView("task-1");
+      useChatStore.getState().clearSubAgentViews(TEST_TAB);
+      expect(useChatStore.getState().activeSubAgentView).toBeNull();
+    });
+
+    it("clearSubAgentViews preserves other chatKey executions", () => {
+      const otherExec: SubAgentExecution = { ...mockExecution, parentChatKey: "other-tab" };
+      useChatStore.getState().addSubAgentResult("task-1", mockExecution);
+      useChatStore.getState().addSubAgentResult("task-2", otherExec);
+      useChatStore.getState().clearSubAgentViews(TEST_TAB);
+      expect(useChatStore.getState().subAgentResultsMap["task-1"]).toBeUndefined();
+      expect(useChatStore.getState().subAgentResultsMap["task-2"]).toBeDefined();
+    });
+
+    it("clearMessages clears subAgentResults for the tab", () => {
+      useChatStore.getState().addSubAgentResult("task-1", mockExecution);
+      useChatStore.getState().setActiveSubAgentView("task-1");
+      useChatStore.getState().clearMessages(TEST_TAB);
+      expect(useChatStore.getState().subAgentResultsMap["task-1"]).toBeUndefined();
+      expect(useChatStore.getState().activeSubAgentView).toBeNull();
+    });
+
+    it("deleteChat clears subAgentResults for the tab", () => {
+      useChatStore.getState().addSubAgentResult("task-1", mockExecution);
+      useChatStore.getState().deleteChat(TEST_TAB);
+      expect(useChatStore.getState().subAgentResultsMap["task-1"]).toBeUndefined();
     });
   });
 });

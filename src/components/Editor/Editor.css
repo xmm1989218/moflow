@@ -145,7 +145,11 @@
   display: none !important;
 }
 
-.moflow-editor-wrapper .milkdown .ProseMirror ul,
+.moflow-editor-wrapper .milkdown .ProseMirror ul {
+  padding-left: 1.5em !important;
+  margin: 8px 0 !important;
+}
+
 .moflow-editor-wrapper .milkdown .ProseMirror ol {
   padding-left: 1.5em !important;
   margin: 8px 0 !important;

@@ -98,7 +98,7 @@ async function checkPathAccess(
   return { allowed: false, error: "Access denied: path is outside the workspace and permission was not granted" };
 }
 
-function makeOutlineTool(): ToolDefinition {
+export function makeOutlineTool(): ToolDefinition {
   return {
     type: "function",
     function: {
@@ -118,7 +118,7 @@ function makeOutlineTool(): ToolDefinition {
   };
 }
 
-function makeReadTool(): ToolDefinition {
+export function makeReadTool(): ToolDefinition {
   return {
     type: "function",
     function: {
@@ -146,7 +146,7 @@ function makeReadTool(): ToolDefinition {
   };
 }
 
-function makeReadSectionTool(): ToolDefinition {
+export function makeReadSectionTool(): ToolDefinition {
   return {
     type: "function",
     function: {
@@ -170,7 +170,7 @@ function makeReadSectionTool(): ToolDefinition {
   };
 }
 
-function makeGrepTool(): ToolDefinition {
+export function makeGrepTool(): ToolDefinition {
   return {
     type: "function",
     function: {
@@ -194,7 +194,7 @@ function makeGrepTool(): ToolDefinition {
   };
 }
 
-function makeFindTool(): ToolDefinition {
+export function makeFindTool(): ToolDefinition {
   return {
     type: "function",
     function: {
@@ -214,7 +214,7 @@ function makeFindTool(): ToolDefinition {
   };
 }
 
-function makeGlobTool(): ToolDefinition {
+export function makeGlobTool(): ToolDefinition {
   return {
     type: "function",
     function: {
@@ -234,7 +234,7 @@ function makeGlobTool(): ToolDefinition {
   };
 }
 
-function makeLsTool(): ToolDefinition {
+export function makeLsTool(): ToolDefinition {
   return {
     type: "function",
     function: {
@@ -254,7 +254,7 @@ function makeLsTool(): ToolDefinition {
   };
 }
 
-function makeWebfetchTool(): ToolDefinition {
+export function makeWebfetchTool(): ToolDefinition {
   return {
     type: "function",
     function: {
@@ -279,7 +279,7 @@ function makeWebfetchTool(): ToolDefinition {
   };
 }
 
-function makeWriteTool(): ToolDefinition {
+export function makeWriteTool(): ToolDefinition {
   return {
     type: "function",
     function: {
@@ -303,7 +303,7 @@ function makeWriteTool(): ToolDefinition {
   };
 }
 
-function makeEditTool(): ToolDefinition {
+export function makeEditTool(): ToolDefinition {
   return {
     type: "function",
     function: {
@@ -354,7 +354,7 @@ export function getNetworkToolDefinitions(): ToolDefinition[] {
 export const WEBFETCH_LIMIT = 3;
 
 export function getToolDefinitions(needsDocTools: boolean, workspaceRoot?: string | null, activeFilePath?: string | null, aiMode?: "plan" | "build"): ToolDefinition[] {
-  const tools: ToolDefinition[] = [makeWebfetchTool(), makeQuestionTool()];
+  const tools: ToolDefinition[] = [makeWebfetchTool(), makeQuestionTool(), makeTaskTool()];
   const fileDefs = [makeOutlineTool(), makeReadTool(), makeReadSectionTool()];
   const grepDef = makeGrepTool();
   const projectDefs = [makeFindTool(), makeGlobTool(), makeLsTool()];
@@ -934,6 +934,35 @@ export interface QuestionItem {
   question: string;
   options: QuestionOption[];
   multiple: boolean;
+}
+
+export function makeTaskTool(): ToolDefinition {
+  return {
+    type: "function",
+    function: {
+      name: "task",
+      description: "Launch a sub-agent to autonomously handle a specific task. The sub-agent runs its own tool-calling loop with independent context. Use 'explore' for read-only code exploration, searching, and analysis tasks. Use 'general' for complex multi-step tasks that may require file modifications. The sub-agent does NOT inherit the parent conversation — your prompt must contain all necessary context and specify exactly what information the agent should return.",
+      parameters: {
+        type: "object",
+        properties: {
+          description: {
+            type: "string",
+            description: "Short description of the task (shown to the user as a label)",
+          },
+          prompt: {
+            type: "string",
+            description: "Detailed instructions for the sub-agent. Must contain all necessary context since the sub-agent starts with a fresh conversation. Specify what information the sub-agent should return in its final response.",
+          },
+          subagent_type: {
+            type: "string",
+            enum: ["explore", "general"],
+            description: "Type of sub-agent: 'explore' for read-only exploration (search, read, analyze), 'general' for full-access multi-step tasks (can write/edit files).",
+          },
+        },
+        required: ["description", "prompt", "subagent_type"],
+      },
+    },
+  };
 }
 
 export function makeSkillTool(): ToolDefinition {

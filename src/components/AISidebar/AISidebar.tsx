@@ -14,6 +14,8 @@ import { createTracer, truncateArgsSummary } from "../../lib/tracer";
 import type { TracerHandle } from "../../lib/tracer";
 import type { ToolContext, OnPermissionCallback } from "../../lib/tools";
 import type { PermissionRequest, PermissionAction } from "../../lib/permission";
+import { runSubAgent } from "../../lib/subAgentRunner";
+import type { SubAgentExecution } from "../../lib/types";
 import { useShallow } from "zustand/react/shallow";
 import SlashCommandMenu from "./SlashCommandMenu";
 import type { SlashCommandMenuHandle } from "./SlashCommandMenu";
@@ -21,6 +23,8 @@ import MessageContent from "./MessageContent";
 import ContextView from "./ContextView";
 import PermissionBar from "./PermissionBar";
 import QuestionBar from "./QuestionBar";
+import SubAgentCard from "./SubAgentCard";
+import SubAgentView from "./SubAgentView";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 import "./AISidebar.css";
@@ -154,6 +158,9 @@ function ToolCallStatus({ name, args, completedReadStats }: { name: string; args
     case "question":
       text = `${t("ai.toolLabel.question")}`;
       break;
+    case "task":
+      text = `${t("ai.toolLabel.task")} ${args.description ?? ""}`;
+      break;
     default:
       text = t("ai.toolStatus.default", { name });
   }
@@ -199,6 +206,9 @@ function formatToolArgs(name: string, args: Record<string, unknown>): string {
   if (name === "question") {
     const qs = Array.isArray(args.questions) ? (args.questions as { question?: string }[]).map((q) => q.question ?? "").join("; ") : "";
     return `${label} ${qs}`;
+  }
+  if (name === "task") {
+    return `${label} ${args.description ?? ""} (${args.subagent_type ?? "explore"})`;
   }
   const entries = Object.entries(args);
   if (entries.length === 0) return label;
@@ -398,7 +408,9 @@ function GenericToolResult({ item, iconType }: { item: ToolItem; iconType: "read
 }
 
 function ToolResultGroups({ toolMessages, messages }: { toolMessages: Message[]; messages: Message[] }) {
-  const groups: Array<"read" | "edit" | "script" | "generic">[] = [];
+  const subAgentMap = useChatStore((s) => s.subAgentResultsMap);
+
+  const groups: Array<"read" | "edit" | "script" | "task" | "generic">[] = [];
   const groupItems: ToolItem[][] = [];
 
   for (const msg of toolMessages) {
@@ -407,10 +419,11 @@ function ToolResultGroups({ toolMessages, messages }: { toolMessages: Message[];
     const isError = isToolError(msg.content);
     const item: ToolItem = { msg, info, isError };
 
-    let type: "read" | "edit" | "script" | "generic";
+    let type: "read" | "edit" | "script" | "task" | "generic";
     if (READ_TOOLS.has(name)) type = "read";
     else if (EDIT_TOOLS.has(name)) type = "edit";
     else if (name === "runSkillScript") type = "script";
+    else if (name === "task") type = "task";
     else type = "generic";
 
     const lastGroup = groups.length > 0 ? groups[groups.length - 1] : null;
@@ -429,7 +442,24 @@ function ToolResultGroups({ toolMessages, messages }: { toolMessages: Message[];
     const items = groupItems[gi];
     const type = groups[gi][0];
 
-    if (type === "read") {
+    if (type === "task") {
+      const taskMsg = items[0]?.msg;
+      const taskIdMatch = taskMsg?.content.match(/task_id="([^"]+)"/);
+      const taskId = taskIdMatch?.[1];
+      const execution = taskId ? subAgentMap[taskId] : undefined;
+      elements.push(
+        <SubAgentCard
+          key={`task-${gi}`}
+          description={execution?.description ?? ""}
+          subagentType={execution?.subagentType ?? "explore"}
+          totalRounds={execution?.totalRounds ?? 0}
+          content={taskMsg?.content ?? ""}
+          onClick={() => {
+            useChatStore.getState().setActiveSubAgentView(taskId ?? null);
+          }}
+        />
+      );
+    } else if (type === "read") {
       elements.push(<ReadToolGroup key={`read-${gi}`} items={items} />);
     } else if (type === "edit") {
       for (const item of items) {
@@ -463,6 +493,8 @@ export default function AISidebar() {
     return tab?.filePath ?? null;
   });
   const chatLoaded = useChatStore((s) => s.chatLoadedMap[chatKey] ?? true);
+  const activeSubAgentView = useChatStore((s) => s.activeSubAgentView);
+  const subAgentResults = useChatStore((s) => s.subAgentResultsMap);
   const { messages, isStreaming, streamingContent, addMessage, appendStreamingContent, clearStreamingContent, clearMessages, setStreaming, stopGeneration } = useChatStore(
     useShallow((s) => ({
       messages: s.messagesMap[chatKey] || emptyMessages,
@@ -1056,6 +1088,74 @@ const assistantMsg = addMessage(chatKey, { role: "assistant", content, promptTok
             continue;
           }
 
+          if (tc.name === "task") {
+            const description = String(args.description ?? "");
+            const prompt = String(args.prompt ?? "");
+            const subagentType = String(args.subagent_type ?? "explore") as "explore" | "general";
+
+            if (!description || !prompt) {
+              const toolMsg = addMessage(chatKey, {
+                role: "tool",
+                content: "Invalid task tool call: 'description' and 'prompt' are required.",
+                toolCallId: tc.id,
+                toolName: tc.name,
+              });
+              await appendMessage(chatKey, toolMsg);
+              continue;
+            }
+
+            setToolCallStatus({ name: "task", args: { description, subagent_type: subagentType } });
+
+            const taskId = crypto.randomUUID();
+            const client = getLLMClient(aiConfig);
+            const currentMode = usePermissionStore.getState().getSessionAiMode(chatKey);
+
+            const subResult = await runSubAgent({
+              prompt,
+              description,
+              subagentType,
+              ctx: toolCtx,
+              client,
+              signal: controller.signal,
+              tracer,
+              maxContext,
+              aiMode: currentMode,
+              providerId: aiConfig.providerId,
+              model: aiConfig.model,
+              onPermission,
+            });
+
+            const execution: SubAgentExecution = {
+              taskId,
+              description,
+              subagentType,
+              messages: subResult.messages,
+              totalRounds: subResult.totalRounds,
+              promptTokens: subResult.promptTokens,
+              completionTokens: subResult.completionTokens,
+              totalTokens: subResult.totalTokens,
+              cost: subResult.cost,
+              cachedTokens: subResult.cachedTokens,
+              status: controller.signal.aborted ? "cancelled" : "completed",
+              parentChatKey: chatKey,
+            };
+
+            useChatStore.getState().addSubAgentResult(taskId, execution);
+            useChatStore.getState().recordStandaloneUsage(chatKey, subResult.promptTokens, subResult.completionTokens, subResult.cost, subResult.cachedTokens);
+
+            const summaryLines = subResult.content.split("\n").slice(0, 5).join("\n");
+            const taskResultXml = `<task_result task_id="${taskId}" description="${description.replace(/"/g, "&quot;")}" type="${subagentType}" rounds="${subResult.totalRounds}">\n<summary>\n${summaryLines}\n</summary>\n<full_result>\n${subResult.content}\n</full_result>\n</task_result>`;
+
+            const toolMsg = addMessage(chatKey, {
+              role: "tool",
+              content: taskResultXml,
+              toolCallId: tc.id,
+              toolName: tc.name,
+            });
+            await appendMessage(chatKey, toolMsg);
+            continue;
+          }
+
           setToolCallStatus({ name: tc.name, args });
 
           const toolSpanId = tracer.startSpan("tool", `tool.${tc.name}`, {
@@ -1326,6 +1426,8 @@ if (id === "compact") {
 
       {showContext ? (
         <ContextView tabId={chatKey} providerId={aiConfig.providerId} model={aiConfig.model} docContent={docContent} />
+      ) : activeSubAgentView && subAgentResults[activeSubAgentView] ? (
+        <SubAgentView execution={subAgentResults[activeSubAgentView]} />
       ) : (
       <div className="moflow-ai-messages" ref={messagesContainerRef} role="log" aria-live="polite">
         {!chatLoaded ? (

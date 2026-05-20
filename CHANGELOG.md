@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.2.0 (2026-05-20)
+
+### New Features
+
+- **Sub-Agent Task Tool** — AI can now delegate tasks to specialized sub-agents via the "task" tool
+  - `explore` sub-agent: read-only code exploration, searching, and analysis (8 tools, max 10 rounds)
+  - `general` sub-agent: full-access multi-step tasks with write/edit capability (10 tools, max 15 rounds)
+  - Sub-agents run independent chat loops with fresh context (no parent conversation inheritance)
+  - Plan mode deny rules cascade to sub-agents (edit/runSkillScript denied in plan mode)
+  - Task tool results returned as `<task_result>` XML with summary + full_result
+
+- **Sub-Agent UI** — Interactive sub-agent visualization in the AI sidebar
+  - `SubAgentCard` — clickable summary card in main chat showing type badge, description, and rounds
+  - `SubAgentView` — detail view with full message history, reusing parent chat bubble styling
+  - "← Back to main conversation" navigation between main chat and sub-agent detail
+
+- **Editor List Item Icons** — Custom SVG icons for bullet list, checked/unchecked checkboxes in Crepe editor
+
+### Improvements
+
+- **Editor Bullet Serialization** — Markdown serialization now uses `-` (dash) as bullet character via `remarkStringifyOptionsCtx`
+- **Editor Mode Switch Sync** — Content now syncs on wysiwyg switch even without saved selection
+- **Editor CSS Fix** — `<ul>` list padding separated from `<ol>` with proper `padding-left` and `margin`
+- **Sub-Agent CSS Consistency** — Sub-agent view uses `--moflow-*` editor theme variables (matching sidebar convention), reuses `moflow-ai-message` / `moflow-ai-message-content` / `moflow-ai-tool-group` classes instead of separate styling
+
+### Bug Fixes
+
+- Fixed sub-agent UI not following editor theme (was using `--ui-*` app theme vars instead of `--moflow-*` editor vars)
+
 ## v1.1.1 (2026-05-20)
 
 ### Bug Fixes

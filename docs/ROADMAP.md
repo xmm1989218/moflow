@@ -924,7 +924,87 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v1.2 — Git 支持
+## v1.2.0 ✅ — Agent 调用能力
+
+### Design Decisions
+
+- **执行模型**：子代理运行完整 chat loop（多轮 tool calling），与主代理相同的 while 循环模式
+- **子代理类型**：explore（只读代码探索）+ general（通用多步任务）
+- **并发模型**：顺序执行（主代理每轮最多启动一个子代理），并发执行留到后续版本
+- **UI 交互**：主聊天显示摘要卡片，点击进入子代理详情视图（完整消息列表），"← 回到主对话"返回
+- **持久化**：仅 Task tool 最终结果写入主对话 JSONL；子代理中间消息纯内存；trace 记录 span
+- **Model**：子代理使用与主代理相同的 model 和 client
+- **Context**：子代理不继承父级对话历史，仅收到 prompt + workspace info + docContent
+- **权限**：继承父级 sessionRules + onPermission callback；Plan 模式 deny 规则级联传递
+- **Token 计费**：子代理 usage 累加到父级 chatStore.recordUsage()
+- **Abort**：直接传递父级 AbortSignal
+- **轮次限制**：子代理独立计数（explore: 10, general: 15）；Task tool 不计主代理 maxToolRounds
+
+### Type & Data Structure
+
+- [x] `src/lib/types.ts` — 新增 `SubAgentResult`（content, toolCalls, totalRounds, usage）、`SubAgentExecution`（taskId, description, subagentType, messages, totalRounds, usage, status）、`ToolCallSummary`（name, argsBrief, round）
+
+### Tracer 扩展
+
+- [x] `src/lib/tracer.ts` — `ActiveSpan.type` 扩展 `"subagent"`；子代理操作通过父级 tracer 创建 span
+
+### 子代理执行引擎
+
+- [x] `src/lib/subAgentRunner.ts`（新文件）— `runSubAgent(prompt, type, ctx, client, signal, tracer, onPermission, maxRounds)`
+- [x] 构建 system prompt（简化版：不含 `<available_skills>` 等非必要内容，仅 workspace info + docContent + 子代理 prompt）
+- [x] 内部维护独立 `Message[]`（纯内存，不进 chatStore）
+- [x] `while(round <= maxRounds)` 循环（explore: 10, general: 15）
+- [x] Plan 模式级联：父级 plan → 子代理强制加入 PLAN_DENY_RULES
+- [x] explore 工具集：outline/read/readSection/grep/find/glob/ls/webfetch（8 个只读）
+- [x] general 工具集：全部 13 工具（不含 question/skill，这两个仅主代理用）
+- [ ] 子代理的 question tool 需求通过 Promise 阻塞传递给主代理 UI（复用 QuestionBar 模式）
+- [x] 返回 `SubAgentResult`
+
+### Task Tool 定义与执行
+
+- [x] `src/lib/tools.ts` — 新增 `makeTaskTool()`（description + prompt + subagent_type 参数）
+- [x] `executeTool` 新增 `"task"` case：调用 `runSubAgent()`，生成 `<task_result>` XML 返回
+- [x] 子代理 usage 累加到父级 `chatStore.recordUsage()`
+- [x] Task tool 不计主代理 maxToolRounds 轮次
+
+### System Prompt 调整
+
+- [x] `src/lib/contextBuilder.ts` — `buildSystemPrompt` 加入 `<available_subagents>` XML 块
+
+### Chat Store 扩展
+
+- [x] `src/stores/chatStore.ts` — 新增 `activeSubAgentView: string | null`（taskId 或 null = 主对话）
+- [x] 新增 `subAgentResultsMap: Record<string, SubAgentExecution>`（taskId → 完整执行数据）
+- [x] 新增 actions：`setActiveSubAgentView`, `addSubAgentResult`, `clearSubAgentViews`
+
+### AISidebar 集成
+
+- [x] `src/components/AISidebar/AISidebar.tsx` — handleSend 中 `tc.name === "task"` 分支
+- [x] 保存 `SubAgentExecution` 到 `subAgentResultsMap`
+- [x] ToolCallStatus 显示 "Agent: {description}" + spinner
+- [x] 视图切换：`activeSubAgentView` 控制渲染主对话 vs 子代理详情
+
+### 子代理 UI 组件
+
+- [x] `src/components/AISidebar/SubAgentView.tsx`（新文件）— 子代理详情视图
+  - Header："← 回到主对话" + description + type badge
+  - 内容：子代理完整消息列表（复用现有消息渲染组件）
+  - 底部：无输入框
+- [x] `src/components/AISidebar/SubAgentCard.tsx`（新文件）— 主聊天中的摘要卡片
+  - 类型图标 + description + rounds + 摘要文本
+  - onClick → `setActiveSubAgentView(taskId)`
+
+### i18n
+
+- [x] 4 个 locale 文件新增 task 相关 key（ai.toolLabel.task, ai.task.backToMain, ai.task.explore, ai.task.general, ai.toolStatus.task 等）
+
+### CSS
+
+- [x] `AISidebar.css` — 子代理卡片样式 + 详情视图样式
+
+---
+
+## v1.3.0 — Git 支持
 
 ### Git 支持
 
@@ -934,17 +1014,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v1.3 — Agent 调用能力
-
-### Agent 调用能力
-
-- [ ] Task tool — AI 可启动子代理处理子任务（独立 context、独立权限、并发执行）
-- [ ] 子代理类型：explore（只读代码探索）、general（通用多步任务）
-- [ ] 子代理结果返回主对话流
-
----
-
-## v1.4 — AI 增强 & 聊天框呈现
+## v1.4.0 — AI 增强 & 聊天框呈现
 
 ### AI 增强
 
@@ -966,7 +1036,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v1.x — 后续迭代
+## v1.5.0 — 后续迭代
 
 ### 编辑器
 

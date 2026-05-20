@@ -112,6 +112,15 @@ export default {
   "ai.toolLabel.explored": "探索済み",
   "ai.toolLabel.exploring": "探索中",
   "ai.toolLabel.question": "質問",
+  "ai.toolLabel.task": "エージェント",
+
+  "ai.task.backToMain": "← メイン会話に戻る",
+  "ai.task.explore": "探索",
+  "ai.task.general": "汎用",
+  "ai.task.rounds": "ラウンド",
+  "ai.task.noMessages": "メッセージなし",
+
+  "ai.toolStatus.task": "エージェント: {description}",
   "ai.error.timeout": "リクエストがタイムアウトしました",
   "ai.error.requestFailed": "リクエストに失敗しました",
   "ai.error.toolExecution": "ツールの実行エラー",

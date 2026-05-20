@@ -173,4 +173,40 @@ describe("contextBuilder", () => {
       expect(prompt).toContain("truncated");
     });
   });
+
+  describe("buildSystemPrompt — subagent section", () => {
+    it("includes available_subagents in no-workspace mode", () => {
+      const { prompt } = buildSystemPrompt("hello", 128000);
+      expect(prompt).toContain("<available_subagents>");
+      expect(prompt).toContain('name="explore"');
+      expect(prompt).toContain('name="general"');
+    });
+
+    it("includes available_subagents in workspace mode", () => {
+      const { prompt } = buildSystemPrompt("hello", 128000, false, "/ws", "/ws/a.md");
+      expect(prompt).toContain("<available_subagents>");
+    });
+
+    it("includes available_subagents with empty document", () => {
+      const { prompt } = buildSystemPrompt("", 128000);
+      expect(prompt).toContain("<available_subagents>");
+    });
+
+    it("includes available_subagents in truncated document", () => {
+      const longDoc = "x".repeat(200000);
+      const { prompt } = buildSystemPrompt(longDoc, 4000, true);
+      expect(prompt).toContain("<available_subagents>");
+    });
+
+    it("includes available_subagents in workspace with no file", () => {
+      const { prompt } = buildSystemPrompt("", 128000, false, "/ws", null);
+      expect(prompt).toContain("<available_subagents>");
+    });
+
+    it("includes available_subagents in plan mode", () => {
+      const { prompt } = buildSystemPrompt("hello", 128000, false, undefined, undefined, "plan");
+      expect(prompt).toContain("<available_subagents>");
+      expect(prompt).toContain("<mode>plan</mode>");
+    });
+  });
 });

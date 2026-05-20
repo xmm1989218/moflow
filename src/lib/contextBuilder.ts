@@ -84,6 +84,16 @@ CRITICAL: Plan mode ACTIVE — you are in READ-ONLY phase. You MUST NOT write, e
 You may ONLY read, search, analyze, and provide plans or suggestions. When the user asks you to make changes, respond with a detailed plan of what you would do, but do NOT execute any file modifications.
 This constraint is absolute and has zero exceptions.`;
 
+const SUBAGENTS_INSTRUCTION = `# Sub-agents
+You can delegate tasks to specialized sub-agents using the "task" tool. Each invocation starts a fresh context — your prompt must contain all necessary context for the sub-agent.
+
+<available_subagents>
+<subagent name="explore" description="Read-only code exploration. Fast agent for searching, reading, and analyzing codebases. Cannot modify files." />
+<subagent name="general" description="General-purpose agent with full tool access for complex multi-step tasks. Can write and edit files." />
+</available_subagents>
+
+Use 'explore' when you need to quickly find files, search code, or analyze structures. Use 'general' for tasks requiring multiple steps or file modifications.`;
+
 export function buildSystemPrompt(
   docContent: string,
   maxContext: number,
@@ -95,6 +105,7 @@ export function buildSystemPrompt(
   const base = DEFAULT_PROMPT;
   const skillSection = buildSkillInstruction(workspaceRoot, activeFilePath);
   const modeSection = aiMode === "plan" ? "\n" + PLAN_MODE_INSTRUCTION + "\n" : "";
+  const subagentSection = "\n" + SUBAGENTS_INSTRUCTION + "\n";
   const hasWorkspace = !!workspaceRoot;
 
   if (hasWorkspace) {
@@ -112,6 +123,7 @@ export function buildSystemPrompt(
           TOOLS_GUIDE,
           "",
           WEBFETCH_INSTRUCTION,
+          subagentSection,
           skillSection,
           modeSection,
         ].join("\n"),
@@ -136,6 +148,7 @@ export function buildSystemPrompt(
           TOOLS_GUIDE,
           "",
           WEBFETCH_INSTRUCTION,
+          subagentSection,
           skillSection,
           modeSection,
         ].join("\n"),
@@ -173,6 +186,7 @@ export function buildSystemPrompt(
       WEBFETCH_INSTRUCTION,
       "",
       "When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.",
+      subagentSection,
       skillSection,
       modeSection,
     ].join("\n");
@@ -192,6 +206,7 @@ export function buildSystemPrompt(
         "The user has no document open.",
         "",
         WEBFETCH_INSTRUCTION,
+        subagentSection,
         skillSection,
         modeSection,
       ].join("\n"),
@@ -215,6 +230,7 @@ export function buildSystemPrompt(
           "",
           writeNote,
           WEBFETCH_INSTRUCTION,
+          subagentSection,
           skillSection,
           modeSection,
         ].join("\n"),
@@ -248,6 +264,7 @@ export function buildSystemPrompt(
     WEBFETCH_INSTRUCTION,
     "",
     "When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.",
+    subagentSection,
     skillSection,
     modeSection,
   ].join("\n");

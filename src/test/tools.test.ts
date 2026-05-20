@@ -67,11 +67,12 @@ describe('tools', () => {
 
     it('getToolDefinitions returns correct sets', () => {
       const noTools = getToolDefinitions(false, null)
-      expect(noTools.map((d) => d.function.name)).toEqual(['webfetch', 'question'])
+      expect(noTools.map((d) => d.function.name)).toEqual(['webfetch', 'question', 'task'])
 
       const docOnly = getToolDefinitions(true, null)
       expect(docOnly.map((d) => d.function.name)).toContain('outline')
       expect(docOnly.map((d) => d.function.name)).toContain('grep')
+      expect(docOnly.map((d) => d.function.name)).toContain('task')
       expect(docOnly.map((d) => d.function.name)).not.toContain('find')
 
       const withWs = getToolDefinitions(true, '/some/root')
@@ -79,11 +80,36 @@ describe('tools', () => {
       expect(withWs.map((d) => d.function.name)).toContain('find')
       expect(withWs.map((d) => d.function.name)).toContain('glob')
       expect(withWs.map((d) => d.function.name)).toContain('ls')
+      expect(withWs.map((d) => d.function.name)).toContain('task')
 
       const wsNoDoc = getToolDefinitions(false, '/some/root')
       expect(wsNoDoc.map((d) => d.function.name)).toContain('outline')
       expect(wsNoDoc.map((d) => d.function.name)).toContain('read')
       expect(wsNoDoc.map((d) => d.function.name)).toContain('find')
+      expect(wsNoDoc.map((d) => d.function.name)).toContain('task')
+    })
+
+    it('task tool is always included', () => {
+      const noWs = getToolDefinitions(false, null)
+      expect(noWs.map((d) => d.function.name)).toContain('task')
+
+      const withWs = getToolDefinitions(false, '/ws')
+      expect(withWs.map((d) => d.function.name)).toContain('task')
+
+      const planMode = getToolDefinitions(false, '/ws', null, 'plan')
+      expect(planMode.map((d) => d.function.name)).toContain('task')
+    })
+
+    it('task tool has correct parameters', () => {
+      const tools = getToolDefinitions(false, null)
+      const taskTool = tools.find((d) => d.function.name === 'task')
+      expect(taskTool).toBeDefined()
+      expect(taskTool!.function.parameters).toHaveProperty('properties.description')
+      expect(taskTool!.function.parameters).toHaveProperty('properties.prompt')
+      expect(taskTool!.function.parameters).toHaveProperty('properties.subagent_type')
+      expect(taskTool!.function.parameters.required).toContain('description')
+      expect(taskTool!.function.parameters.required).toContain('prompt')
+      expect(taskTool!.function.parameters.required).toContain('subagent_type')
     })
   })
 
@@ -215,6 +241,13 @@ describe('tools', () => {
         const longDoc = 'x'.repeat(40000)
         const result = await executeTool('read', { offset: 1, limit: 1 }, mockSignal, { docContent: longDoc })
         expect(result.length).toBeLessThan(40000)
+      })
+    })
+
+    describe('task', () => {
+      it('returns unknown tool for task via executeTool (handled in AISidebar)', async () => {
+        const result = await executeTool('task', { description: 'test', prompt: 'test', subagent_type: 'explore' }, mockSignal, docCtx)
+        expect(result).toContain('Unknown tool')
       })
     })
   })

@@ -6,7 +6,7 @@ const MAX_ARGS_SUMMARY = 200;
 
 interface ActiveSpan {
   id: string;
-  type: "llm" | "tool" | "permission" | "compact";
+  type: "llm" | "tool" | "permission" | "compact" | "subagent";
   name: string;
   startTime: number;
   roundIndex?: number;

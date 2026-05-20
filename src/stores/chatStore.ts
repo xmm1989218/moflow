@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { appendMessage, clearChat, removeChat, loadChat, clearTrace } from "../lib/chatPersistence";
 import { appendInputHistory, loadInputHistory as loadInputHistoryFromFile } from "../lib/inputHistory";
-import type { ToolCall } from "../lib/types";
+import type { ToolCall, SubAgentExecution } from "../lib/types";
 
 export const COMPACT_TAIL_TURNS = 2;
 
@@ -32,6 +32,8 @@ interface ChatState {
   abortController: AbortController | null;
   streamingContentMap: Record<string, string>;
   inputHistoryMap: Record<string, string[]>;
+  activeSubAgentView: string | null;
+  subAgentResultsMap: Record<string, SubAgentExecution>;
 
   getContext: (tabId: string) => Message[];
   addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
@@ -48,6 +50,9 @@ interface ChatState {
   deleteChat: (tabId: string) => void;
   appendInputHistory: (tabId: string, text: string) => void;
   loadInputHistory: (tabId: string) => Promise<void>;
+  setActiveSubAgentView: (taskId: string | null) => void;
+  addSubAgentResult: (taskId: string, execution: SubAgentExecution) => void;
+  clearSubAgentViews: (chatKey: string) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -62,6 +67,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   abortController: null,
   streamingContentMap: {},
   inputHistoryMap: {},
+  activeSubAgentView: null,
+  subAgentResultsMap: {},
 
   getContext: (tabId: string) => {
     const existing = get().contextMap[tabId];
@@ -212,32 +219,40 @@ export const useChatStore = create<ChatState>((set, get) => ({
   clearMessages: (tabId) => {
     clearChat(tabId);
     clearTrace(tabId);
-    set((state) => ({
-      messagesMap: {
-        ...state.messagesMap,
-        [tabId]: [],
-      },
-      contextMap: {
-        ...state.contextMap,
-        [tabId]: [],
-      },
-      contextTokensMap: {
-        ...state.contextTokensMap,
-        [tabId]: 0,
-      },
-      totalTokensMap: {
-        ...state.totalTokensMap,
-        [tabId]: 0,
-      },
-      costMap: {
-        ...state.costMap,
-        [tabId]: 0,
-      },
-      cachedTokensMap: {
-        ...state.cachedTokensMap,
-        [tabId]: 0,
-      },
-    }));
+    set((state) => {
+      const newSubAgentMap = { ...state.subAgentResultsMap };
+      for (const [id, exec] of Object.entries(newSubAgentMap)) {
+        if (exec.parentChatKey === tabId) delete newSubAgentMap[id];
+      }
+      return {
+        messagesMap: {
+          ...state.messagesMap,
+          [tabId]: [],
+        },
+        contextMap: {
+          ...state.contextMap,
+          [tabId]: [],
+        },
+        contextTokensMap: {
+          ...state.contextTokensMap,
+          [tabId]: 0,
+        },
+        totalTokensMap: {
+          ...state.totalTokensMap,
+          [tabId]: 0,
+        },
+        costMap: {
+          ...state.costMap,
+          [tabId]: 0,
+        },
+        cachedTokensMap: {
+          ...state.cachedTokensMap,
+          [tabId]: 0,
+        },
+        subAgentResultsMap: newSubAgentMap,
+        activeSubAgentView: state.activeSubAgentView && !newSubAgentMap[state.activeSubAgentView] ? null : state.activeSubAgentView,
+      };
+    });
   },
 
   cleanupIncompleteToolCalls: (tabId) => {
@@ -309,6 +324,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       delete newCachedTokens[tabId];
       const newInputHistory = { ...state.inputHistoryMap };
       delete newInputHistory[tabId];
+      const newSubAgentMap = { ...state.subAgentResultsMap };
+      for (const [id, exec] of Object.entries(newSubAgentMap)) {
+        if (exec.parentChatKey === tabId) delete newSubAgentMap[id];
+      }
       return {
         messagesMap: newMessages,
         chatLoadedMap: newChatLoaded,
@@ -318,6 +337,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         costMap: newCost,
         cachedTokensMap: newCachedTokens,
         inputHistoryMap: newInputHistory,
+        subAgentResultsMap: newSubAgentMap,
+        activeSubAgentView: state.activeSubAgentView && !newSubAgentMap[state.activeSubAgentView] ? null : state.activeSubAgentView,
       };
     });
   },
@@ -343,4 +364,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       inputHistoryMap: { ...state.inputHistoryMap, [tabId]: history },
     }));
   },
+
+  setActiveSubAgentView: (taskId) => set({ activeSubAgentView: taskId }),
+
+  addSubAgentResult: (taskId, execution) =>
+    set((state) => ({
+      subAgentResultsMap: { ...state.subAgentResultsMap, [taskId]: execution },
+    })),
+
+  clearSubAgentViews: (chatKey) =>
+    set((state) => {
+      const newMap = { ...state.subAgentResultsMap };
+      for (const [id, exec] of Object.entries(newMap)) {
+        if (exec.parentChatKey === chatKey) delete newMap[id];
+      }
+      return {
+        subAgentResultsMap: newMap,
+        activeSubAgentView: state.activeSubAgentView && !newMap[state.activeSubAgentView] ? null : state.activeSubAgentView,
+      };
+    }),
 }));

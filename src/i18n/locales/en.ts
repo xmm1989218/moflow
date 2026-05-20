@@ -204,6 +204,15 @@ export default {
   "ai.toolLabel.explored": "Explored",
   "ai.toolLabel.exploring": "Exploring",
   "ai.toolLabel.question": "Asking",
+  "ai.toolLabel.task": "Agent",
+
+  "ai.task.backToMain": "← Back to main conversation",
+  "ai.task.explore": "Explore",
+  "ai.task.general": "General",
+  "ai.task.rounds": "rounds",
+  "ai.task.noMessages": "No messages available",
+
+  "ai.toolStatus.task": "Agent: {description}",
 
   "permission.allow": "Allow",
   "permission.alwaysAllow": "Always Allow",
