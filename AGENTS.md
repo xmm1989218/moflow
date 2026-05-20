@@ -143,7 +143,8 @@ src-tauri/              # Backend (Rust + Tauri)
 - Proxy: `proxyUrl` (non-empty = enabled) stored in settings; Rust `ProxyState` synced via `set_proxy` command; WebView2 proxy set at window creation (requires restart); webfetch/export_pdf use proxy immediately
 - `contextMap` (LLM context) is separate from `messagesMap` (display); `contextStart` derived from last `/compact` position
 - `/compact` appends divider message + AI summary; auto-compact triggers when `contextTokens > maxContext * 0.8`
-- `buildSystemPrompt` uses model's actual `maxContext` (not hardcoded); workspace mode: filename label + switch-file note; no-workspace mode: unchanged; tool descriptions only in API `tools` parameter (not duplicated in system prompt)
+- `buildSystemPrompt` uses model's actual `maxContext` (not hardcoded); workspace mode: filename label + switch-file note; no-workspace mode: unchanged; tool descriptions only in API `tools` parameter (not duplicated in system prompt); no separate WEBFETCH_INSTRUCTION or SUBAGENTS_INSTRUCTION constants — all tool usage guidance consolidated into tool descriptions
+- Plan/Build mode: `PLAN_MODE_INSTRUCTION` has Responsibility (read/search/explore, delegate, build plan, ask questions) + Important (no file changes, priority override); `BUILD_MODE_INSTRUCTION` explicitly tells LLM on plan→build transition; `modeSection` in `buildSystemPrompt` handles both modes
 - Damaged JSONL lines are skipped on load; if any corruption detected, a repair file is written and renamed to replace the original (best-effort)
 - Usage badge shows: context tokens, usage %, cumulative total tokens, cumulative cost
 - `completionTokensMap`, `totalTokensMap`, `costMap`, `cachedTokensMap` are memory-only (reset on restart)
@@ -157,7 +158,7 @@ src-tauri/              # Backend (Rust + Tauri)
 - `closeWorkspace` only closes workspace-related tabs (files under workspaceRoot), preserves other tabs; returns `false` if user cancels unsaved dialog
 - Opening a new directory auto-closes current workspace first (with unsaved confirm)
 - Shortcuts centralized in `src/lib/shortcuts.ts`, platform-aware display (Ctrl vs ⌘); user overrides stored in `shortcutOverrides` (settings.json), applied via `applyShortcutOverrides()`; App.tsx uses dynamic matching via `getAllShortcuts()` instead of hardcoded if-else
-- AI mode (Plan/Build): `aiMode` stored in settings + `sessionAiModeMap` in permissionStore for per-session override; Plan mode injects deny session rules for `edit` + `runSkillScript` + adds `<mode>plan</mode>` to system prompt (double guarantee); Build mode is default (all ask); AISidebar header toggle + Tab key switch (sidebar-only, textarea not focused)
+- AI mode (Plan/Build): `aiMode` stored in settings + `sessionAiModeMap` in permissionStore for per-session override; Plan mode injects deny session rules for `edit` + `runSkillScript` + adds `PLAN_MODE_INSTRUCTION` to system prompt (double guarantee); Build mode adds `BUILD_MODE_INSTRUCTION`; AISidebar header toggle + Tab key switch (sidebar-only, textarea not focused)
 - Shortcuts section in Settings Panel: `ShortcutsSection` component with key capture UI, conflict detection, per-item reset, reset all
 - 13 AI tools: outline/read/readSection/grep/find/glob/ls/webfetch/write/edit/question/skill/runSkillScript; `getToolDefinitions(needsDocTools, workspaceRoot, activeFilePath)` combines by mode
 - Permission system: `checkPathAccess()` replaces `isPathAllowed()` — workspace-internal paths auto-allow, workspace-external paths evaluate via permission engine (session rules > global rules > default `ask`); `allowFsScope()` extends Tauri FS scope on allow

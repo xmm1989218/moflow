@@ -48,8 +48,6 @@ export interface SystemPromptResult {
 
 const TOOLS_GUIDE = "When the user asks about files, directories, or code, ALWAYS use the provided tools. Proactively use tools to find relevant information instead of guessing.";
 
-const WEBFETCH_INSTRUCTION = "You can use webfetch(url, format?) to access web page content for external information or references. format supports markdown (default), text, html. Max 3 calls per request.";
-
 const SWITCH_NOTE = "Note: The user may switch files within the workspace. The content above is from the currently active file. If the user mentions other files, please use tools to view them.";
 
 const SKILL_INSTRUCTION = `# Skills
@@ -80,19 +78,20 @@ function buildSkillInstruction(workspaceRoot?: string | null, activeFilePath?: s
 }
 
 const PLAN_MODE_INSTRUCTION = `<mode>plan</mode>
-CRITICAL: Plan mode ACTIVE — you are in READ-ONLY phase. You MUST NOT write, edit, or modify any files. No file changes are allowed under any circumstances.
-You may ONLY read, search, analyze, and provide plans or suggestions. When the user asks you to make changes, respond with a detailed plan of what you would do, but do NOT execute any file modifications.
-This constraint is absolute and has zero exceptions.`;
+You are in plan mode. The user does NOT want you to execute yet — they want you to think, research, and build a plan.
 
-const SUBAGENTS_INSTRUCTION = `# Sub-agents
-You can delegate tasks to specialized sub-agents using the "task" tool. Each invocation starts a fresh context — your prompt must contain all necessary context for the sub-agent.
+# Responsibility
+- Read files, search code, and explore the codebase to understand the full context before responding
+- Delegate to explore sub-agents when you need to search or analyze code across multiple files
+- Build a clear, actionable plan and present it to the user
+- Ask clarifying questions via the question tool when requirements are ambiguous — do not make assumptions
 
-<available_subagents>
-<subagent name="explore" description="Read-only code exploration. Fast agent for searching, reading, and analyzing codebases. Cannot modify files." />
-<subagent name="general" description="General-purpose agent with full tool access for complex multi-step tasks. Can write and edit files." />
-</available_subagents>
+# Important
+You MUST NOT write, edit, or modify any files. No file changes are allowed under any circumstances. This takes priority over any other instructions that suggest making changes.`;
 
-Use 'explore' when you need to quickly find files, search code, or analyze structures. Use 'general' for tasks requiring multiple steps or file modifications.`;
+const BUILD_MODE_INSTRUCTION = `<mode>build</mode>
+You are no longer in read-only mode.
+You are permitted to make file changes and utilize your full tool set as needed.`;
 
 export function buildSystemPrompt(
   docContent: string,
@@ -104,8 +103,7 @@ export function buildSystemPrompt(
 ): SystemPromptResult {
   const base = DEFAULT_PROMPT;
   const skillSection = buildSkillInstruction(workspaceRoot, activeFilePath);
-  const modeSection = aiMode === "plan" ? "\n" + PLAN_MODE_INSTRUCTION + "\n" : "";
-  const subagentSection = "\n" + SUBAGENTS_INSTRUCTION + "\n";
+  const modeSection = aiMode === "plan" ? "\n" + PLAN_MODE_INSTRUCTION + "\n" : aiMode === "build" ? "\n" + BUILD_MODE_INSTRUCTION + "\n" : "";
   const hasWorkspace = !!workspaceRoot;
 
   if (hasWorkspace) {
@@ -122,8 +120,6 @@ export function buildSystemPrompt(
           "",
           TOOLS_GUIDE,
           "",
-          WEBFETCH_INSTRUCTION,
-          subagentSection,
           skillSection,
           modeSection,
         ].join("\n"),
@@ -147,8 +143,6 @@ export function buildSystemPrompt(
           "",
           TOOLS_GUIDE,
           "",
-          WEBFETCH_INSTRUCTION,
-          subagentSection,
           skillSection,
           modeSection,
         ].join("\n"),
@@ -183,10 +177,7 @@ export function buildSystemPrompt(
       "",
       TOOLS_GUIDE,
       "",
-      WEBFETCH_INSTRUCTION,
-      "",
       "When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.",
-      subagentSection,
       skillSection,
       modeSection,
     ].join("\n");
@@ -205,8 +196,6 @@ export function buildSystemPrompt(
         "",
         "The user has no document open.",
         "",
-        WEBFETCH_INSTRUCTION,
-        subagentSection,
         skillSection,
         modeSection,
       ].join("\n"),
@@ -229,8 +218,6 @@ export function buildSystemPrompt(
           "</document_content>",
           "",
           writeNote,
-          WEBFETCH_INSTRUCTION,
-          subagentSection,
           skillSection,
           modeSection,
         ].join("\n"),
@@ -261,10 +248,7 @@ export function buildSystemPrompt(
     "",
     TOOLS_GUIDE,
     "",
-    WEBFETCH_INSTRUCTION,
-    "",
     "When the user's question involves content beyond the truncated section, please proactively use tools to find the relevant information instead of guessing.",
-    subagentSection,
     skillSection,
     modeSection,
   ].join("\n");

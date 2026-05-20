@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.2.1 (2026-05-21)
+
+### Improvements
+
+- **System prompt consolidation** — Moved `WEBFETCH_INSTRUCTION` and `SUBAGENTS_INSTRUCTION` from system prompt into tool descriptions, eliminating redundancy (LLM reads each instruction only once)
+  - webfetch tool: added "Max 3 calls per request" and format usage guidance (markdown for general reading, text for plain text, html for DOM parsing)
+  - task tool: sub-agent type descriptions already complete in tool definition, no separate section needed
+
+- **Plan mode prompt enhanced** — Rewrote `PLAN_MODE_INSTRUCTION` following opencode's approach
+  - Added "Responsibility" section: read/search/explore codebase, delegate to explore sub-agents, build actionable plans, ask clarifying questions via question tool
+  - Added "Important" section: explicit priority override — no file changes under any circumstances
+  - Removed old "CRITICAL" / "zero exceptions" language in favor of structured sections
+
+- **Build mode instruction** — Added `BUILD_MODE_INSTRUCTION` so LLM explicitly knows when it exits plan mode
+
 ## v1.2.0 (2026-05-20)
 
 ### New Features

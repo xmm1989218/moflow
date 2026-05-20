@@ -957,8 +957,23 @@ Enable the AI to actively explore the document instead of relying on truncated c
 - [x] Plan 模式级联：父级 plan → 子代理强制加入 PLAN_DENY_RULES
 - [x] explore 工具集：outline/read/readSection/grep/find/glob/ls/webfetch（8 个只读）
 - [x] general 工具集：全部 13 工具（不含 question/skill，这两个仅主代理用）
-- [ ] 子代理的 question tool 需求通过 Promise 阻塞传递给主代理 UI（复用 QuestionBar 模式）
 - [x] 返回 `SubAgentResult`
+
+---
+
+## v1.2.1 ✅ — Prompt 精简 & Plan Mode 增强
+
+### System Prompt 精简
+
+- [x] 删除 `WEBFETCH_INSTRUCTION` 常量及所有引用（信息合并进 webfetch tool description）
+- [x] 删除 `SUBAGENTS_INSTRUCTION` 常量及所有引用（信息合并进 task tool description）
+- [x] webfetch tool description 添加 "Max 3 calls per request" 限制
+- [x] webfetch format 参数 description 添加使用场景指引（markdown/text/html 各自适用场景）
+
+### Plan Mode 增强（follow opencode）
+
+- [x] 重写 `PLAN_MODE_INSTRUCTION`：增加 Responsibility（read/search/explore, delegate explore sub-agents, build plan, ask clarifying questions）+ Important（no file changes, priority override）
+- [x] 新增 `BUILD_MODE_INSTRUCTION`（plan → build 模式切换时明确告知 LLM）
 
 ### Task Tool 定义与执行
 

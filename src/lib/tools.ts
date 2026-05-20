@@ -259,7 +259,7 @@ export function makeWebfetchTool(): ToolDefinition {
     type: "function",
     function: {
       name: "webfetch",
-      description: "Access web page content at a URL. Supports three formats: markdown, text, html. Only http/https.",
+      description: "Access web page content at a URL. Supports three formats: markdown, text, html. Only http/https. Max 3 calls per request.",
       parameters: {
         type: "object",
         properties: {
@@ -270,7 +270,7 @@ export function makeWebfetchTool(): ToolDefinition {
           format: {
             type: "string",
             enum: ["markdown", "text", "html"],
-            description: "Return format: markdown (default), text, html",
+            description: "Return format. markdown (default): general reading and reference. text: plain text only, no structure or links. html: raw HTML, for parsing DOM or extracting specific elements.",
           },
         },
         required: ["url"],
