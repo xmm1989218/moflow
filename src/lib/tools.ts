@@ -724,17 +724,17 @@ async function resolvePathAndCheckWritePermission(
     return { error: "No workspace open and no active file. Please provide an absolute file path." };
   }
 
-  if (workspaceRoot && !isPathInsideWorkspace(absPath, workspaceRoot)) {
-    const { allowed, error } = await checkPathAccess(absPath, workspaceRoot, ctx, onPermission);
-    if (!allowed) return { error: error ?? "Access denied: path is outside the workspace" };
-  }
-
   if (workspaceRoot && isPathInsideWorkspace(absPath, workspaceRoot)) {
     return { absPath };
   }
 
   if (!workspaceRoot && activeFilePath && toPosix(absPath).toLowerCase() === toPosix(activeFilePath).toLowerCase()) {
     return { absPath };
+  }
+
+  if (workspaceRoot && !isPathInsideWorkspace(absPath, workspaceRoot)) {
+    const { allowed, error } = await checkPathAccess(absPath, workspaceRoot, ctx, onPermission);
+    if (!allowed) return { error: error ?? 'Access denied: path is outside the workspace' };
   }
 
   const permissions = ctx.permissions ?? DEFAULT_PERMISSIONS;
