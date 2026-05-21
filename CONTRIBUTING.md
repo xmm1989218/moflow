@@ -57,11 +57,12 @@ bun run lint
 ```
 src/                    # Frontend (React + TypeScript)
   components/
-    AISidebar/          # AI chat sidebar (doCompact, auto-compact, UsageBadge)
-                          AISidebar.css — sidebar layout + chat bubble styles (trimmed)
+    AISidebar/          # AI chat sidebar (doCompact, auto-compact, UsageBadge, tracer instrumentation)
+                          AISidebar.css — sidebar layout + chat bubble + callout + question bar styles
                           MessageContent.css — Markdown element selectors (retained)
                           ContextView.tsx — context inspection panel
                           PermissionBar.tsx — inline permission consent bar (allow/always/deny)
+                          QuestionBar.tsx — wizard-style question form (radio/checkbox/custom input)
     ConfirmCloseDialog/ # Unsaved changes dialog (Tailwind, no CSS file)
     Editor/             # Milkdown editor wrapper + SelectionAIPanel
                           Editor.css — ProseMirror/Crepe/CodeMirror DOM overrides (retained)
@@ -75,7 +76,7 @@ src/                    # Frontend (React + TypeScript)
   index.css             # Global styles + @theme block (73 CSS vars → Tailwind namespace)
   stores/
     appStore.ts         # Re-exports from tabStore, themeStore, etc.
-    chatStore.ts        # AI chat state (streamingContentMap, contextMap, cleanupIncompleteToolCalls)
+    chatStore.ts        # AI chat state (streamingContentMap, contextMap, inputHistoryMap, cleanupIncompleteToolCalls, newMessageId, addMessage(id?), undoArchiveMap, undoFromMessage)
     aiSelectionStore.ts # Selection AI panel state
     searchStore.ts      # Find & replace state (per-tab editorViewMap)
     sessionStore.ts     # Session persistence (workspaceRoot)
@@ -94,7 +95,8 @@ src/                    # Frontend (React + TypeScript)
       ja.ts             # Japanese locale (AI-generated)
       ko.ts             # Korean locale (AI-generated)
   lib/
-    chatPersistence.ts  # JSONL chat history (chatKey-based, safeFileName, append, load, repair)
+    chatPersistence.ts  # JSONL chat history (chatKey-based, safeFileName, append, load, repair, rewriteChat, backupChatForUndo)
+    inputHistory.ts     # Per-session input history (loadInputHistory/saveInputHistory/appendInputHistory)
     contextBuilder.ts   # System prompt builder (workspaceRoot, activeFilePath, dynamic maxContext)
     modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
     llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling)
@@ -106,7 +108,10 @@ src/                    # Frontend (React + TypeScript)
     themeCSS.ts         # Dynamic theme CSS generation
     permission.ts       # Permission engine (wildcard matching, evaluateWithSession, generateAlwaysPattern)
     skillManager.ts     # Skill discovery, SKILL.md parsing, script execution
-    tools.ts            # AI tool definitions + execution (outline, read, readSection, grep, find, glob, ls, webfetch, write, edit, skill, runSkillScript)
+    tools.ts            # AI tool definitions + execution (outline, read, readSection, grep, find, glob, ls, webfetch, write, edit, question, skill, runSkillScript)
+    undoManager.ts      # Undo primitives (commit/undo/restore) + UndoDeps DI
+    snapshot.ts         # TypeScript invoke wrappers for 6 snapshot commands
+    pathUtils.ts        # toPosix/posixDirname/posixBasename cross-platform path utilities
     types.ts            # Shared types (ToolCall, ToolDefinition, ChatMessage, SkillMeta)
     updater.ts          # Auto-update with proxy support
   App.tsx               # Root component
@@ -114,9 +119,10 @@ src/                    # Frontend (React + TypeScript)
 
 src-tauri/              # Backend (Rust + Tauri)
   src/lib.rs            # Commands (toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, execute_script, fetch_skill_registry)
+  src/snapshot.rs       # Snapshot commands (snapshot_init/commit/checkout_files/restore/log/destroy) + 24 tests
   src/main.rs           # Entry point
   tauri.conf.json       # Tauri config (window: [] for manual creation, bundle, security)
-  Cargo.toml            # Rust dependencies (reqwest+socks, tokio, tokio-util, htmd, url)
+  Cargo.toml            # Rust dependencies (reqwest+socks, tokio, tokio-util, htmd, url, git2)
   icons/                # App icons (PNG, ICO, ICNS)
 ```
 

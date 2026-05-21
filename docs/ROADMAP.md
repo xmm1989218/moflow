@@ -1019,7 +1019,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v1.3.0 — 消息撤销
+## v1.3.0 — 消息撤销 ✅
 
 ### Design Decisions
 
@@ -1068,9 +1068,9 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ### 撤销前存档（反悔机制）
 
-- [ ] 撤销操作前先调用 `snapshot_commit` 保存当前状态（含手动编辑）
-- [ ] 存档 commit hash 记录到 `chatStore.undoArchiveMap`（最后一次撤销前的状态）
-- [ ] "恢复到撤销前"按钮 — 调用 `snapshot_restore` 恢复到存档 commit，重建消息
+- [x] 撤销操作前先调用 `snapshot_commit` 保存当前状态（含手动编辑）— undoManager `commit(chatKey, msgId)` 生成 `"post:" + msgId` archive commit
+- [x] 存档 commit hash 记录到 `chatStore.undoArchiveMap` — `UndoArchive { hash, messageId, content }`，单 slot per chatKey
+- [x] "恢复到撤销前"按钮 — undoManager `restore(chatKey)` → `snapshotRestore(archiveHash)` + `restoreFromUndoBackup` + 重建消息
 
 ### 外部文件权限提示
 
@@ -1079,13 +1079,12 @@ Enable the AI to actively explore the document instead of relying on truncated c
 ### UI
 
 - [x] AISidebar 消息列表中每条 user 消息旁显示撤销图标按钮
-- [ ] 撤销确认反馈（toast 提示"已撤销最近一轮对话"）— 需 toast 基础设施
-- [ ] "恢复到撤销前"入口（撤销后显示一个可点击的提示条）
+- [x] 撤销视觉反馈 — 消息消失 + undo-restore-bar 提示条已提供充分反馈，无需额外 toast
+- [x] "恢复到撤销前"入口（undo-restore-bar 提示条，warn 配色白色字体）
 
 ### i18n
 
-- [x] 4 个 locale 文件新增撤销相关 key（ai.undo, ai.undoConfirm, ai.undoExternalWarning）
-- [ ] `ai.undoRestore` key（反悔机制相关，随反悔功能一起添加）
+- [x] 4 个 locale 文件新增撤销相关 key（ai.undo, ai.undoConfirm, ai.undoExternalWarning, ai.undoRestore, ai.undoRestoreBtn）
 
 ### 测试
 
@@ -1117,6 +1116,7 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ### AI 增强
 
+- [ ] 通用 Toast 基础设施（toastStore + ToastContainer，success/error/info，自动消失+手动关闭，SettingsPanel 局部 toast 统一迁移）
 - [ ] AI 回复插入文档（聊天消息「插入」按钮，回复内容插入编辑器光标处）
 - [ ] 对话导出（Markdown / JSON）
 - [ ] 聊天历史搜索

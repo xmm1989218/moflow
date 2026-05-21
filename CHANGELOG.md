@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.3.0 (2026-05-22)
+
+### New Features
+
+- **Message Undo with Git Snapshot** — Undo any AI conversation round and roll back file changes to that point
+  - Each conversation round creates a git snapshot (via git2-rs vendored-libgit2) before AI operations
+  - Click the undo button on any user message to remove that message and all subsequent messages, restoring files to the pre-AI state
+  - Workspace mode: full worktree restore (all tracked files + delete extra files created by AI)
+  - Single-file mode: restore only the tracked file, preserving other files in the directory
+  - Undo archive (反悔): before undoing, a "post:" snapshot is saved so you can restore back to the pre-undo state
+  - Undo-restore bar: after undo, a yellow warning bar appears with a "Restore" button to reverse the undo
+
+- **Cross-Platform Path Utilities** — `toPosix`, `posixDirname`, `posixBasename` functions replace all inline `.replace(/\\/g, "/")` across the codebase
+
+- **Permission Auto-Allow for Undo-rollable Edits** — Workspace internal file edits and single-file current file edits auto-allow (no permission prompt needed, since undo can roll them back)
+
+### Improvements
+
+- **undoManager Abstraction** — Three primitives (`commit`, `undo`, `restore`) with `UndoDeps` dependency injection for testability; `findCommitForMessage` pure function for commit lookup; `discardUndoArchive` helper
+- **Message ID Pre-generation** — `newMessageId()` in chatStore generates UUID before snapshot commit, preserving correct commit-before-addMessage order; `addMessage` accepts optional `{ id }`
+- **Snapshot Commit Naming** — Commits named by messageId (not round number); `msgId` for before-AI, `"post:" + msgId` for undo archive
+- **Component State Persistence** — `pendingQuestion`, `resolveQuestionRef`, `permissionRequest`, `resolvePermissionRef`, and QuestionBar form state lifted from AISidebar local state to chatStore (per-chatKey isolation); state survives Settings tab switches
+- **Plan Mode Enhanced Permission Check** — `executeTool` entry-level check: write/edit/runSkillScript in plan mode return explicit error; workspace auto-allow checks ordered before external path and edit permission checks
+- **undoArchiveMap Merged** — `Record<string, UndoArchive>` with `{ hash, messageId, content }` replaces separate hash/content maps
+
+### Bug Fixes
+
+- **Single-file snapshot restore preserves other files** — `delete_extra_files` skipped when `info.file_paths.is_some()` (single-file mode), preventing deletion of unrelated files in the directory
+
 ## v1.2.1 (2026-05-21)
 
 ### Improvements

@@ -63,7 +63,7 @@ src/                    # Frontend (React + TypeScript)
                           Keyframes, animations, shadows, scrollbar styles
   stores/
     appStore.ts         # Re-exports from tabStore, themeStore, etc.
-    chatStore.ts        # AI chat state (streamingContentMap, contextMap, inputHistoryMap, cachedTokensMap, cleanupIncompleteToolCalls)
+    chatStore.ts        # AI chat state (streamingContentMap, contextMap, inputHistoryMap, cachedTokensMap, cleanupIncompleteToolCalls, newMessageId, addMessage(id?), undoArchiveMap, undoFromMessage)
     permissionStore.ts  # Session permission rules (per-chatKey, alwaysAllow cascade, session aiMode)
     skillStore.ts       # Skill discovery, remote registry, install/update/uninstall
     aiSelectionStore.ts # Selection AI panel state
@@ -82,7 +82,7 @@ src/                    # Frontend (React + TypeScript)
       ja.ts             # Japanese locale (AI-generated)
       ko.ts             # Korean locale (AI-generated)
   lib/
-    chatPersistence.ts  # JSONL chat history (chats/{safeFileName}/messages.jsonl, safeFileName exported, clearChat, removeChat, migrateOldChatDir, appendTraceEvent, clearTrace)
+    chatPersistence.ts  # JSONL chat history (chats/{safeFileName}/messages.jsonl, safeFileName exported, clearChat, removeChat, migrateOldChatDir, appendTraceEvent, clearTrace, rewriteChat, backupChatForUndo, restoreFromUndoBackup, deleteUndoBackup)
     inputHistory.ts     # Per-session input history (loadInputHistory/saveInputHistory/appendInputHistory, 200 max, dedup)
     contextBuilder.ts   # System prompt builder (TOOLS_GUIDE replaces WS_FILE_TOOLS/DOC_FILE_TOOLS)
     fileOps.ts          # File read/write/open folder via Tauri FS plugin
@@ -94,7 +94,10 @@ src/                    # Frontend (React + TypeScript)
     exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
     themeCSS.ts         # Dynamic theme CSS generation
     permission.ts       # Permission engine (wildcard matching, evaluateWithSession, generateAlwaysPattern)
-    tools.ts            # AI tool definitions + execution (outline, read, readSection, grep, find, glob, ls, webfetch, write, edit, question, skill, runSkillScript) — descriptions hardcoded English, no i18n
+    tools.ts            # AI tool definitions + execution (outline, read, readSection, grep, find, glob, ls, webfetch, write, edit, question, skill, runSkillScript) — descriptions hardcoded English, no i18n; workspace/single-file edit auto-allow
+    undoManager.ts      # Undo primitives (commit/undo/restore) + UndoDeps DI + findCommitForMessage + discardUndoArchive
+    snapshot.ts         # TypeScript invoke wrappers for 6 snapshot commands (snapshotInit/Commit/CheckoutFiles/Restore/Log/Destroy)
+    pathUtils.ts        # toPosix/posixDirname/posixBasename cross-platform path utilities
     skillManager.ts     # Skill discovery, SKILL.md parsing, script execution (cwd support)
     tracer.ts           # Tracer + NoOpTracer + createTracer factory (JSONL trace output, zero overhead when disabled)
     traceTypes.ts       # TraceSpan, TraceStartEvent, TraceSpanEvent, TraceEndEvent types
@@ -105,9 +108,10 @@ src/                    # Frontend (React + TypeScript)
 
 src-tauri/              # Backend (Rust + Tauri)
   src/lib.rs            # Commands (toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, execute_script, fetch_skill_registry), ProxyState, CancelState, icon fix
+  src/snapshot.rs       # Snapshot commands (snapshot_init/commit/checkout_files/restore/log/destroy) + 24 tests + delete_extra_files + path_to_posix + collect_tree_paths + write_tree_to_dir
   src/main.rs           # Entry point
   tauri.conf.json       # Tauri config (window: [] for manual creation, bundle, security)
-  Cargo.toml            # Rust dependencies (reqwest+socks, tokio, tokio-util, htmd, url)
+  Cargo.toml            # Rust dependencies (reqwest+socks, tokio, tokio-util, htmd, url, git2)
   icons/                # App icons (PNG, ICO, ICNS)
 ```
 
@@ -176,3 +180,11 @@ src-tauri/              # Backend (Rust + Tauri)
 - Trace: `createTracer(chatKey, input, model)` returns `TracerHandle`; writes JSONL to `chats/{safeFileName}/trace.jsonl`; NoOpTracer when `enableTrace=false`; `traceStatus` tracked in handleSend for abort/error; tracer.endTrace in finally block
 - `ChatResult.ttfbMs` / `chunkCount` tracked in OpenAI and Claude streaming clients; `ChatUsage.cachedTokens` parsed from OpenAI `prompt_tokens_details.cached_tokens`
 - Selection AI: `getSelectionMarkdown(ctx, view)` serializes ProseMirror selection to Markdown via `serializerCtx` (preserves bold, links, code, math, lists); translate uses empty system prompt (no docContent), explain/rewrite keep full document context
+- Snapshot system: git2-rs (vendored-libgit2) per chatKey repo in `{appDataDir}/chats/{safeFileName}/snapshots/`; 6 Rust commands (snapshotInit/Commit/CheckoutFiles/Restore/Log/Destroy); workspace mode commits all files, single-file mode commits only tracked files
+- `snapshotRestore` returns absolute posix paths; compare with tab.filePath via `toPosix().toLowerCase()`; `delete_extra_files` skipped in single-file mode to prevent deletion of unrelated files
+- Snapshot commit naming: `msgId` for before-AI commit, `"post:" + msgId` for undo archive commit; `findCommitForMessage` finds from HEAD (newest)
+- undoManager: three primitives (`commit`/`undo`/`restore`) + `UndoDeps` DI; `commit(chatKey, msgId)` → snapshotCommit; `undo(chatKey, msgId)` → post commit → backup → truncate → findCommit → restore → refresh; `restore(chatKey)` → snapshotRestore(archiveHash) → restoreChatBackup → loadChatHistory → cleanup
+- undoArchiveMap: `Record<string, UndoArchive>` per chatKey, single slot `{ hash, messageId, content }`; `discardUndoArchive` clears archive when new message is sent
+- `newMessageId()` in chatStore: pre-generate UUID before commit, preserving commit-before-addMessage order (commit captures pre-AI file state)
+- JSONL backup for undo: `messages.jsonl.undo-backup` in chats/{safeFileName}/; `rewriteChat` uses atomic `.repair` → rename pattern
+- Permission check order in `resolvePathAndCheckWritePermission`: workspace inside auto-allow → single-file current auto-allow → workspace outside checkPathAccess → edit permission (ask/deny)
