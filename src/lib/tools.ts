@@ -729,6 +729,14 @@ async function resolvePathAndCheckWritePermission(
     if (!allowed) return { error: error ?? "Access denied: path is outside the workspace" };
   }
 
+  if (workspaceRoot && isPathInsideWorkspace(absPath, workspaceRoot)) {
+    return { absPath };
+  }
+
+  if (!workspaceRoot && activeFilePath && toPosix(absPath).toLowerCase() === toPosix(activeFilePath).toLowerCase()) {
+    return { absPath };
+  }
+
   const permissions = ctx.permissions ?? DEFAULT_PERMISSIONS;
   const sessionRules = ctx.sessionRules ?? [];
   const action = evaluateWithSession(sessionRules, permissions.edit, "edit", absPath);
