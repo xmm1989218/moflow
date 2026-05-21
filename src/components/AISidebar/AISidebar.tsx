@@ -499,6 +499,8 @@ export default function AISidebar() {
   const subAgentResults = useChatStore((s) => s.subAgentResultsMap);
   const permissionRequest = useChatStore((s) => s.permissionRequestMap[chatKey] ?? null);
   const pendingQuestion = useChatStore((s) => s.pendingQuestionMap[chatKey] ?? null);
+  const undoArchiveHash = useChatStore((s) => s.undoArchiveMap[chatKey] ?? null);
+  const undoArchiveContent = useChatStore((s) => s.undoArchiveContentMap[chatKey] ?? "");
   const { messages, isStreaming, streamingContent, addMessage, appendStreamingContent, clearStreamingContent, clearMessages, setStreaming, stopGeneration } = useChatStore(
     useShallow((s) => ({
       messages: s.messagesMap[chatKey] || emptyMessages,
@@ -540,13 +542,8 @@ export default function AISidebar() {
   useEffect(() => {
     if (!chatKey) return;
     const ws = workspaceRoot ?? (activeFilePath ? posixDirname(activeFilePath) : undefined);
-    console.log("[snapshot] init:", { chatKey, ws, workspaceRoot, activeFilePath, filePaths: workspaceRoot ? undefined : [activeFilePath!] });
     if (!ws) return;
-    snapshotInit(chatKey, ws, workspaceRoot ? undefined : [activeFilePath!]).then(() => {
-      console.log("[snapshot] init OK for", chatKey);
-    }).catch((e) => {
-      console.error("[snapshot] init failed:", e);
-    });
+    snapshotInit(chatKey, ws, workspaceRoot ? undefined : [activeFilePath!]).catch(() => {});
   }, [chatKey, workspaceRoot, activeFilePath]);
 
   useEffect(() => {
@@ -646,33 +643,66 @@ export default function AISidebar() {
 
   const handleUndo = useCallback(async (messageId: string) => {
     if (isStreaming) return;
+    const msg = useChatStore.getState().messagesMap[chatKey]?.find((m) => m.id === messageId);
+    const msgContent = msg?.content?.slice(0, 60) ?? "";
+    try {
+      const archiveResult = await snapshotCommit(chatKey, "archive-before-undo");
+      useChatStore.getState().setUndoArchive(chatKey, archiveResult.hash, msgContent);
+      const { backupChatForUndo } = await import("../../lib/chatPersistence");
+      await backupChatForUndo(chatKey);
+    } catch {
+      // archive commit failure is non-critical, proceed with undo anyway
+    }
     const userRound = useChatStore.getState().undoFromMessage(chatKey, messageId);
-    console.log("[undo] userRound:", userRound);
     if (userRound < 0) return;
     try {
       const log = await snapshotLog(chatKey);
-      console.log("[undo] snapshot log:", log.map((e) => e.message));
       const target = log.find((e) => e.message === `round-${userRound + 1}`);
-      console.log("[undo] looking for round-", userRound + 1, "found:", target?.hash);
       if (target) {
         const changedFiles = await snapshotRestore(chatKey, target.hash);
-        console.log("[undo] restored files:", changedFiles);
         if (changedFiles.length > 0) {
           const { loadTabContent } = await import("../../lib/fileOps");
           const openTabs = useTabStore.getState().files;
           const changedSet = new Set(changedFiles.map((f) => f.toLowerCase()));
           for (const tab of openTabs) {
             if (tab.filePath && changedSet.has(toPosix(tab.filePath).toLowerCase())) {
-              console.log("[undo] reloading tab:", tab.filePath);
               await loadTabContent(tab.id);
             }
           }
         }
       }
-    } catch (e) {
-      console.error("[undo] failed:", e);
+    } catch {
+      // snapshot restore failure is non-critical
     }
   }, [chatKey, isStreaming]);
+
+  const handleRestore = useCallback(async () => {
+    const archiveHash = useChatStore.getState().undoArchiveMap[chatKey];
+    if (!archiveHash) return;
+    try {
+      const changedFiles = await snapshotRestore(chatKey, archiveHash);
+      const { restoreFromUndoBackup, deleteUndoBackup } = await import("../../lib/chatPersistence");
+      const restored = await restoreFromUndoBackup(chatKey);
+      if (restored) {
+        await useChatStore.getState().loadChatHistory(chatKey);
+        useChatStore.getState().getContext(chatKey);
+      }
+      if (changedFiles.length > 0) {
+        const { loadTabContent } = await import("../../lib/fileOps");
+        const openTabs = useTabStore.getState().files;
+        const changedSet = new Set(changedFiles.map((f) => f.toLowerCase()));
+        for (const tab of openTabs) {
+          if (tab.filePath && changedSet.has(toPosix(tab.filePath).toLowerCase())) {
+            await loadTabContent(tab.id);
+          }
+        }
+      }
+      await deleteUndoBackup(chatKey);
+    } catch {
+      // restore failure — leave archive intact so user can retry
+    }
+    useChatStore.getState().clearUndoArchive(chatKey);
+  }, [chatKey]);
 
   const doCompact = async () => {
     const contextMsgs = useChatStore.getState().getContext(chatKey);
@@ -900,6 +930,12 @@ export default function AISidebar() {
     const text = input.trim();
     if (!text || isStreaming) return;
 
+    if (undoArchiveHash) {
+      useChatStore.getState().clearUndoArchive(chatKey);
+      const { deleteUndoBackup } = await import("../../lib/chatPersistence");
+      deleteUndoBackup(chatKey).catch(() => {});
+    }
+
     isAtBottomRef.current = true;
     setShowScrollBottom(false);
 
@@ -938,10 +974,9 @@ export default function AISidebar() {
 
     try {
       const roundNum = (useChatStore.getState().messagesMap[chatKey]?.filter((m) => m.role === "user").length ?? 0) + 1;
-      const result = await snapshotCommit(chatKey, `round-${roundNum}`);
-      console.log("[snapshot] committed", result.hash, `round-${roundNum}`);
-    } catch (e) {
-      console.error("[snapshot] commit failed:", e);
+      await snapshotCommit(chatKey, `round-${roundNum}`);
+    } catch {
+      // snapshot commit failure is non-critical
     }
 
     const userMsg = addMessage(chatKey, { role: "user", content: text });
@@ -1605,6 +1640,16 @@ if (id === "compact") {
               useChatStore.getState().setResolveQuestionRef(chatKey, null);
             }}
           />
+        )}
+        {undoArchiveHash && !permissionRequest && !pendingQuestion && (
+          <div className="moflow-ai-undo-restore-bar">
+            <span className="moflow-ai-undo-restore-label">
+              {undoArchiveContent ? `${undoArchiveContent}${undoArchiveContent.length >= 60 ? "…" : ""}` : t("ai.undoRestore")}
+            </span>
+            <button className="moflow-ai-undo-restore-btn" onClick={handleRestore}>
+              {t("ai.undoRestoreBtn")}
+            </button>
+          </div>
         )}
         <div className="moflow-ai-input-wrap relative">
           <textarea

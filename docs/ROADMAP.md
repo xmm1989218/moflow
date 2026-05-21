@@ -1035,35 +1035,36 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ### Git Snapshot 快照系统（Rust 后端）
 
-- [ ] Cargo.toml 添加 `git2` 依赖（vendored-libgit2，default-features = false，不开 https）
-- [ ] `snapshot_init` 命令 — 在 `{appDataDir}/chats/{safeFileName}/snapshots/` 初始化 bare git repo
-- [ ] `snapshot_add_worktree` 命令 — 将 workspace（或单文件）设置为 snapshot repo 的 worktree
-- [ ] `snapshot_commit` 命令 — `git add -A && git commit`，返回 commit hash
-- [ ] `snapshot_checkout` 命令 — `git checkout {hash} -- {file}` 恢复指定文件
-- [ ] `snapshot_restore` 命令 — 恢复整个 worktree 到指定 commit 状态
-- [ ] `snapshot_log` 命令 — 返回 commit 列表（hash + message + timestamp），用于撤销前查找目标 commit
-- [ ] Snapshot 状态管理 — `HashMap<String, Repository>` 缓存已打开的 snapshot repo（避免每次重新 open）
+- [x] Cargo.toml 添加 `git2` 依赖（vendored-libgit2，default-features = false，不开 https）
+- [x] `snapshot_init` 命令 — 在 `{appDataDir}/chats/{safeFileName}/snapshots/` 初始化 bare git repo
+- [x] `snapshot_commit` 命令 — 构建 git tree + commit，返回 commit hash（支持 workspace 全目录或指定文件列表）
+- [x] `snapshot_checkout_files` 命令 — 恢复指定文件到指定 commit 状态
+- [x] `snapshot_restore` 命令 — 恢复整个 worktree 到指定 commit 状态（含删除多余文件）
+- [x] `snapshot_log` 命令 — 返回 commit 列表（hash + message + timestamp）
+- [x] `snapshot_destroy` 命令 — 删除 snapshot repo 目录 + 清理状态
+- [x] Snapshot 状态管理 — `HashMap<String, SnapshotInfo>` 存储 workspace 路径和文件列表（按需 open_repo，非缓存 Repository）
+- [x] 跨平台路径修复 — `path_to_posix()` / `split_path_parts()` 替代 `to_string_lossy().split('/')`
 
 ### chatStore 撤销逻辑
 
-- [ ] `undoLastRound` action — 截断最后一轮消息（user + assistant + tool），重建 contextMap
-- [ ] 找到最后一轮的边界：从 messagesMap 末尾往前找最后一个 user 消息，截断从该位置开始的所有消息
-- [ ] 截断后调用 `getContext()` 重建 contextMap（可能跨越 compact，自然恢复原始消息）
-- [ ] 截断后清空该 tab 的 streamingContent / subAgentResults
-- [ ] 调用 Rust `snapshot_checkout` 恢复文件到上一轮 commit 状态
-- [ ] 调用 `rewriteChat` 重写 JSONL
-- [ ] 刷新编辑器已打开文件的内容
+- [x] `undoFromMessage` action — 按 messageId 截断消息（支持撤销任意用户消息，不限于最后一轮），返回截断点前用户消息数（-1 表示未找到）
+- [x] 找到截断边界：按 messageId 找到 cutIdx，保留 cutIdx 之前的消息
+- [x] 截断后调用 `getContext()` 重建 contextMap（可能跨越 compact，自然恢复原始消息）
+- [x] 截断后清空该 tab 的 subAgentResults
+- [x] 调用 Rust `snapshot_restore` 恢复文件到对应 commit 状态
+- [x] 调用 `rewriteChat` 重写 JSONL
+- [x] 刷新编辑器已打开文件的内容（loadTabContent，posix 路径匹配）
 
 ### chatPersistence JSONL 重写
 
-- [ ] `rewriteChat(chatKey, messageCount)` — 重写 messages.jsonl，只保留前 N 条消息
-- [ ] 先写入 `.repair` 临时文件，成功后 rename 替换原文件（原子操作，避免损坏）
+- [x] `rewriteChat(chatKey, messageCount)` — 重写 messages.jsonl，只保留前 N 条消息
+- [x] 先写入 `.repair` 临时文件，成功后 rename 替换原文件（原子操作，避免损坏）
 
 ### 前端 Snapshot 集成
 
-- [ ] 每轮对话开始前（handleSend 开头）调用 `snapshot_commit` 保存当前状态
-- [ ] Tab 初始化时调用 `snapshot_init` + `snapshot_add_worktree` 设置快照 repo
-- [ ] 撤销按钮触发 `undoLastRound`
+- [x] 每轮对话开始前（handleSend 开头）调用 `snapshot_commit` 保存当前状态（commit message: `round-N`）
+- [x] Tab 初始化时调用 `snapshot_init` 设置快照 repo（workspace 模式传 workspace 路径，单文件模式传文件列表）
+- [x] 每条用户消息旁显示撤销按钮，触发 `undoFromMessage` + `snapshot_restore`
 
 ### 撤销前存档（反悔机制）
 
@@ -1073,24 +1074,42 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ### 外部文件权限提示
 
-- [ ] `PermissionBar` 外部路径确认时增加提示：「外部文件修改无法通过撤销回滚」
+- [x] `PermissionBar` 外部路径确认时增加提示：「外部文件修改无法通过撤销回滚」
 
 ### UI
 
-- [ ] AISidebar 消息列表中每条 user 消息旁显示撤销图标按钮（或底部统一撤销按钮）
-- [ ] 撤销确认（简单的 toast 提示"已撤销最近一轮对话"）
+- [x] AISidebar 消息列表中每条 user 消息旁显示撤销图标按钮
+- [ ] 撤销确认反馈（toast 提示"已撤销最近一轮对话"）— 需 toast 基础设施
 - [ ] "恢复到撤销前"入口（撤销后显示一个可点击的提示条）
 
 ### i18n
 
-- [ ] 4 个 locale 文件新增撤销相关 key（ai.undo, ai.undoConfirm, ai.undoRestore, ai.undoExternalWarning 等）
+- [x] 4 个 locale 文件新增撤销相关 key（ai.undo, ai.undoConfirm, ai.undoExternalWarning）
+- [ ] `ai.undoRestore` key（反悔机制相关，随反悔功能一起添加）
 
 ### 测试
 
-- [ ] Rust snapshot 命令测试（init/commit/checkout/restore/log）
-- [ ] chatStore undoLastRound 测试（截断消息、重建 context、跨 compact）
-- [ ] chatPersistence rewriteChat 测试（重写 JSONL、原子替换）
-- [ ] 前端 snapshot 集成测试（每轮 commit 流程、撤销 checkout 流程）
+- [x] Rust snapshot 工具函数测试（path_to_posix, split_path_parts, safe_file_name — 19 tests）
+- [x] chatStore undoFromMessage 测试（未找到/第一条/截断/含 tool 消息/重建 context/跨 compact — 6 tests）
+- [x] 前端跨平台路径工具测试（toPosix/posixDirname/posixBasename — 27 tests）
+
+### 跨平台路径统一
+
+- [x] `src/lib/pathUtils.ts` — toPosix / posixDirname / posixBasename 工具函数
+- [x] 替换所有 inline `.replace(/\\/g, "/")` 为 `toPosix()` / `posixDirname()` / `posixBasename()`
+- [x] 涉及文件：AISidebar / Editor / tabStore / tools / permission / skillManager
+
+### 组件状态持久化
+
+- [x] `pendingQuestion` / `resolveQuestionRef` 从 AISidebar useState/useRef 提升到 chatStore（按 chatKey 隔离）
+- [x] `permissionRequest` / `resolvePermissionRef` 从 AISidebar useState/useRef 提升到 chatStore
+- [x] `QuestionBar` 表单状态（step/answers/showCustom/customInputs）提升到 chatStore
+- [x] 切换设置页再切回时 QuestionBar/PermissionBar 状态不丢失
+
+### Plan 模式增强
+
+- [x] `executeTool` 入口级 plan mode 检查 — write/edit/runSkillScript 在 plan 模式下直接返回明确错误消息
+- [x] 权限 deny 消息区分 plan 模式 vs 普通权限拒绝
 
 ---
 

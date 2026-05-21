@@ -172,6 +172,48 @@ export async function clearTrace(chatKey: string): Promise<void> {
   }
 }
 
+export async function backupChatForUndo(chatKey: string): Promise<void> {
+  try {
+    const src = await chatFilePath(chatKey);
+    if (!(await exists(src))) return;
+    const dir = await chatDirPath(chatKey);
+    const dst = await join(dir, "messages.jsonl.undo-backup");
+    const data = await readFile(src);
+    await writeFile(dst, data);
+  } catch (e) {
+    console.error("[chatPersistence] backupChatForUndo error:", e);
+  }
+}
+
+export async function restoreFromUndoBackup(chatKey: string): Promise<boolean> {
+  try {
+    const dir = await chatDirPath(chatKey);
+    const backupPath = await join(dir, "messages.jsonl.undo-backup");
+    if (!(await exists(backupPath))) return false;
+    const data = await readFile(backupPath);
+    const dst = await chatFilePath(chatKey);
+    const tmpPath = await join(dir, "messages.jsonl.repair");
+    await writeFile(tmpPath, data);
+    await rename(tmpPath, dst);
+    return true;
+  } catch (e) {
+    console.error("[chatPersistence] restoreFromUndoBackup error:", e);
+    return false;
+  }
+}
+
+export async function deleteUndoBackup(chatKey: string): Promise<void> {
+  try {
+    const dir = await chatDirPath(chatKey);
+    const backupPath = await join(dir, "messages.jsonl.undo-backup");
+    if (await exists(backupPath)) {
+      await remove(backupPath);
+    }
+  } catch {
+    // deleteUndoBackup failure is non-critical
+  }
+}
+
 export async function migrateOldChatDir(): Promise<void> {
   try {
     const dir = await appDataDir();

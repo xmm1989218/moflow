@@ -372,7 +372,9 @@ pub fn snapshot_restore(
 
     let snapshot_paths = collect_tree_paths(&repo, &tree, Path::new(""));
     let written = write_tree_to_dir(&repo, &tree, workspace, Path::new(""))?;
-    let _deleted = delete_extra_files(workspace, &snapshot_paths, true)?;
+    if info.file_paths.is_none() {
+        let _deleted = delete_extra_files(workspace, &snapshot_paths, true)?;
+    }
 
     Ok(written)
 }
@@ -536,5 +538,160 @@ mod tests {
     #[test]
     fn safe_file_name_uuid() {
         assert_eq!(safe_file_name("ba089ae1-7594-4fae-a0c7-067f419121a3"), "ba089ae1-7594-4fae-a0c7-067f419121a3");
+    }
+
+    fn setup_temp_workspace() -> (tempfile::TempDir, PathBuf) {
+        let tmp = tempfile::tempdir().unwrap();
+        let ws = tmp.path().to_path_buf();
+        std::fs::write(ws.join("file1.txt"), "hello").unwrap();
+        std::fs::write(ws.join("file2.txt"), "world").unwrap();
+        std::fs::create_dir(ws.join("sub")).unwrap();
+        std::fs::write(ws.join("sub").join("nested.txt"), "nested content").unwrap();
+        (tmp, ws)
+    }
+
+    fn init_repo_at(path: &Path) -> Repository {
+        Repository::init_bare(path).unwrap()
+    }
+
+    #[test]
+    fn workspace_restore_deletes_extra_files() {
+        let (tmp, ws) = setup_temp_workspace();
+        let repo_path = ws.join(".moflow-snapshots");
+        let repo = init_repo_at(&repo_path);
+
+        let tree_oid = build_tree_from_dir(&repo, &ws, &ws, true).unwrap();
+        let commit_oid = create_commit(&repo, tree_oid, "round-1").unwrap();
+
+        std::fs::write(ws.join("new_file.txt"), "added later").unwrap();
+
+        let commit = repo.find_commit(commit_oid).unwrap();
+        let tree = commit.tree().unwrap();
+        let snapshot_paths = collect_tree_paths(&repo, &tree, Path::new(""));
+        let written = write_tree_to_dir(&repo, &tree, &ws, Path::new("")).unwrap();
+        let deleted = delete_extra_files(&ws, &snapshot_paths, true).unwrap();
+
+        assert!(deleted.contains(&"new_file.txt".to_string()));
+        assert!(!ws.join("new_file.txt").exists());
+        assert!(ws.join("file1.txt").exists());
+        assert!(ws.join("file2.txt").exists());
+        assert!(ws.join("sub").join("nested.txt").exists());
+        assert!(written.iter().any(|p| p.contains("file1.txt")));
+
+        tmp.close().unwrap();
+    }
+
+    #[test]
+    fn single_file_restore_preserves_other_files() {
+        let (tmp, ws) = setup_temp_workspace();
+        let repo_path = ws.join(".moflow-snapshots");
+        let repo = init_repo_at(&repo_path);
+
+        let single_file = path_to_posix(&ws.join("file1.txt"));
+        let tree_oid = build_tree_from_files(&repo, &ws, &[single_file]).unwrap();
+        let commit_oid = create_commit(&repo, tree_oid, "round-1").unwrap();
+
+        std::fs::write(ws.join("file1.txt"), "modified content").unwrap();
+
+        let commit = repo.find_commit(commit_oid).unwrap();
+        let tree = commit.tree().unwrap();
+        let _snapshot_paths = collect_tree_paths(&repo, &tree, Path::new(""));
+        let written = write_tree_to_dir(&repo, &tree, &ws, Path::new("")).unwrap();
+
+        assert!(ws.join("file2.txt").exists());
+        assert!(ws.join("sub").join("nested.txt").exists());
+
+        let content = std::fs::read_to_string(ws.join("file1.txt")).unwrap();
+        assert_eq!(content, "hello");
+
+        assert!(written.iter().any(|p| p.contains("file1.txt")));
+
+        tmp.close().unwrap();
+    }
+
+    #[test]
+    fn single_file_restore_with_delete_extra_would_destroy_other_files() {
+        let (tmp, ws) = setup_temp_workspace();
+        let repo_path = ws.join(".moflow-snapshots");
+        let repo = init_repo_at(&repo_path);
+
+        let single_file = path_to_posix(&ws.join("file1.txt"));
+        let tree_oid = build_tree_from_files(&repo, &ws, &[single_file]).unwrap();
+        let commit_oid = create_commit(&repo, tree_oid, "round-1").unwrap();
+
+        let commit = repo.find_commit(commit_oid).unwrap();
+        let tree = commit.tree().unwrap();
+        let snapshot_paths = collect_tree_paths(&repo, &tree, Path::new(""));
+
+        let deleted = delete_extra_files(&ws, &snapshot_paths, true).unwrap();
+
+        assert!(deleted.contains(&"file2.txt".to_string()));
+        assert!(!ws.join("file2.txt").exists());
+        assert!(!ws.join("sub").exists());
+
+        tmp.close().unwrap();
+    }
+
+    #[test]
+    fn workspace_restore_after_multiple_changes() {
+        let (tmp, ws) = setup_temp_workspace();
+        let repo_path = ws.join(".moflow-snapshots");
+        let repo = init_repo_at(&repo_path);
+
+        let tree_oid1 = build_tree_from_dir(&repo, &ws, &ws, true).unwrap();
+        let _commit_oid1 = create_commit(&repo, tree_oid1, "round-1").unwrap();
+
+        std::fs::write(ws.join("file1.txt"), "changed v2").unwrap();
+        std::fs::write(ws.join("extra.txt"), "extra file").unwrap();
+        let tree_oid2 = build_tree_from_dir(&repo, &ws, &ws, true).unwrap();
+        let commit_oid2 = create_commit(&repo, tree_oid2, "round-2").unwrap();
+
+        std::fs::write(ws.join("file1.txt"), "changed v3").unwrap();
+        std::fs::write(ws.join("another.txt"), "yet another").unwrap();
+
+        let commit2 = repo.find_commit(commit_oid2).unwrap();
+        let tree2 = commit2.tree().unwrap();
+        let snapshot_paths2 = collect_tree_paths(&repo, &tree2, Path::new(""));
+        write_tree_to_dir(&repo, &tree2, &ws, Path::new("")).unwrap();
+        let deleted = delete_extra_files(&ws, &snapshot_paths2, true).unwrap();
+
+        assert!(ws.join("file1.txt").exists());
+        let f1 = std::fs::read_to_string(ws.join("file1.txt")).unwrap();
+        assert_eq!(f1, "changed v2");
+        assert!(!ws.join("another.txt").exists());
+        assert!(deleted.contains(&"another.txt".to_string()));
+        assert!(ws.join("extra.txt").exists());
+
+        tmp.close().unwrap();
+    }
+
+    #[test]
+    fn single_file_restore_does_not_touch_nested_paths() {
+        let tmp = tempfile::tempdir().unwrap();
+        let ws = tmp.path().to_path_buf();
+        std::fs::create_dir_all(ws.join("deep").join("nested")).unwrap();
+        std::fs::write(ws.join("deep").join("nested").join("a.txt"), "aaa").unwrap();
+        std::fs::write(ws.join("deep").join("nested").join("b.txt"), "bbb").unwrap();
+        std::fs::write(ws.join("top.txt"), "top content").unwrap();
+
+        let repo_path = ws.join(".moflow-snapshots");
+        let repo = init_repo_at(&repo_path);
+
+        let target = path_to_posix(&ws.join("deep").join("nested").join("a.txt"));
+        let tree_oid = build_tree_from_files(&repo, &ws, &[target]).unwrap();
+        let commit_oid = create_commit(&repo, tree_oid, "round-1").unwrap();
+
+        std::fs::write(ws.join("deep").join("nested").join("a.txt"), "modified aaa").unwrap();
+
+        let commit = repo.find_commit(commit_oid).unwrap();
+        let tree = commit.tree().unwrap();
+        write_tree_to_dir(&repo, &tree, &ws, Path::new("")).unwrap();
+
+        assert!(ws.join("deep").join("nested").join("b.txt").exists());
+        assert!(ws.join("top.txt").exists());
+        let a = std::fs::read_to_string(ws.join("deep").join("nested").join("a.txt")).unwrap();
+        assert_eq!(a, "aaa");
+
+        tmp.close().unwrap();
     }
 }

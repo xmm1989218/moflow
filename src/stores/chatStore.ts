@@ -72,6 +72,10 @@ interface ChatState {
   setQuestionShowCustom: (chatKey: string, showCustom: Record<number, boolean>) => void;
   setQuestionCustomInputs: (chatKey: string, inputs: Record<number, string>) => void;
   clearQuestionFormState: (chatKey: string) => void;
+  undoArchiveMap: Record<string, string>;
+  undoArchiveContentMap: Record<string, string>;
+  setUndoArchive: (chatKey: string, hash: string, content: string) => void;
+  clearUndoArchive: (chatKey: string) => void;
   undoFromMessage: (tabId: string, messageId: string) => number;
 }
 
@@ -97,6 +101,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   questionAnswersMap: {},
   questionShowCustomMap: {},
   questionCustomInputsMap: {},
+  undoArchiveMap: {},
+  undoArchiveContentMap: {},
 
   getContext: (tabId: string) => {
     const existing = get().contextMap[tabId];
@@ -435,6 +441,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       questionShowCustomMap: { ...state.questionShowCustomMap, [chatKey]: {} },
       questionCustomInputsMap: { ...state.questionCustomInputsMap, [chatKey]: {} },
     })),
+  setUndoArchive: (chatKey, hash, content) =>
+    set((state) => ({ undoArchiveMap: { ...state.undoArchiveMap, [chatKey]: hash }, undoArchiveContentMap: { ...state.undoArchiveContentMap, [chatKey]: content } })),
+  clearUndoArchive: (chatKey) =>
+    set((state) => {
+      const next = { ...state.undoArchiveMap };
+      const nextContent = { ...state.undoArchiveContentMap };
+      delete next[chatKey];
+      delete nextContent[chatKey];
+      return { undoArchiveMap: next, undoArchiveContentMap: nextContent };
+    }),
 
   undoFromMessage: (tabId, messageId) => {
     const msgs = get().messagesMap[tabId] ?? [];

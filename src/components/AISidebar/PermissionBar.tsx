@@ -25,9 +25,16 @@ export default function PermissionBar({ request, onAllow, onAlwaysAllow, onDeny 
       break;
   }
 
+  const showUndoWarning = request.permissionKey === "edit";
+
   return (
     <div className="moflow-ai-permission-bar">
-      <span className="moflow-ai-permission-label">{label}</span>
+      <div className="moflow-ai-permission-info">
+        <span className="moflow-ai-permission-label">{label}</span>
+        {showUndoWarning && (
+          <span className="moflow-ai-permission-warning-icon" title={t("ai.undoExternalWarning")} />
+        )}
+      </div>
       <div className="moflow-ai-permission-actions">
         <button className="moflow-ai-permission-btn moflow-ai-permission-deny" onClick={onDeny}>
           {t("permission.deny")}
