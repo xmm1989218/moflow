@@ -315,15 +315,15 @@ describe("chatStore", () => {
   });
 
   describe("undoFromMessage", () => {
-    it("returns -1 when message not found", () => {
+    it("returns false when message not found", () => {
       const result = useChatStore.getState().undoFromMessage(TEST_TAB, "nonexistent");
-      expect(result).toBe(-1);
+      expect(result).toBe(false);
     });
 
-    it("returns 0 when undoing first user message (0 user msgs before cut)", () => {
+    it("returns true when undoing first user message", () => {
       const msg = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "hello" });
       const result = useChatStore.getState().undoFromMessage(TEST_TAB, msg.id);
-      expect(result).toBe(0);
+      expect(result).toBe(true);
       expect(useChatStore.getState().messagesMap[TEST_TAB]).toHaveLength(0);
     });
 
@@ -333,8 +333,8 @@ describe("chatStore", () => {
       const msg2 = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "round2" });
       useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "answer2" });
 
-      const userRound = useChatStore.getState().undoFromMessage(TEST_TAB, msg2.id);
-      expect(userRound).toBe(1);
+      const result = useChatStore.getState().undoFromMessage(TEST_TAB, msg2.id);
+      expect(result).toBe(true);
       const msgs = useChatStore.getState().messagesMap[TEST_TAB];
       expect(msgs.length).toBe(2);
       expect(msgs[0].id).toBe(msg1.id);
@@ -350,8 +350,8 @@ describe("chatStore", () => {
       useChatStore.getState().addMessage(TEST_TAB, { role: "tool", content: "file content", toolCallId: "tc1", toolName: "read" });
       useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "final answer" });
 
-      const userRound = useChatStore.getState().undoFromMessage(TEST_TAB, msg2.id);
-      expect(userRound).toBe(1);
+      const result = useChatStore.getState().undoFromMessage(TEST_TAB, msg2.id);
+      expect(result).toBe(true);
       const msgs = useChatStore.getState().messagesMap[TEST_TAB];
       expect(msgs.length).toBe(2);
       expect(msgs[0].id).toBe(msg1.id);
@@ -381,8 +381,8 @@ describe("chatStore", () => {
       const msg2 = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "after compact" });
       useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "answer after" });
 
-      const userRound = useChatStore.getState().undoFromMessage(TEST_TAB, msg2.id);
-      expect(userRound).toBe(2);
+      const result = useChatStore.getState().undoFromMessage(TEST_TAB, msg2.id);
+      expect(result).toBe(true);
       const msgs = useChatStore.getState().messagesMap[TEST_TAB];
       expect(msgs.length).toBe(4);
       expect(msgs[0].id).toBe(msg1.id);
@@ -392,6 +392,29 @@ describe("chatStore", () => {
 
       const ctx = useChatStore.getState().getContext(TEST_TAB);
       expect(ctx.length).toBe(3);
+    });
+  });
+
+  describe("newMessageId", () => {
+    it("returns unique ids", () => {
+      const id1 = useChatStore.getState().newMessageId();
+      const id2 = useChatStore.getState().newMessageId();
+      expect(id1).not.toBe(id2);
+      expect(id1.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("addMessage with id", () => {
+    it("uses provided id when given", () => {
+      const msg = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "test", id: "custom-id-123" });
+      expect(msg.id).toBe("custom-id-123");
+      expect(useChatStore.getState().messagesMap[TEST_TAB][0].id).toBe("custom-id-123");
+    });
+
+    it("generates id when not provided", () => {
+      const msg = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "test" });
+      expect(msg.id).toBeDefined();
+      expect(msg.id.length).toBeGreaterThan(0);
     });
   });
 });

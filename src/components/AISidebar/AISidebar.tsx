@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+﻿import { useEffect, useRef, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useChatStore, type Message, COMPACT_TAIL_TURNS } from "../../stores/chatStore";
 import { useTabStore } from "../../stores/tabStore";
@@ -9,8 +9,9 @@ import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClien
 import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
-import { snapshotInit, snapshotCommit, snapshotLog, snapshotRestore } from "../../lib/snapshot";
+import { snapshotInit } from "../../lib/snapshot";
 import { posixDirname, toPosix } from "../../lib/pathUtils";
+import { commit, undo as doUndo, restore as doRestore, discardUndoArchive } from "../../lib/undoManager";
 import { getToolDefinitions, executeTool, WEBFETCH_LIMIT, makeSkillTool, makeRunSkillScriptTool, shouldAddRunSkillScriptTool, type QuestionItem } from "../../lib/tools";
 import { createTracer, truncateArgsSummary } from "../../lib/tracer";
 import type { TracerHandle } from "../../lib/tracer";
@@ -499,8 +500,8 @@ export default function AISidebar() {
   const subAgentResults = useChatStore((s) => s.subAgentResultsMap);
   const permissionRequest = useChatStore((s) => s.permissionRequestMap[chatKey] ?? null);
   const pendingQuestion = useChatStore((s) => s.pendingQuestionMap[chatKey] ?? null);
-  const undoArchiveHash = useChatStore((s) => s.undoArchiveMap[chatKey] ?? null);
-  const undoArchiveContent = useChatStore((s) => s.undoArchiveContentMap[chatKey] ?? "");
+  const undoArchive = useChatStore((s) => s.undoArchiveMap[chatKey] ?? null);
+  const undoArchiveContent = undoArchive?.content ?? "";
   const { messages, isStreaming, streamingContent, addMessage, appendStreamingContent, clearStreamingContent, clearMessages, setStreaming, stopGeneration } = useChatStore(
     useShallow((s) => ({
       messages: s.messagesMap[chatKey] || emptyMessages,
@@ -643,65 +644,11 @@ export default function AISidebar() {
 
   const handleUndo = useCallback(async (messageId: string) => {
     if (isStreaming) return;
-    const msg = useChatStore.getState().messagesMap[chatKey]?.find((m) => m.id === messageId);
-    const msgContent = msg?.content?.slice(0, 60) ?? "";
-    try {
-      const archiveResult = await snapshotCommit(chatKey, "archive-before-undo");
-      useChatStore.getState().setUndoArchive(chatKey, archiveResult.hash, msgContent);
-      const { backupChatForUndo } = await import("../../lib/chatPersistence");
-      await backupChatForUndo(chatKey);
-    } catch {
-      // archive commit failure is non-critical, proceed with undo anyway
-    }
-    const userRound = useChatStore.getState().undoFromMessage(chatKey, messageId);
-    if (userRound < 0) return;
-    try {
-      const log = await snapshotLog(chatKey);
-      const target = log.find((e) => e.message === `round-${userRound + 1}`);
-      if (target) {
-        const changedFiles = await snapshotRestore(chatKey, target.hash);
-        if (changedFiles.length > 0) {
-          const { loadTabContent } = await import("../../lib/fileOps");
-          const openTabs = useTabStore.getState().files;
-          const changedSet = new Set(changedFiles.map((f) => f.toLowerCase()));
-          for (const tab of openTabs) {
-            if (tab.filePath && changedSet.has(toPosix(tab.filePath).toLowerCase())) {
-              await loadTabContent(tab.id);
-            }
-          }
-        }
-      }
-    } catch {
-      // snapshot restore failure is non-critical
-    }
+    await doUndo(chatKey, messageId);
   }, [chatKey, isStreaming]);
 
   const handleRestore = useCallback(async () => {
-    const archiveHash = useChatStore.getState().undoArchiveMap[chatKey];
-    if (!archiveHash) return;
-    try {
-      const changedFiles = await snapshotRestore(chatKey, archiveHash);
-      const { restoreFromUndoBackup, deleteUndoBackup } = await import("../../lib/chatPersistence");
-      const restored = await restoreFromUndoBackup(chatKey);
-      if (restored) {
-        await useChatStore.getState().loadChatHistory(chatKey);
-        useChatStore.getState().getContext(chatKey);
-      }
-      if (changedFiles.length > 0) {
-        const { loadTabContent } = await import("../../lib/fileOps");
-        const openTabs = useTabStore.getState().files;
-        const changedSet = new Set(changedFiles.map((f) => f.toLowerCase()));
-        for (const tab of openTabs) {
-          if (tab.filePath && changedSet.has(toPosix(tab.filePath).toLowerCase())) {
-            await loadTabContent(tab.id);
-          }
-        }
-      }
-      await deleteUndoBackup(chatKey);
-    } catch {
-      // restore failure — leave archive intact so user can retry
-    }
-    useChatStore.getState().clearUndoArchive(chatKey);
+    await doRestore(chatKey);
   }, [chatKey]);
 
   const doCompact = async () => {
@@ -930,10 +877,8 @@ export default function AISidebar() {
     const text = input.trim();
     if (!text || isStreaming) return;
 
-    if (undoArchiveHash) {
-      useChatStore.getState().clearUndoArchive(chatKey);
-      const { deleteUndoBackup } = await import("../../lib/chatPersistence");
-      deleteUndoBackup(chatKey).catch(() => {});
+    if (undoArchive) {
+      await discardUndoArchive(chatKey);
     }
 
     isAtBottomRef.current = true;
@@ -972,14 +917,13 @@ export default function AISidebar() {
     setInput("");
     historyIndexRef.current = -1;
 
+    const msgId = useChatStore.getState().newMessageId();
     try {
-      const roundNum = (useChatStore.getState().messagesMap[chatKey]?.filter((m) => m.role === "user").length ?? 0) + 1;
-      await snapshotCommit(chatKey, `round-${roundNum}`);
+      await commit(chatKey, msgId);
     } catch {
       // snapshot commit failure is non-critical
     }
-
-    const userMsg = addMessage(chatKey, { role: "user", content: text });
+    const userMsg = addMessage(chatKey, { role: "user", content: text, id: msgId });
     await appendMessage(chatKey, userMsg);
     useChatStore.getState().appendInputHistory(chatKey, text);
 
@@ -1641,7 +1585,7 @@ if (id === "compact") {
             }}
           />
         )}
-        {undoArchiveHash && !permissionRequest && !pendingQuestion && (
+        {undoArchive && !permissionRequest && !pendingQuestion && (
           <div className="moflow-ai-undo-restore-bar">
             <span className="moflow-ai-undo-restore-label">
               {undoArchiveContent ? `${undoArchiveContent}${undoArchiveContent.length >= 60 ? "…" : ""}` : t("ai.undoRestore")}

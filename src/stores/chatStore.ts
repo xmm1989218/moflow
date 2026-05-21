@@ -22,6 +22,12 @@ export interface Message {
 
 const emptyMessages: Message[] = [];
 
+interface UndoArchive {
+  hash: string;
+  messageId: string;
+  content: string;
+}
+
 interface ChatState {
   messagesMap: Record<string, Message[]>;
   chatLoadedMap: Record<string, boolean>;
@@ -44,9 +50,11 @@ interface ChatState {
   questionAnswersMap: Record<string, Record<number, string>>;
   questionShowCustomMap: Record<string, Record<number, boolean>>;
   questionCustomInputsMap: Record<string, Record<number, string>>;
+  undoArchiveMap: Record<string, UndoArchive>;
 
+  newMessageId: () => string;
   getContext: (tabId: string) => Message[];
-  addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
+  addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp"> & { id?: string }) => Message;
   appendStreamingContent: (tabId: string, chunk: string) => void;
   clearStreamingContent: (tabId: string) => void;
   recordUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number, cachedTokens?: number) => void;
@@ -72,11 +80,9 @@ interface ChatState {
   setQuestionShowCustom: (chatKey: string, showCustom: Record<number, boolean>) => void;
   setQuestionCustomInputs: (chatKey: string, inputs: Record<number, string>) => void;
   clearQuestionFormState: (chatKey: string) => void;
-  undoArchiveMap: Record<string, string>;
-  undoArchiveContentMap: Record<string, string>;
-  setUndoArchive: (chatKey: string, hash: string, content: string) => void;
+  setUndoArchive: (chatKey: string, messageId: string, hash: string, content: string) => void;
   clearUndoArchive: (chatKey: string) => void;
-  undoFromMessage: (tabId: string, messageId: string) => number;
+  undoFromMessage: (tabId: string, messageId: string) => boolean;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -102,7 +108,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   questionShowCustomMap: {},
   questionCustomInputsMap: {},
   undoArchiveMap: {},
-  undoArchiveContentMap: {},
+
+  newMessageId: () => crypto.randomUUID(),
 
   getContext: (tabId: string) => {
     const existing = get().contextMap[tabId];
@@ -164,7 +171,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   addMessage: (tabId, msg) => {
     const fullMsg: Message = {
       ...msg,
-      id: crypto.randomUUID(),
+      id: msg.id ?? get().newMessageId(),
       timestamp: Date.now(),
     };
     set((state) => {
@@ -441,30 +448,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
       questionShowCustomMap: { ...state.questionShowCustomMap, [chatKey]: {} },
       questionCustomInputsMap: { ...state.questionCustomInputsMap, [chatKey]: {} },
     })),
-  setUndoArchive: (chatKey, hash, content) =>
-    set((state) => ({ undoArchiveMap: { ...state.undoArchiveMap, [chatKey]: hash }, undoArchiveContentMap: { ...state.undoArchiveContentMap, [chatKey]: content } })),
+  setUndoArchive: (chatKey, messageId, hash, content) =>
+    set((state) => ({ undoArchiveMap: { ...state.undoArchiveMap, [chatKey]: { hash, messageId, content } } })),
   clearUndoArchive: (chatKey) =>
     set((state) => {
       const next = { ...state.undoArchiveMap };
-      const nextContent = { ...state.undoArchiveContentMap };
       delete next[chatKey];
-      delete nextContent[chatKey];
-      return { undoArchiveMap: next, undoArchiveContentMap: nextContent };
+      return { undoArchiveMap: next };
     }),
 
   undoFromMessage: (tabId, messageId) => {
     const msgs = get().messagesMap[tabId] ?? [];
-    if (msgs.length === 0) return -1;
+    if (msgs.length === 0) return false;
 
     const cutIdx = msgs.findIndex((m) => m.id === messageId);
-    if (cutIdx === -1) return -1;
+    if (cutIdx === -1) return false;
 
     const keptMsgs = msgs.slice(0, cutIdx);
-
-    let userRound = 0;
-    for (let i = 0; i < cutIdx; i++) {
-      if (msgs[i].role === "user") userRound++;
-    }
 
     set((state) => {
       const newContextMap = { ...state.contextMap };
@@ -487,6 +487,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     rewriteChat(tabId, keptMsgs.length);
 
-    return userRound;
+    return true;
   },
 }));
