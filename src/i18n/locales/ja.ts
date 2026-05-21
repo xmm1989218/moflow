@@ -129,6 +129,8 @@ export default {
   "ai.error.unknownCommand": "不明なコマンドです。利用可能: /new, /compact, /models",
   "ai.header.title": "AIアシスタント",
   "ai.header.context": "コンテキスト",
+  "ai.undo": "最後のラウンドを取り消し",
+  "ai.undoConfirm": "最後のラウンドを取り消しました",
   "ai.empty.openDoc": "先にドキュメントを開いてください",
   "ai.empty.loading": "読み込み中…",
   "ai.empty.prompt": "現在のドキュメントについて質問しますか？",

@@ -18,6 +18,56 @@
   gap: 6px;
 }
 
+.moflow-ai-header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  color: var(--moflow-text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
+}
+.moflow-ai-header-btn:hover:not(:disabled) {
+  background-color: var(--moflow-border);
+  color: var(--moflow-text);
+}
+.moflow-ai-header-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.moflow-ai-undo-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: none;
+  color: var(--moflow-text-secondary);
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 0;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+.moflow-ai-message:hover > .moflow-ai-undo-btn {
+  display: flex;
+}
+.moflow-ai-undo-btn:hover:not(:disabled) {
+  background: var(--moflow-border);
+  color: var(--moflow-text);
+  opacity: 1;
+}
+.moflow-ai-undo-btn:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
 .moflow-ai-header-title {
   font-size: 13px;
   font-weight: 600;
@@ -207,8 +257,18 @@
 }
 
 .moflow-ai-message-user {
-  align-self: flex-end;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  gap: 4px;
+  width: 100%;
+}
+
+.moflow-ai-message-user .moflow-ai-message-content {
   max-width: 90%;
+  background-color: var(--moflow-bubble-user);
+  color: var(--moflow-bubble-user-text);
+  border-bottom-right-radius: 4px;
 }
 
 .moflow-ai-message-assistant {

@@ -1,3 +1,6 @@
+mod snapshot;
+
+use snapshot::SnapshotState;
 use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 use std::collections::HashMap;
@@ -993,7 +996,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
-        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, get_startup_data, fetch_skill_registry, download_and_install_skill, uninstall_skill, clean_skill_temp, check_bun_available, execute_script])
+        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, get_startup_data, fetch_skill_registry, download_and_install_skill, uninstall_skill, clean_skill_temp, check_bun_available, execute_script, snapshot::snapshot_init, snapshot::snapshot_commit, snapshot::snapshot_checkout_files, snapshot::snapshot_restore, snapshot::snapshot_log, snapshot::snapshot_destroy])
         .setup(move |app| {
             log::info!("[startup] setup-enter: {}ms", app_start.elapsed().as_millis());
 
@@ -1049,6 +1052,7 @@ pub fn run() {
             app.manage(CancelState {
                 token: std::sync::Mutex::new(CancellationToken::new()),
             });
+            app.manage(SnapshotState::new());
 
             #[cfg(desktop)]
             {

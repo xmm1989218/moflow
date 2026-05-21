@@ -95,6 +95,8 @@ export default {
   "ai.error.unknownCommand": "未知命令。可用命令: /new, /compact, /models",
   "ai.header.title": "AI 助手",
   "ai.header.context": "上下文",
+  "ai.undo": "撤销最近一轮",
+  "ai.undoConfirm": "已撤销最近一轮对话",
   "ai.empty.openDoc": "请先打开一个文档",
   "ai.empty.loading": "加载中…",
   "ai.empty.prompt": "有什么关于当前文档的问题？",

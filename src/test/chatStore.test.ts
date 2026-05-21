@@ -313,4 +313,85 @@ describe("chatStore", () => {
       expect(useChatStore.getState().subAgentResultsMap["task-1"]).toBeUndefined();
     });
   });
+
+  describe("undoFromMessage", () => {
+    it("returns -1 when message not found", () => {
+      const result = useChatStore.getState().undoFromMessage(TEST_TAB, "nonexistent");
+      expect(result).toBe(-1);
+    });
+
+    it("returns 0 when undoing first user message (0 user msgs before cut)", () => {
+      const msg = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "hello" });
+      const result = useChatStore.getState().undoFromMessage(TEST_TAB, msg.id);
+      expect(result).toBe(0);
+      expect(useChatStore.getState().messagesMap[TEST_TAB]).toHaveLength(0);
+    });
+
+    it("removes message and all subsequent messages", () => {
+      const msg1 = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "round1" });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "answer1" });
+      const msg2 = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "round2" });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "answer2" });
+
+      const userRound = useChatStore.getState().undoFromMessage(TEST_TAB, msg2.id);
+      expect(userRound).toBe(1);
+      const msgs = useChatStore.getState().messagesMap[TEST_TAB];
+      expect(msgs.length).toBe(2);
+      expect(msgs[0].id).toBe(msg1.id);
+      expect(msgs[1].content).toBe("answer1");
+    });
+
+    it("removes messages including tool messages", () => {
+      const tc: ToolCall = { id: "tc1", name: "read", arguments: "{}" };
+      const msg1 = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "round1" });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "answer1" });
+      const msg2 = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "round2" });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "", toolCalls: [tc] });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "tool", content: "file content", toolCallId: "tc1", toolName: "read" });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "final answer" });
+
+      const userRound = useChatStore.getState().undoFromMessage(TEST_TAB, msg2.id);
+      expect(userRound).toBe(1);
+      const msgs = useChatStore.getState().messagesMap[TEST_TAB];
+      expect(msgs.length).toBe(2);
+      expect(msgs[0].id).toBe(msg1.id);
+      expect(msgs[1].content).toBe("answer1");
+    });
+
+    it("rebuilds contextMap after undo", () => {
+      useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "round1" });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "answer1", promptTokens: 100 });
+      const msg2 = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "round2" });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "answer2", promptTokens: 200 });
+
+      useChatStore.getState().getContext(TEST_TAB);
+      expect(useChatStore.getState().contextTokensMap[TEST_TAB]).toBe(200);
+
+      useChatStore.getState().undoFromMessage(TEST_TAB, msg2.id);
+      const ctx = useChatStore.getState().getContext(TEST_TAB);
+      expect(ctx.length).toBe(2);
+      expect(useChatStore.getState().contextTokensMap[TEST_TAB]).toBe(100);
+    });
+
+    it("can undo past compact", () => {
+      const msg1 = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "round1" });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "answer1", promptTokens: 100 });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "/compact" });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "summary", isCompactSummary: true, promptTokens: 50 });
+      const msg2 = useChatStore.getState().addMessage(TEST_TAB, { role: "user", content: "after compact" });
+      useChatStore.getState().addMessage(TEST_TAB, { role: "assistant", content: "answer after" });
+
+      const userRound = useChatStore.getState().undoFromMessage(TEST_TAB, msg2.id);
+      expect(userRound).toBe(2);
+      const msgs = useChatStore.getState().messagesMap[TEST_TAB];
+      expect(msgs.length).toBe(4);
+      expect(msgs[0].id).toBe(msg1.id);
+      expect(msgs[1].content).toBe("answer1");
+      expect(msgs[2].content).toBe("/compact");
+      expect(msgs[3].content).toBe("summary");
+
+      const ctx = useChatStore.getState().getContext(TEST_TAB);
+      expect(ctx.length).toBe(3);
+    });
+  });
 });

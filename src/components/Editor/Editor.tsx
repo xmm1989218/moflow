@@ -3,6 +3,7 @@ import { Milkdown, MilkdownProvider, useEditor } from "@milkdown/react";
 import { replaceAll, getHTML } from "@milkdown/utils";
 import { EditorStatus, editorViewCtx, parserCtx, remarkStringifyOptionsCtx, serializerCtx } from "@milkdown/core";
 import { Slice, type Node as ProseNode } from "prosemirror-model";
+import { posixBasename } from "../../lib/pathUtils";
 
 function replaceAllNoHistory(markdown: string) {
   return (ctx: Ctx) => {
@@ -896,7 +897,7 @@ export default function Editor() {
 
   if (files.length === 0) {
     if (workspaceRoot) {
-      const wsName = workspaceRoot.replace(/\\/g, "/").split("/").filter(Boolean).pop() || workspaceRoot;
+      const wsName = posixBasename(workspaceRoot);
       return (
         <div className="flex-1 min-h-0 flex items-center justify-center bg-moflow-bg">
           <div className="flex flex-col items-center gap-3 text-moflow-text-secondary select-none">

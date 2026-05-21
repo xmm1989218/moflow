@@ -134,6 +134,25 @@ export async function loadChat(chatKey: string): Promise<Message[]> {
   }
 }
 
+export async function rewriteChat(chatKey: string, keepCount: number): Promise<void> {
+  try {
+    const path = await chatFilePath(chatKey);
+    if (!(await exists(path))) return;
+    const data = await readFile(path);
+    const text = new TextDecoder().decode(data);
+    const allLines = text.split("\n").filter((l) => l.trim().length > 0);
+    if (keepCount >= allLines.length) return;
+    const keptLines = allLines.slice(0, keepCount);
+    const content = keptLines.join("\n") + "\n";
+    const dir = await chatDirPath(chatKey);
+    const tmpPath = await join(dir, "messages.jsonl.rewrite");
+    await writeFile(tmpPath, new TextEncoder().encode(content));
+    await rename(tmpPath, path);
+  } catch (e) {
+    console.error("[chatPersistence] rewriteChat error:", e);
+  }
+}
+
 export async function appendTraceEvent(chatKey: string, event: Record<string, unknown>): Promise<void> {
   try {
     const path = await traceFilePath(chatKey);

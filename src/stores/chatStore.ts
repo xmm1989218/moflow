@@ -1,7 +1,9 @@
 import { create } from "zustand";
-import { appendMessage, clearChat, removeChat, loadChat, clearTrace } from "../lib/chatPersistence";
+import { appendMessage, clearChat, removeChat, loadChat, clearTrace, rewriteChat } from "../lib/chatPersistence";
 import { appendInputHistory, loadInputHistory as loadInputHistoryFromFile } from "../lib/inputHistory";
 import type { ToolCall, SubAgentExecution } from "../lib/types";
+import type { QuestionItem } from "../lib/tools";
+import type { PermissionRequest, PermissionAction } from "../lib/permission";
 
 export const COMPACT_TAIL_TURNS = 2;
 
@@ -34,6 +36,14 @@ interface ChatState {
   inputHistoryMap: Record<string, string[]>;
   activeSubAgentView: string | null;
   subAgentResultsMap: Record<string, SubAgentExecution>;
+  pendingQuestionMap: Record<string, { questions: QuestionItem[]; toolCallId: string } | null>;
+  resolveQuestionRefMap: Record<string, ((answer: string) => void) | null>;
+  permissionRequestMap: Record<string, PermissionRequest | null>;
+  resolvePermissionRefMap: Record<string, ((action: PermissionAction) => void) | null>;
+  questionStepMap: Record<string, number>;
+  questionAnswersMap: Record<string, Record<number, string>>;
+  questionShowCustomMap: Record<string, Record<number, boolean>>;
+  questionCustomInputsMap: Record<string, Record<number, string>>;
 
   getContext: (tabId: string) => Message[];
   addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp">) => Message;
@@ -53,6 +63,16 @@ interface ChatState {
   setActiveSubAgentView: (taskId: string | null) => void;
   addSubAgentResult: (taskId: string, execution: SubAgentExecution) => void;
   clearSubAgentViews: (chatKey: string) => void;
+  setPendingQuestion: (chatKey: string, question: { questions: QuestionItem[]; toolCallId: string } | null) => void;
+  setResolveQuestionRef: (chatKey: string, ref: ((answer: string) => void) | null) => void;
+  setPermissionRequest: (chatKey: string, request: PermissionRequest | null) => void;
+  setResolvePermissionRef: (chatKey: string, ref: ((action: PermissionAction) => void) | null) => void;
+  setQuestionStep: (chatKey: string, step: number) => void;
+  setQuestionAnswers: (chatKey: string, answers: Record<number, string>) => void;
+  setQuestionShowCustom: (chatKey: string, showCustom: Record<number, boolean>) => void;
+  setQuestionCustomInputs: (chatKey: string, inputs: Record<number, string>) => void;
+  clearQuestionFormState: (chatKey: string) => void;
+  undoFromMessage: (tabId: string, messageId: string) => number;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -69,6 +89,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
   inputHistoryMap: {},
   activeSubAgentView: null,
   subAgentResultsMap: {},
+  pendingQuestionMap: {},
+  resolveQuestionRefMap: {},
+  permissionRequestMap: {},
+  resolvePermissionRefMap: {},
+  questionStepMap: {},
+  questionAnswersMap: {},
+  questionShowCustomMap: {},
+  questionCustomInputsMap: {},
 
   getContext: (tabId: string) => {
     const existing = get().contextMap[tabId];
@@ -383,4 +411,66 @@ export const useChatStore = create<ChatState>((set, get) => ({
         activeSubAgentView: state.activeSubAgentView && !newMap[state.activeSubAgentView] ? null : state.activeSubAgentView,
       };
     }),
+
+  setPendingQuestion: (chatKey, question) =>
+    set((state) => ({ pendingQuestionMap: { ...state.pendingQuestionMap, [chatKey]: question } })),
+  setResolveQuestionRef: (chatKey, ref) =>
+    set((state) => ({ resolveQuestionRefMap: { ...state.resolveQuestionRefMap, [chatKey]: ref } })),
+  setPermissionRequest: (chatKey, request) =>
+    set((state) => ({ permissionRequestMap: { ...state.permissionRequestMap, [chatKey]: request } })),
+  setResolvePermissionRef: (chatKey, ref) =>
+    set((state) => ({ resolvePermissionRefMap: { ...state.resolvePermissionRefMap, [chatKey]: ref } })),
+  setQuestionStep: (chatKey, step) =>
+    set((state) => ({ questionStepMap: { ...state.questionStepMap, [chatKey]: step } })),
+  setQuestionAnswers: (chatKey, answers) =>
+    set((state) => ({ questionAnswersMap: { ...state.questionAnswersMap, [chatKey]: answers } })),
+  setQuestionShowCustom: (chatKey, showCustom) =>
+    set((state) => ({ questionShowCustomMap: { ...state.questionShowCustomMap, [chatKey]: showCustom } })),
+  setQuestionCustomInputs: (chatKey, inputs) =>
+    set((state) => ({ questionCustomInputsMap: { ...state.questionCustomInputsMap, [chatKey]: inputs } })),
+  clearQuestionFormState: (chatKey) =>
+    set((state) => ({
+      questionStepMap: { ...state.questionStepMap, [chatKey]: 0 },
+      questionAnswersMap: { ...state.questionAnswersMap, [chatKey]: {} },
+      questionShowCustomMap: { ...state.questionShowCustomMap, [chatKey]: {} },
+      questionCustomInputsMap: { ...state.questionCustomInputsMap, [chatKey]: {} },
+    })),
+
+  undoFromMessage: (tabId, messageId) => {
+    const msgs = get().messagesMap[tabId] ?? [];
+    if (msgs.length === 0) return -1;
+
+    const cutIdx = msgs.findIndex((m) => m.id === messageId);
+    if (cutIdx === -1) return -1;
+
+    const keptMsgs = msgs.slice(0, cutIdx);
+
+    let userRound = 0;
+    for (let i = 0; i < cutIdx; i++) {
+      if (msgs[i].role === "user") userRound++;
+    }
+
+    set((state) => {
+      const newContextMap = { ...state.contextMap };
+      delete newContextMap[tabId];
+
+      const newSubAgentMap = { ...state.subAgentResultsMap };
+      for (const [id, exec] of Object.entries(newSubAgentMap)) {
+        if (exec.parentChatKey === tabId) delete newSubAgentMap[id];
+      }
+
+      return {
+        messagesMap: { ...state.messagesMap, [tabId]: keptMsgs },
+        contextMap: newContextMap,
+        activeSubAgentView: state.activeSubAgentView && !newSubAgentMap[state.activeSubAgentView] ? null : state.activeSubAgentView,
+        subAgentResultsMap: newSubAgentMap,
+      };
+    });
+
+    get().getContext(tabId);
+
+    rewriteChat(tabId, keptMsgs.length);
+
+    return userRound;
+  },
 }));

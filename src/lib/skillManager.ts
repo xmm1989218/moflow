@@ -3,6 +3,7 @@ import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, mkdir, exists, readDir } from "@tauri-apps/plugin-fs";
 import { invoke } from "@tauri-apps/api/core";
 import type { SkillMeta } from "./types";
+import { toPosix } from "./pathUtils";
 
 const NAME_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
@@ -133,9 +134,8 @@ export async function readSkillFile(name: string, relativePath: string): Promise
   const skillsDir = await getSkillsDir();
   const skillDir = await join(skillsDir, name);
   const filePath = await join(skillDir, relativePath);
-
-  const normalizedPath = filePath.replace(/\\/g, "/");
-  const normalizedSkillDir = skillDir.replace(/\\/g, "/");
+  const normalizedPath = toPosix(filePath);
+  const normalizedSkillDir = toPosix(skillDir);
   if (!normalizedPath.startsWith(normalizedSkillDir + "/")) {
     throw new Error("Path traversal: file is outside skill directory");
   }
@@ -158,8 +158,8 @@ export async function executeSkillScript(
   const skillsDir = await getSkillsDir();
   const scriptPath = await join(skillsDir, skillName, "scripts", script);
 
-  const normalizedScript = scriptPath.replace(/\\/g, "/");
-  const normalizedSkillsDir = skillsDir.replace(/\\/g, "/");
+  const normalizedScript = toPosix(scriptPath);
+  const normalizedSkillsDir = toPosix(skillsDir);
   if (!normalizedScript.startsWith(normalizedSkillsDir + "/")) {
     throw new Error("Path traversal: script is outside skills directory");
   }

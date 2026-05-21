@@ -10,6 +10,7 @@ import { useSkillStore } from "../stores/skillStore";
 import { loadSkillBody, listScriptFiles, executeSkillScript } from "./skillManager";
 import { useThemeStore } from "../stores/themeStore";
 import { useTabStore } from "../stores/appStore";
+import { toPosix } from "./pathUtils";
 
 export type OnPermissionCallback = (request: PermissionRequest) => Promise<PermissionAction>;
 
@@ -34,8 +35,8 @@ function truncateResult(text: string): string {
 }
 
 function isPathInsideWorkspace(path: string, workspaceRoot: string): boolean {
-  const normalizedPath = path.replace(/\\/g, "/");
-  const normalizedRoot = workspaceRoot.replace(/\\/g, "/").replace(/\/$/, "");
+  const normalizedPath = toPosix(path);
+  const normalizedRoot = toPosix(workspaceRoot).replace(/\/$/, "");
   return normalizedPath.startsWith(normalizedRoot + "/") || normalizedPath === normalizedRoot;
 }
 
@@ -390,7 +391,7 @@ async function resolveContent(
       return { content: "", error: "No workspace open and no active file. Cannot resolve relative path." };
     }
 
-    const isCurrentFile = ctx.activeFilePath && absPath.replace(/\\/g, "/") === ctx.activeFilePath.replace(/\\/g, "/");
+    const isCurrentFile = ctx.activeFilePath && toPosix(absPath) === toPosix(ctx.activeFilePath);
 
     if (!isCurrentFile) {
       const permissions = ctx.permissions ?? DEFAULT_PERMISSIONS;
@@ -574,7 +575,7 @@ async function toolFind(pattern: string, workspaceRoot: string): Promise<string>
         await walk(entryPath, depth + 1);
       } else {
         if (entry.name.toLowerCase().includes(patternLower)) {
-          const rel = entryPath.replace(workspaceRoot.replace(/\\/g, "/").replace(/\/$/, "") + "/", "").replace(/\\/g, "/");
+      const rel = toPosix(entryPath).replace(toPosix(workspaceRoot).replace(/\/$/, "") + "/", "");
           results.push(rel);
         }
       }
@@ -623,7 +624,7 @@ async function toolGlob(pattern: string, workspaceRoot: string): Promise<string>
       if (results.length >= MAX_GLOB_RESULTS) return;
       if (entry.name.startsWith(".")) continue;
       const entryPath = await join(dir, entry.name);
-      const rel = entryPath.replace(workspaceRoot.replace(/\\/g, "/").replace(/\/$/, "") + "/", "").replace(/\\/g, "/");
+      const rel = toPosix(entryPath).replace(toPosix(workspaceRoot).replace(/\/$/, "") + "/", "");
       if (entry.isDirectory) {
         if (entry.name === "node_modules" || entry.name === ".git" || entry.name === "assets") continue;
         await walk(entryPath, depth + 1);
@@ -732,7 +733,10 @@ async function resolvePathAndCheckWritePermission(
   const sessionRules = ctx.sessionRules ?? [];
   const action = evaluateWithSession(sessionRules, permissions.edit, "edit", absPath);
 
-  if (action === "deny") return { error: "Permission denied: edit not granted" };
+  if (action === "deny") {
+    const isPlanMode = sessionRules.some((r) => r.permissionKey === "edit" && r.pattern === "**" && r.action === "deny");
+    return { error: isPlanMode ? "Plan mode: file edits are not allowed. Switch to Build mode to make changes." : "Permission denied: edit not granted" };
+  }
   if (action === "ask") {
     if (!onPermission) return { error: "Permission denied: edit not granted" };
     const alwaysPattern = generateAlwaysPattern("edit", absPath);
@@ -1071,7 +1075,8 @@ async function toolRunSkillScript(
   const action = evaluateWithSession(sessionRules, permissions.runSkillScript, "runSkillScript", skillName);
 
   if (action === "deny") {
-    return `Skill script execution for "${skillName}" was denied`;
+    const isPlanMode = sessionRules.some((r) => r.permissionKey === "runSkillScript" && r.pattern === "**" && r.action === "deny");
+    return isPlanMode ? "Plan mode: skill script execution is not allowed. Switch to Build mode to run scripts." : `Skill script execution for "${skillName}" was denied`;
   }
   if (action === "ask" && onPermission) {
     const alwaysPattern = generateAlwaysPattern("runSkillScript", skillName);
@@ -1113,6 +1118,15 @@ export async function executeTool(
   ctx: ToolContext,
   onPermission?: OnPermissionCallback
 ): Promise<string> {
+  const sessionRules = ctx.sessionRules ?? [];
+  const isPlanMode = sessionRules.some((r) => r.permissionKey === "edit" && r.pattern === "**" && r.action === "deny");
+  if (isPlanMode && (name === "write" || name === "edit")) {
+    return "Plan mode: file edits are not allowed. Switch to Build mode to make changes.";
+  }
+  if (isPlanMode && name === "runSkillScript") {
+    return "Plan mode: skill script execution is not allowed. Switch to Build mode to run scripts.";
+  }
+
   try {
     let result: string;
 

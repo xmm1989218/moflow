@@ -95,6 +95,8 @@ export default {
   "ai.error.unknownCommand": "Unknown command. Available: /new, /compact, /models",
   "ai.header.title": "AI Assistant",
   "ai.header.context": "Context",
+  "ai.undo": "Undo last round",
+  "ai.undoConfirm": "Undone last round",
   "ai.empty.openDoc": "Open a document first",
   "ai.empty.loading": "Loading…",
   "ai.empty.prompt": "Questions about the current document?",

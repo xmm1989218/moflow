@@ -9,6 +9,8 @@ import { getLLMClient, type ChatMessage, TimeoutError } from "../../lib/llmClien
 import { buildSystemPrompt, estimateTokens } from "../../lib/contextBuilder";
 import { getModelInfo, calculateCost, formatCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
+import { snapshotInit, snapshotCommit, snapshotLog, snapshotRestore } from "../../lib/snapshot";
+import { posixDirname, toPosix } from "../../lib/pathUtils";
 import { getToolDefinitions, executeTool, WEBFETCH_LIMIT, makeSkillTool, makeRunSkillScriptTool, shouldAddRunSkillScriptTool, type QuestionItem } from "../../lib/tools";
 import { createTracer, truncateArgsSummary } from "../../lib/tracer";
 import type { TracerHandle } from "../../lib/tracer";
@@ -485,7 +487,7 @@ export default function AISidebar() {
   const activeFileId = useTabStore((s) => s.activeFileId);
   const workspaceRoot = useTabStore((s) => s.workspaceRoot);
   const chatKey = useTabStore((s) => {
-    if (s.workspaceRoot) return "dir:" + s.workspaceRoot.replace(/\\/g, "/").toLowerCase();
+    if (s.workspaceRoot) return "dir:" + toPosix(s.workspaceRoot).toLowerCase();
     return s.activeFileId;
   });
   const activeFilePath = useTabStore((s) => {
@@ -495,6 +497,8 @@ export default function AISidebar() {
   const chatLoaded = useChatStore((s) => s.chatLoadedMap[chatKey] ?? true);
   const activeSubAgentView = useChatStore((s) => s.activeSubAgentView);
   const subAgentResults = useChatStore((s) => s.subAgentResultsMap);
+  const permissionRequest = useChatStore((s) => s.permissionRequestMap[chatKey] ?? null);
+  const pendingQuestion = useChatStore((s) => s.pendingQuestionMap[chatKey] ?? null);
   const { messages, isStreaming, streamingContent, addMessage, appendStreamingContent, clearStreamingContent, clearMessages, setStreaming, stopGeneration } = useChatStore(
     useShallow((s) => ({
       messages: s.messagesMap[chatKey] || emptyMessages,
@@ -528,14 +532,22 @@ export default function AISidebar() {
   const [toolCallStatus, setToolCallStatus] = useState<{ name: string; args: Record<string, unknown> } | null>(null);
   const historyIndexRef = useRef(-1);
   const draftInputRef = useRef("");
-  const [permissionRequest, setPermissionRequest] = useState<PermissionRequest | null>(null);
-  const resolvePermissionRef = useRef<((action: PermissionAction) => void) | null>(null);
-  const [pendingQuestion, setPendingQuestion] = useState<{ questions: QuestionItem[]; toolCallId: string } | null>(null);
-  const resolveQuestionRef = useRef<((answer: string) => void) | null>(null);
   const currentAiMode = usePermissionStore((s) => s.sessionAiModeMap[chatKey] ?? "build");
   const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
   useT();
+
+  useEffect(() => {
+    if (!chatKey) return;
+    const ws = workspaceRoot ?? (activeFilePath ? posixDirname(activeFilePath) : undefined);
+    console.log("[snapshot] init:", { chatKey, ws, workspaceRoot, activeFilePath, filePaths: workspaceRoot ? undefined : [activeFilePath!] });
+    if (!ws) return;
+    snapshotInit(chatKey, ws, workspaceRoot ? undefined : [activeFilePath!]).then(() => {
+      console.log("[snapshot] init OK for", chatKey);
+    }).catch((e) => {
+      console.error("[snapshot] init failed:", e);
+    });
+  }, [chatKey, workspaceRoot, activeFilePath]);
 
   useEffect(() => {
     if (!isStreaming) {
@@ -631,6 +643,36 @@ export default function AISidebar() {
       el.style.height = Math.min(el.scrollHeight, 120) + "px";
     }
   }, [input, isStreaming]);
+
+  const handleUndo = useCallback(async (messageId: string) => {
+    if (isStreaming) return;
+    const userRound = useChatStore.getState().undoFromMessage(chatKey, messageId);
+    console.log("[undo] userRound:", userRound);
+    if (userRound < 0) return;
+    try {
+      const log = await snapshotLog(chatKey);
+      console.log("[undo] snapshot log:", log.map((e) => e.message));
+      const target = log.find((e) => e.message === `round-${userRound + 1}`);
+      console.log("[undo] looking for round-", userRound + 1, "found:", target?.hash);
+      if (target) {
+        const changedFiles = await snapshotRestore(chatKey, target.hash);
+        console.log("[undo] restored files:", changedFiles);
+        if (changedFiles.length > 0) {
+          const { loadTabContent } = await import("../../lib/fileOps");
+          const openTabs = useTabStore.getState().files;
+          const changedSet = new Set(changedFiles.map((f) => f.toLowerCase()));
+          for (const tab of openTabs) {
+            if (tab.filePath && changedSet.has(toPosix(tab.filePath).toLowerCase())) {
+              console.log("[undo] reloading tab:", tab.filePath);
+              await loadTabContent(tab.id);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[undo] failed:", e);
+    }
+  }, [chatKey, isStreaming]);
 
   const doCompact = async () => {
     const contextMsgs = useChatStore.getState().getContext(chatKey);
@@ -822,16 +864,16 @@ export default function AISidebar() {
 
   const onPermission: OnPermissionCallback = useCallback((request: PermissionRequest) => {
     return new Promise<PermissionAction>((resolve) => {
-      setPermissionRequest(request);
-      resolvePermissionRef.current = resolve;
+      useChatStore.getState().setPermissionRequest(chatKey, request);
+      useChatStore.getState().setResolvePermissionRef(chatKey, resolve);
     });
-  }, []);
+  }, [chatKey]);
 
   const handlePermissionAllow = useCallback(() => {
-    resolvePermissionRef.current?.("allow");
-    resolvePermissionRef.current = null;
-    setPermissionRequest(null);
-  }, []);
+    useChatStore.getState().resolvePermissionRefMap[chatKey]?.("allow");
+    useChatStore.getState().setResolvePermissionRef(chatKey, null);
+    useChatStore.getState().setPermissionRequest(chatKey, null);
+  }, [chatKey]);
 
   const handlePermissionAlwaysAllow = useCallback(() => {
     if (permissionRequest) {
@@ -843,16 +885,16 @@ export default function AISidebar() {
         action: "allow",
       });
     }
-    resolvePermissionRef.current?.("allow");
-    resolvePermissionRef.current = null;
-    setPermissionRequest(null);
+    useChatStore.getState().resolvePermissionRefMap[chatKey]?.("allow");
+    useChatStore.getState().setResolvePermissionRef(chatKey, null);
+    useChatStore.getState().setPermissionRequest(chatKey, null);
   }, [chatKey, permissionRequest]);
 
   const handlePermissionDeny = useCallback(() => {
-    resolvePermissionRef.current?.("deny");
-    resolvePermissionRef.current = null;
-    setPermissionRequest(null);
-  }, []);
+    useChatStore.getState().resolvePermissionRefMap[chatKey]?.("deny");
+    useChatStore.getState().setResolvePermissionRef(chatKey, null);
+    useChatStore.getState().setPermissionRequest(chatKey, null);
+  }, [chatKey]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -893,6 +935,15 @@ export default function AISidebar() {
 
     setInput("");
     historyIndexRef.current = -1;
+
+    try {
+      const roundNum = (useChatStore.getState().messagesMap[chatKey]?.filter((m) => m.role === "user").length ?? 0) + 1;
+      const result = await snapshotCommit(chatKey, `round-${roundNum}`);
+      console.log("[snapshot] committed", result.hash, `round-${roundNum}`);
+    } catch (e) {
+      console.error("[snapshot] commit failed:", e);
+    }
+
     const userMsg = addMessage(chatKey, { role: "user", content: text });
     await appendMessage(chatKey, userMsg);
     useChatStore.getState().appendInputHistory(chatKey, text);
@@ -1074,10 +1125,11 @@ const assistantMsg = addMessage(chatKey, { role: "assistant", content, promptTok
             }
             setToolCallStatus(null);
             const answer = await new Promise<string>((resolve) => {
-              setPendingQuestion({ questions, toolCallId: tc.id });
-              resolveQuestionRef.current = resolve;
+              useChatStore.getState().setPendingQuestion(chatKey, { questions, toolCallId: tc.id });
+              useChatStore.getState().setResolveQuestionRef(chatKey, resolve);
             });
-            setPendingQuestion(null);
+useChatStore.getState().setPendingQuestion(chatKey, null);
+      useChatStore.getState().clearQuestionFormState(chatKey);
             const toolMsg = addMessage(chatKey, {
               role: "tool",
               content: answer,
@@ -1227,16 +1279,18 @@ const assistantMsg = addMessage(chatKey, { role: "assistant", content, promptTok
       setStreaming(false);
       abortRef.current = null;
       clearStreamingContent(chatKey);
-      if (resolvePermissionRef.current) {
-        resolvePermissionRef.current("deny");
-        resolvePermissionRef.current = null;
+      const permRef = useChatStore.getState().resolvePermissionRefMap[chatKey];
+      if (permRef) {
+        permRef("deny");
+        useChatStore.getState().setResolvePermissionRef(chatKey, null);
       }
-      setPermissionRequest(null);
-      if (resolveQuestionRef.current) {
-        resolveQuestionRef.current("User cancelled");
-        resolveQuestionRef.current = null;
+      useChatStore.getState().setPermissionRequest(chatKey, null);
+      const qRef = useChatStore.getState().resolveQuestionRefMap[chatKey];
+      if (qRef) {
+        qRef("User cancelled");
+        useChatStore.getState().setResolveQuestionRef(chatKey, null);
       }
-      setPendingQuestion(null);
+      useChatStore.getState().setPendingQuestion(chatKey, null);
       const totalTokens = useChatStore.getState().totalTokensMap[chatKey] ?? 0;
       const totalCost = useChatStore.getState().costMap[chatKey] ?? 0;
       tracer.endTrace(traceStatus, { totalTokens, totalCost });
@@ -1476,6 +1530,17 @@ if (id === "compact") {
 
               elements.push(
                 <div key={msg.id} className={`moflow-ai-message moflow-ai-message-${msg.role}`}>
+{msg.role === "user" && msg.content !== "/compact" && (
+                    <button
+                      className="moflow-ai-undo-btn"
+                      onClick={() => handleUndo(msg.id)}
+                      disabled={isStreaming}
+                      aria-label={t("ai.undo")}
+                      title={t("ai.undo")}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    </button>
+                  )}
                   <div className="moflow-ai-message-content">
                     {msg.role === "assistant" ? (
                       <MessageContent content={msg.content} />
@@ -1483,8 +1548,8 @@ if (id === "compact") {
                       msg.content
                     )}
                   </div>
-                </div>
-              );
+                 </div>
+               );
             }
             flushToolBuffer();
             return elements;
@@ -1534,9 +1599,10 @@ if (id === "compact") {
         {pendingQuestion && (
           <QuestionBar
             questions={pendingQuestion.questions}
+            chatKey={chatKey}
             onConfirm={(answer) => {
-              resolveQuestionRef.current?.(answer);
-              resolveQuestionRef.current = null;
+              useChatStore.getState().resolveQuestionRefMap[chatKey]?.(answer);
+              useChatStore.getState().setResolveQuestionRef(chatKey, null);
             }}
           />
         )}

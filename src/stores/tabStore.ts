@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useChatStore } from "./chatStore";
 import { persistSession } from "./sessionStore";
 import { useThemeStore } from "./themeStore";
+import { toPosix, posixBasename } from "../lib/pathUtils";
 
 export type EditorMode = "wysiwyg" | "source";
 
@@ -316,7 +317,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
   setWorkspaceRoot: (root) => {
     const prev = get().workspaceRoot;
     if (prev && prev !== root) {
-      const oldKey = "dir:" + prev.replace(/\\/g, "/").toLowerCase();
+      const oldKey = "dir:" + toPosix(prev).toLowerCase();
       useChatStore.getState().deleteChat(oldKey);
     }
     set({ workspaceRoot: root });
@@ -332,7 +333,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
   getChatKey: () => {
     const state = get();
     if (state.workspaceRoot) {
-      return "dir:" + state.workspaceRoot.replace(/\\/g, "/").toLowerCase();
+      return "dir:" + toPosix(state.workspaceRoot).toLowerCase();
     }
     return state.activeFileId;
   },
@@ -341,10 +342,10 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     const state = get();
     if (!state.workspaceRoot) return true;
 
-    const wsRoot = state.workspaceRoot.replace(/\\/g, "/").toLowerCase();
+    const wsRoot = toPosix(state.workspaceRoot).toLowerCase();
     const isWsTab = (f: TabState) => {
       if (f.filePath === null) return false;
-      return f.filePath.replace(/\\/g, "/").toLowerCase().startsWith(wsRoot);
+      return toPosix(f.filePath).toLowerCase().startsWith(wsRoot);
     };
 
     const wsTabs = state.files.filter(isWsTab);
@@ -356,7 +357,7 @@ export const useTabStore = create<TabState_Store>((set, get) => ({
     if (hasUnsaved) {
       const { showConfirmCloseDialog } = await import("../lib/closeDialog");
       const { t } = await import("../i18n/core");
-      const wsName = state.workspaceRoot.replace(/\\/g, "/").split("/").filter(Boolean).pop() || state.workspaceRoot;
+      const wsName = posixBasename(state.workspaceRoot);
       const message = t("common.workspaceUnsaved", { wsName });
       const result = await showConfirmCloseDialog(message);
       if (result === "cancel") return false;

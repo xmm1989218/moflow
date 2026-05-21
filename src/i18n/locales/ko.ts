@@ -95,6 +95,8 @@ export default {
   "ai.error.unknownCommand": "알 수 없는 명령입니다. 사용 가능한 명령: /new, /compact, /models",
   "ai.header.title": "AI 어시스턴트",
   "ai.header.context": "컨텍스트",
+  "ai.undo": "마지막 라운드 실행 취소",
+  "ai.undoConfirm": "마지막 라운드가 실행 취소되었습니다",
   "ai.empty.openDoc": "먼저 문서를 열어주세요",
   "ai.empty.loading": "로딩 중…",
   "ai.empty.prompt": "현재 문서에 대해 질문이 있으신가요?",

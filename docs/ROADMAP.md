@@ -1019,13 +1019,78 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
-## v1.3.0 — Git 支持
+## v1.3.0 — 消息撤销
 
-### Git 支持
+### Design Decisions
 
-- [ ] AI git tool — 让 AI 执行 git 命令（commit, diff, log, status 等，Rust 后端子进程执行 + 30s 超时 + 权限控制）
-- [ ] HamburgerMenu 增加 Git 子菜单（Commit / Push / Pull / Diff / Log / Status）
-- [ ] 编辑器 git diff 高亮（修改行着色，新建行绿色，删除行红色，gutter 标记）
+- **撤销粒度**：按轮撤销（一次撤销一整轮：user + assistant + tool 消息），线性截断，无分支
+- **快照系统**：基于 git2-rs（libgit2），每 session 一个独立 git repo，每轮对话开始前 commit
+- **文件回滚**：撤销时 git checkout 恢复文件到上一轮 commit 状态（统一方案，不用全量快照）
+- **撤销前存档**：撤销操作前先 commit 当前状态（含手动编辑），保证可反悔
+- **手动编辑冲突**：不检测不警告，撤销前存档保证可反悔（与 opencode 一致）
+- **外部文件**：workspace 外的文件变更不保证回滚，权限确认时提示用户
+- **compact 跨越**：原始消息在 messagesMap 中保留不删除，撤销可跨越 compact 边界
+- **JSONL 处理**：撤销时重写 messages.jsonl，只保留截断点之前的行
+- **git2-rs 依赖**：vendored-libgit2 静态链接，+2-4 MB 包体积，用户无需安装 git
+
+### Git Snapshot 快照系统（Rust 后端）
+
+- [ ] Cargo.toml 添加 `git2` 依赖（vendored-libgit2，default-features = false，不开 https）
+- [ ] `snapshot_init` 命令 — 在 `{appDataDir}/chats/{safeFileName}/snapshots/` 初始化 bare git repo
+- [ ] `snapshot_add_worktree` 命令 — 将 workspace（或单文件）设置为 snapshot repo 的 worktree
+- [ ] `snapshot_commit` 命令 — `git add -A && git commit`，返回 commit hash
+- [ ] `snapshot_checkout` 命令 — `git checkout {hash} -- {file}` 恢复指定文件
+- [ ] `snapshot_restore` 命令 — 恢复整个 worktree 到指定 commit 状态
+- [ ] `snapshot_log` 命令 — 返回 commit 列表（hash + message + timestamp），用于撤销前查找目标 commit
+- [ ] Snapshot 状态管理 — `HashMap<String, Repository>` 缓存已打开的 snapshot repo（避免每次重新 open）
+
+### chatStore 撤销逻辑
+
+- [ ] `undoLastRound` action — 截断最后一轮消息（user + assistant + tool），重建 contextMap
+- [ ] 找到最后一轮的边界：从 messagesMap 末尾往前找最后一个 user 消息，截断从该位置开始的所有消息
+- [ ] 截断后调用 `getContext()` 重建 contextMap（可能跨越 compact，自然恢复原始消息）
+- [ ] 截断后清空该 tab 的 streamingContent / subAgentResults
+- [ ] 调用 Rust `snapshot_checkout` 恢复文件到上一轮 commit 状态
+- [ ] 调用 `rewriteChat` 重写 JSONL
+- [ ] 刷新编辑器已打开文件的内容
+
+### chatPersistence JSONL 重写
+
+- [ ] `rewriteChat(chatKey, messageCount)` — 重写 messages.jsonl，只保留前 N 条消息
+- [ ] 先写入 `.repair` 临时文件，成功后 rename 替换原文件（原子操作，避免损坏）
+
+### 前端 Snapshot 集成
+
+- [ ] 每轮对话开始前（handleSend 开头）调用 `snapshot_commit` 保存当前状态
+- [ ] Tab 初始化时调用 `snapshot_init` + `snapshot_add_worktree` 设置快照 repo
+- [ ] 撤销按钮触发 `undoLastRound`
+
+### 撤销前存档（反悔机制）
+
+- [ ] 撤销操作前先调用 `snapshot_commit` 保存当前状态（含手动编辑）
+- [ ] 存档 commit hash 记录到 `chatStore.undoArchiveMap`（最后一次撤销前的状态）
+- [ ] "恢复到撤销前"按钮 — 调用 `snapshot_restore` 恢复到存档 commit，重建消息
+
+### 外部文件权限提示
+
+- [ ] `PermissionBar` 外部路径确认时增加提示：「外部文件修改无法通过撤销回滚」
+
+### UI
+
+- [ ] AISidebar 消息列表中每条 user 消息旁显示撤销图标按钮（或底部统一撤销按钮）
+- [ ] 撤销确认（简单的 toast 提示"已撤销最近一轮对话"）
+- [ ] "恢复到撤销前"入口（撤销后显示一个可点击的提示条）
+
+### i18n
+
+- [ ] 4 个 locale 文件新增撤销相关 key（ai.undo, ai.undoConfirm, ai.undoRestore, ai.undoExternalWarning 等）
+
+### 测试
+
+- [ ] Rust snapshot 命令测试（init/commit/checkout/restore/log）
+- [ ] chatStore undoLastRound 测试（截断消息、重建 context、跨 compact）
+- [ ] chatPersistence rewriteChat 测试（重写 JSONL、原子替换）
+- [ ] 前端 snapshot 集成测试（每轮 commit 流程、撤销 checkout 流程）
 
 ---
 
@@ -1046,12 +1111,16 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 - [ ] Thinking/reasoning 折叠显示（chat 消息流中渲染 `reasoningContent`，`<details>` 折叠，仅限支持推理模式的模型）
 - [ ] Tool result XML 渲染（`<file>` / `<grep>` / `<outline>` 等 XML 标签语法高亮 + 折叠行号区）
-- [ ] 消息编辑与重新生成（用户可编辑已发送消息，重新从该消息生成）
-- [ ] 多消息分支（同一用户消息下的多个 AI 回复切换，类似 ChatGPT 的 ← → 导航）
 
 ---
 
-## v1.5.0 — 后续迭代
+## v1.5.0 — Git 支持 & 后续迭代
+
+### Git 支持
+
+- [ ] AI git tool — 通用 tool，读操作（status/diff/log/show/branch）无权限，写操作（commit/push/pull/checkout/add/reset/stash）需 edit 权限，Rust 子进程 + 30s 超时
+- [ ] OutlineSidebar 新增 Git tab（commit 输入框 + 变更文件列表 + push/pull/stash）
+- [ ] 编辑器完整 git diff 高亮（新增绿/修改蓝/删除红虚拟行 + gutter 标记，ProseMirror Decoration API）
 
 ### 编辑器
 

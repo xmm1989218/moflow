@@ -1,4 +1,5 @@
 export type PermissionAction = "allow" | "ask" | "deny";
+import { toPosix } from "./pathUtils";
 
 export type PermissionRules = PermissionAction | Record<string, PermissionAction>;
 
@@ -32,7 +33,7 @@ function escapeRegex(str: string): string {
 }
 
 function wildcardToRegex(pattern: string, key: "externalPath" | "runSkillScript" | "edit"): RegExp {
-  const normalized = pattern.replace(/\\/g, "/");
+  const normalized = toPosix(pattern);
   const parts = normalized.split("**");
   const escapedParts = parts.map((p) => escapeRegex(p));
 
@@ -57,7 +58,7 @@ export function wildcardMatch(
   input: string,
   key: "externalPath" | "runSkillScript" | "edit"
 ): boolean {
-  const normalizedInput = input.replace(/\\/g, "/");
+  const normalizedInput = toPosix(input);
   const regex = wildcardToRegex(pattern, key);
   return regex.test(normalizedInput);
 }
@@ -108,7 +109,7 @@ export function generateAlwaysPattern(
     return input;
   }
 
-  const normalized = input.replace(/\\/g, "/");
+  const normalized = toPosix(input);
   const lastSlash = normalized.lastIndexOf("/");
   if (lastSlash > 0) {
     return normalized.substring(0, lastSlash) + "/*";

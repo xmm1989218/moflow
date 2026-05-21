@@ -1,23 +1,36 @@
-import { useState } from "react";
+import { useChatStore } from "../../stores/chatStore";
+import { useShallow } from "zustand/react/shallow";
 import type { QuestionItem } from "../../lib/tools";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 
+const EMPTY_NUM_STR: Record<number, string> = {};
+const EMPTY_NUM_BOOL: Record<number, boolean> = {};
+
 interface QuestionBarProps {
   questions: QuestionItem[];
+  chatKey: string;
   onConfirm: (answer: string) => void;
 }
 
-export default function QuestionBar({ questions, onConfirm }: QuestionBarProps) {
+export default function QuestionBar({ questions, chatKey, onConfirm }: QuestionBarProps) {
   useT();
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
-  const [showCustom, setShowCustom] = useState<Record<number, boolean>>({});
-  const [customInputs, setCustomInputs] = useState<Record<number, string>>({});
+
+  const step = useChatStore((s) => s.questionStepMap[chatKey] ?? 0);
+  const { answers, showCustom, customInputs } = useChatStore(useShallow((s) => ({
+    answers: s.questionAnswersMap[chatKey] ?? EMPTY_NUM_STR,
+    showCustom: s.questionShowCustomMap[chatKey] ?? EMPTY_NUM_BOOL,
+    customInputs: s.questionCustomInputsMap[chatKey] ?? EMPTY_NUM_STR,
+  })));
 
   const q = questions[step];
   const isLast = step === questions.length - 1;
   const isFirst = step === 0;
+
+  const setStep = (v: number) => useChatStore.getState().setQuestionStep(chatKey, v);
+  const setAnswers = (v: Record<number, string>) => useChatStore.getState().setQuestionAnswers(chatKey, v);
+  const setShowCustom = (v: Record<number, boolean>) => useChatStore.getState().setQuestionShowCustom(chatKey, v);
+  const setCustomInputs = (v: Record<number, string>) => useChatStore.getState().setQuestionCustomInputs(chatKey, v);
 
   const handleToggle = (label: string) => {
     if (q.multiple) {
@@ -25,25 +38,23 @@ export default function QuestionBar({ questions, onConfirm }: QuestionBarProps) 
       const selected = current ? current.split(", ") : [];
       if (selected.includes(label)) {
         const next = selected.filter((s) => s !== label).join(", ");
-        setAnswers((prev) => ({ ...prev, [step]: next }));
+        setAnswers({ ...answers, [step]: next });
       } else {
         const next = [...selected, label].join(", ");
-        setAnswers((prev) => ({ ...prev, [step]: next }));
+        setAnswers({ ...answers, [step]: next });
       }
     } else {
-      setAnswers((prev) => ({ ...prev, [step]: label }));
-      setShowCustom((prev) => ({ ...prev, [step]: false }));
+      setAnswers({ ...answers, [step]: label });
+      setShowCustom({ ...showCustom, [step]: false });
     }
   };
 
   const handleCustomToggle = () => {
-    setShowCustom((prev) => {
-      const next = !prev[step];
-      if (next) {
-        setAnswers((ap) => ({ ...ap, [step]: "" }));
-      }
-      return { ...prev, [step]: next };
-    });
+    const next = !showCustom[step];
+    if (next) {
+      setAnswers({ ...answers, [step]: "" });
+    }
+    setShowCustom({ ...showCustom, [step]: next });
   };
 
   const getSelectedSet = () => {
@@ -58,14 +69,14 @@ export default function QuestionBar({ questions, onConfirm }: QuestionBarProps) 
 
   const handleNext = () => {
     if (showCustom[step] && customInputs[step]?.trim()) {
-      setAnswers((prev) => ({ ...prev, [step]: customInputs[step].trim() }));
-      setShowCustom((prev) => ({ ...prev, [step]: false }));
+      setAnswers({ ...answers, [step]: customInputs[step].trim() });
+      setShowCustom({ ...showCustom, [step]: false });
     }
-    setStep((s) => s + 1);
+    setStep(step + 1);
   };
 
   const handlePrev = () => {
-    setStep((s) => s - 1);
+    setStep(step - 1);
   };
 
   const handleConfirm = () => {
@@ -74,6 +85,7 @@ export default function QuestionBar({ questions, onConfirm }: QuestionBarProps) 
       finalAnswers[step] = customInputs[step].trim();
     }
     const lines = questions.map((item, i) => `Q: ${item.question} → ${finalAnswers[i] ?? ""}`);
+    useChatStore.getState().clearQuestionFormState(chatKey);
     onConfirm(lines.join("\n"));
   };
 
@@ -124,7 +136,7 @@ export default function QuestionBar({ questions, onConfirm }: QuestionBarProps) 
               type="text"
               className="moflow-ai-question-custom-input"
               value={customInputs[step] ?? ""}
-              onChange={(e) => setCustomInputs((prev) => ({ ...prev, [step]: e.target.value }))}
+              onChange={(e) => setCustomInputs({ ...customInputs, [step]: e.target.value })}
               placeholder={t("question.customPlaceholder")}
               autoFocus
             />
