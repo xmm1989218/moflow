@@ -754,11 +754,13 @@ async fn clean_skill_temp(app: tauri::AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 async fn check_bun_available() -> Result<String, String> {
+    let mut cmd = tokio::process::Command::new("bun");
+    cmd.arg("--version");
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000);
     let output = tokio::time::timeout(
         std::time::Duration::from_secs(5),
-        tokio::process::Command::new("bun")
-            .arg("--version")
-            .output(),
+        cmd.output(),
     )
     .await
     .map_err(|_| "Timeout: bun check took >5s".to_string())?
@@ -803,6 +805,8 @@ async fn execute_script(
         .current_dir(&work_dir)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped());
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x08000000);
 
     if let Some(vars) = env_vars {
         for (k, v) in vars {

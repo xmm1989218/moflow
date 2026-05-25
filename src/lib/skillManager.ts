@@ -1,3 +1,24 @@
+export function parseArgs(str: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuote = false;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (ch === '"') {
+      inQuote = !inQuote;
+    } else if (ch === " " && !inQuote) {
+      if (current) {
+        result.push(current);
+        current = "";
+      }
+    } else {
+      current += ch;
+    }
+  }
+  if (current) result.push(current);
+  return result;
+}
+
 import yaml from "js-yaml";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, mkdir, exists, readDir } from "@tauri-apps/plugin-fs";
@@ -166,7 +187,7 @@ export async function executeSkillScript(
 
   return invoke<string>("execute_script", {
     scriptPath,
-    args: args ? args.split(/\s+/).filter(Boolean) : [],
+    args: args ? parseArgs(args) : [],
     envVars: envVars ?? null,
     timeoutSecs: 30,
     cwd: cwd ?? null,

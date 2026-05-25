@@ -1112,6 +1112,26 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
+## v1.3.1 — Bug 修复
+
+### 修复
+
+- [x] Windows 执行 skill 脚本黑窗闪烁（`CREATE_NO_WINDOW` flag，macOS/Linux 无此问题）
+- [x] `runSkillScript` 参数含引号路径双重引号导致路径错误（`parseArgs` 引号感知解析替代 `split(/\s+/)`）
+- [x] 搜索跨 mark 边界单词匹配失败（`prosemirror-search` `textContent` 空格注入，`resolve.alias` shim 修复）
+- [x] 搜索按 Enter 后高亮消失（`ProseMirror-active-search-match` 缺少 CSS 样式）
+- [x] 搜索按 Enter 触发文档重建丢失 decoration（`markdownUpdated` 守卫，内容不变时跳过 `updateTabContent`）
+- [x] 快捷键 `toLowerCase()` 崩溃（`shortcuts.ts` override `key` 为 undefined 时防御）
+- [x] 设置页切换 tab 后 section 重置为外观（`settingsActiveSection` 持久化到 themeStore）
+- [x] 环境变量页面不显示已保存的变量（去掉 `draft` useState，直接用 store `envVars`）
+- [x] 环境变量 key 列宽度不足（`min-w-[120px]` → `min-w-[170px]`，容纳 `WECHAT_APPSECRET`）
+
+### 测试
+
+- [x] `parseArgs` 单元测试（13 cases：空字符串、引号路径、空格、未闭合引号、真实 skill 参数等）
+
+---
+
 ## v1.4.0 — AI 增强 & 聊天框呈现
 
 ### AI 增强
@@ -1152,3 +1172,5 @@ Enable the AI to actively explore the document instead of relying on truncated c
 ### 修复
 
 - [ ] 窗口白边修复（Windows `shadow: true` 导致 1px 白边）
+- [ ] 文件被外部替换时 MoFlow 无感知（需监听文件变更事件，检测外部修改/替换并提示或自动刷新）
+- [ ] 搜索跨 mark 边界的单词匹配失败（`prosemirror-search` `textContent` 在非文本子节点前后注入空格，Vite plugin patch 已修复）

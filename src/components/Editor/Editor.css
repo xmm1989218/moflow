@@ -220,6 +220,13 @@
   -webkit-box-decoration-break: clone;
 }
 
+.moflow-editor-wrapper .milkdown .ProseMirror .ProseMirror-active-search-match {
+  background-color: rgba(255, 150, 0, 0.6);
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
 .moflow-editor-wrapper .milkdown .ProseMirror .ProseMirror-search-match.search-match-selected {
   background-color: rgba(255, 150, 0, 0.6);
 }

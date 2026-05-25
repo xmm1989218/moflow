@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.3.1 (2026-05-25)
+
+### Bug Fixes
+
+- **Windows skill script black console flash** — Added `CREATE_NO_WINDOW` (0x08000000) creation flag to `execute_script` and `check_bun_available` commands; macOS/Linux unaffected (conditional compilation)
+- **`runSkillScript` double-quoted path arguments** — Replaced `args.split(/\s+/)` with `parseArgs()` that respects double-quote boundaries; quoted paths like `"C:\path\file.md"` are now passed as single arguments without quotes, preventing OS-level double-quoting
+- **Search fails to match words split across mark boundaries** — Patched `prosemirror-search` `textContent()` via `resolve.alias` shim (`src/stubs/prosemirror-search.ts`); removed space injection around non-text child nodes that caused `"frame less"` instead of `"frameless"` when bold/italic marks split a word
+- **Search highlights disappear after pressing Enter** — Added `.ProseMirror-active-search-match` CSS rule with orange highlight (was missing, causing the active match to appear unhighlighted); also added `markdownUpdated` guard to skip `updateTabContent` when content unchanged, preventing unnecessary document rebuilds that destroy search decorations
+- **`e.key.toLowerCase()` crash** — Added `ovr.key` truthiness check in `getShortcut`/`getAllShortcuts` to guard against incomplete `shortcutOverrides` entries with undefined `key`
+- **Settings page resets to Appearance after tab switch** — Persisted `settingsActiveSection` in `themeStore` instead of local `useState`
+- **Env vars page shows empty despite saved settings** — Removed `draft` useState that initialized with stale `envVars` (empty on first mount before async `readSettings` completes); now reads directly from store
+- **Env vars key column too narrow** — Increased key display and input width from 120px to 170px to fit keys like `WECHAT_APPSECRET`
+
+### Tests
+
+- **`parseArgs` unit tests** — 13 cases covering empty string, simple args, quoted paths, spaces inside quotes, unclosed quotes, real-world skill script arguments, etc.
+
 ## v1.3.0 (2026-05-22)
 
 ### New Features

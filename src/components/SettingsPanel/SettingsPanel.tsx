@@ -584,7 +584,8 @@ function AboutSection() {
 
 export default function SettingsPanel() {
   useT();
-  const [activeSection, setActiveSection] = useState<Section>("appearance");
+  const activeSection = useThemeStore((s) => s.settingsActiveSection as Section);
+  const setActiveSection = useThemeStore((s) => s.setSettingsActiveSection);
   const sections: { id: Section; label: string }[] = [
     { id: "appearance", label: t("settings.section.appearance") },
     { id: "ai", label: t("settings.section.ai") },

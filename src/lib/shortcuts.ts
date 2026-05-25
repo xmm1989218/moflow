@@ -44,14 +44,14 @@ export function getShortcut(id: string): ShortcutDef | undefined {
   const base = defaultShortcuts.find((s) => s.id === id);
   if (!base) return undefined;
   const ovr = overrides[id];
-  if (ovr) return { ...base, key: ovr.key, modifiers: ovr.modifiers };
+  if (ovr && ovr.key) return { ...base, key: ovr.key, modifiers: ovr.modifiers ?? base.modifiers };
   return base;
 }
 
 export function getAllShortcuts(): ShortcutDef[] {
   return defaultShortcuts.map((s) => {
     const ovr = overrides[s.id];
-    if (ovr) return { ...s, key: ovr.key, modifiers: ovr.modifiers };
+    if (ovr && ovr.key) return { ...s, key: ovr.key, modifiers: ovr.modifiers ?? s.modifiers };
     return s;
   });
 }

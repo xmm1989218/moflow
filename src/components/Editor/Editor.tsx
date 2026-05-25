@@ -507,6 +507,7 @@ const MilkdownWrapper = memo(function MilkdownWrapper({ tabId }: MilkdownWrapper
 
       listener.markdownUpdated((_ctx, markdown) => {
         if (editorReadyRef.current) {
+          if (markdown === syncedContentRef.current) return;
           syncedContentRef.current = markdown;
           if (modeRef.current === "source") return;
           if (justLoadedRef.current) {

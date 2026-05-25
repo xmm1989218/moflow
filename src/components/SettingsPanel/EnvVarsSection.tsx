@@ -9,15 +9,9 @@ export default function EnvVarsSection() {
   useT();
   const envVars = useThemeStore((s) => s.envVars);
   const setEnvVars = useThemeStore((s) => s.setEnvVars);
-  const [draft, setDraft] = useState<Record<string, string>>({ ...envVars });
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [error, setError] = useState<string | null>(null);
-
-  const persist = (vars: Record<string, string>) => {
-    setDraft(vars);
-    setEnvVars(vars);
-  };
 
   const handleAdd = () => {
     const key = newKey.trim().toUpperCase();
@@ -26,27 +20,27 @@ export default function EnvVarsSection() {
       setError(t("settings.envVars.keyPattern"));
       return;
     }
-    if (key in draft) {
+    if (key in envVars) {
       setError(t("settings.envVars.keyExists"));
       return;
     }
-    persist({ ...draft, [key]: newValue });
+    setEnvVars({ ...envVars, [key]: newValue });
     setNewKey("");
     setNewValue("");
     setError(null);
   };
 
   const handleRemove = (key: string) => {
-    const next = { ...draft };
+    const next = { ...envVars };
     delete next[key];
-    persist(next);
+    setEnvVars(next);
   };
 
   const handleValueChange = (key: string, value: string) => {
-    persist({ ...draft, [key]: value });
+    setEnvVars({ ...envVars, [key]: value });
   };
 
-  const entries = Object.entries(draft).sort(([a], [b]) => a.localeCompare(b));
+  const entries = Object.entries(envVars).sort(([a], [b]) => a.localeCompare(b));
 
   return (
     <div className="max-w-[720px] w-full">
@@ -56,7 +50,7 @@ export default function EnvVarsSection() {
         <div className="flex flex-col gap-2 mb-4">
           {entries.map(([key, value]) => (
             <div key={key} className="flex items-center gap-2 max-w-[460px]">
-              <span className="text-[13px] font-mono text-ui-text py-1.5 px-2.5 bg-ui-bg-secondary rounded min-w-[120px] shrink-0 truncate" title={key}>{key}</span>
+              <span className="text-[13px] font-mono text-ui-text py-1.5 px-2.5 bg-ui-bg-secondary rounded min-w-[170px] shrink-0 truncate" title={key}>{key}</span>
               <input
                 className="flex-1 py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary"
                 type="text"
@@ -80,7 +74,7 @@ export default function EnvVarsSection() {
 
       <div className="flex items-center gap-2 max-w-[460px]">
         <input
-          className="w-[120px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary shrink-0"
+          className="w-[170px] py-1.5 px-2.5 border border-ui-border rounded text-[13px] font-inherit bg-ui-input-bg text-ui-text outline-none focus:border-ui-accent placeholder:text-ui-text-secondary shrink-0"
           type="text"
           value={newKey}
           onChange={(e) => { setNewKey(e.target.value); setError(null); }}

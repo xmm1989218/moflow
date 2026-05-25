@@ -68,6 +68,7 @@ interface ThemeState {
   shortcutOverrides: Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>;
   showSettingsTab: boolean;
   settingsTabActive: boolean;
+  settingsActiveSection: string;
   showOutline: boolean;
   outlineWidth: number;
   leftPanelTab: "files" | "outline";
@@ -88,6 +89,7 @@ interface ThemeState {
   closeSettingsTab: () => void;
   activateSettingsTab: () => void;
   deactivateSettingsTab: () => void;
+  setSettingsActiveSection: (section: string) => void;
   setLeftPanelTab: (tab: "files" | "outline") => void;
   setEnvVars: (vars: Record<string, string>) => void;
   setMaxToolRounds: (n: number) => void;
@@ -114,6 +116,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   shortcutOverrides: {},
   showSettingsTab: false,
   settingsTabActive: false,
+  settingsActiveSection: "appearance",
   showOutline: false,
   outlineWidth: 240,
   leftPanelTab: "outline" as const,
@@ -188,6 +191,10 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
 
   deactivateSettingsTab: () => {
     set({ settingsTabActive: false });
+  },
+
+  setSettingsActiveSection: (section) => {
+    set({ settingsActiveSection: section });
   },
 
   setLeftPanelTab: (tab) => {

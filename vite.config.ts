@@ -6,7 +6,7 @@ import path from 'path'
 function dropKatexRedundantFonts(): Plugin {
   return {
     name: 'drop-katex-redundant-fonts',
-    generateBundle(_, bundle) {
+    generateBundle(_, bundle: Record<string, unknown>) {
       for (const name in bundle) {
         if (name.match(/KaTeX.*\.(ttf|woff)$/)) {
           delete bundle[name]
@@ -22,6 +22,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@codemirror/language-data': path.resolve(__dirname, 'src/stubs/language-data.ts'),
+      'prosemirror-search': path.resolve(__dirname, 'src/stubs/prosemirror-search.ts'),
     },
   },
 })
