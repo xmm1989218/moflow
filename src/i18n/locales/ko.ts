@@ -316,6 +316,9 @@ export default {
   "settings.skills.category.productivity": "생산성",
   "settings.skills.category.media": "미디어",
   "settings.skills.noResults": "일치하는 스킬이 없습니다",
+  "settings.skills.envConfigured": "설정됨",
+  "settings.skills.envRequired": "필수",
+  "settings.skills.envOptional": "선택",
 
   "settings.section.envVars": "환경 변수",
   "settings.section.shortcuts": "단축키",
@@ -332,6 +335,8 @@ export default {
   "settings.envVars.saveSuccess": "환경 변수가 저장되었습니다",
   "settings.envVars.keyPattern": "키는 대문자 영문자, 숫자, 밑줄만 사용 가능하고 영문자로 시작해야 합니다",
   "settings.envVars.keyExists": "키가 이미 존재합니다",
+  "settings.envVars.recommended": "스킬 추천 환경 변수",
+  "settings.envVars.addVar": "추가",
 
   "fileTree.noFolderOpen": "열린 폴더 없음",
   "fileTree.openFolder": "폴더 열기",

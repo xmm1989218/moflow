@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useThemeStore } from "../../stores/themeStore";
+import { useSkillStore } from "../../stores/skillStore";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 
@@ -9,9 +10,24 @@ export default function EnvVarsSection() {
   useT();
   const envVars = useThemeStore((s) => s.envVars);
   const setEnvVars = useThemeStore((s) => s.setEnvVars);
+  const discoveredSkills = useSkillStore((s) => s.discoveredSkills);
   const [newKey, setNewKey] = useState("");
   const [newValue, setNewValue] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const allDeclaredEnvs = new Map<string, { description: string; required: boolean }>();
+  for (const skill of discoveredSkills) {
+    if (!skill.env) continue;
+    for (const e of skill.env) {
+      if (!allDeclaredEnvs.has(e.name)) {
+        allDeclaredEnvs.set(e.name, { description: e.description, required: e.required !== false });
+      }
+    }
+  }
+
+  const missingRequiredEnvs = [...allDeclaredEnvs.entries()]
+    .filter(([name, info]) => info.required && !envVars[name])
+    .sort(([a], [b]) => a.localeCompare(b));
 
   const handleAdd = () => {
     const key = newKey.trim().toUpperCase();
@@ -28,6 +44,11 @@ export default function EnvVarsSection() {
     setNewKey("");
     setNewValue("");
     setError(null);
+  };
+
+  const handleAddRecommended = (name: string) => {
+    if (name in envVars) return;
+    setEnvVars({ ...envVars, [name]: "" });
   };
 
   const handleRemove = (key: string) => {
@@ -98,6 +119,27 @@ export default function EnvVarsSection() {
       </div>
 
       {error && <div className="text-[13px] text-[#ef4444] mt-2">{error}</div>}
+
+      {missingRequiredEnvs.length > 0 && (
+        <div className="mt-5 pt-4 border-t border-ui-border">
+          <h4 className="text-[12px] font-semibold text-ui-text-secondary uppercase tracking-wide mb-3">{t("settings.envVars.recommended")}</h4>
+          <div className="flex flex-col gap-2">
+            {missingRequiredEnvs.map(([name, info]) => (
+              <div key={name} className="flex items-center gap-2 max-w-[520px]">
+                <span className="text-[13px] font-mono text-ui-text py-1.5 px-2.5 bg-ui-bg-secondary rounded min-w-[170px] shrink-0">{name}</span>
+                <span className="text-[12px] text-ui-text-secondary flex-1">{info.description}</span>
+                <button
+                  className="py-1 px-2.5 rounded border border-ui-border bg-ui-bg text-ui-text text-[12px] font-inherit cursor-pointer transition-all duration-150 hover:bg-ui-bg-secondary hover:border-ui-accent shrink-0"
+                  onClick={() => handleAddRecommended(name)}
+                  type="button"
+                >
+                  {t("settings.envVars.addVar")}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

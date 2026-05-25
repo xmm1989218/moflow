@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.3.2 (2026-05-25)
+
+### New Features
+
+- **Skill environment variable declarations** — Skills can now declare required environment variables in SKILL.md frontmatter (`env` field), enabling scoped injection and UI guidance
+  - `SkillEnvEntry` type: `{ name, description, required?, secret? }` — parsed from SKILL.md and registry.yaml
+  - **Strict env injection**: only skill-declared variables are injected at runtime; undeclared user env vars are no longer passed to skill scripts
+  - **Required variable check**: if a required env var is not configured, script execution is rejected with a clear error listing missing variables
+  - **LLM context**: only configured env vars appear in `<available_env_vars>` (unconfigured ones are omitted); no `required` attribute exposed to LLM
+  - **Skills section**: each skill card shows declared env variables with two-line layout (key + status on first line, description on second); configured (green), required (orange), optional (gray)
+  - **Env vars section**: bottom "Recommended by skills" area lists required-but-unconfigured variables with one-click add; no skill association tags on existing entries
+
+### Improvements
+
+- Default environment variables (`MOFLOW_WORKSPACE_ROOT`, `MOFLOW_ACTIVE_FILE`) are always injected regardless of skill env declarations
+- `resolveEnvVars` now accepts an `allowedNames` parameter — only declared variable placeholders are resolved in args strings
+- i18n: added skill env keys (`envConfigured`, `envRequired`, `envOptional`, `recommended`, `addVar`) for en/zh/ja/ko
+
 ## v1.3.1 (2026-05-25)
 
 ### Bug Fixes

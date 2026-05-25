@@ -1050,8 +1050,9 @@ async function toolSkill(name: string): Promise<string> {
   }
 }
 
-function resolveEnvVars(args: string, ctx: ToolContext, userEnv?: Record<string, string>): string {
+function resolveEnvVars(args: string, ctx: ToolContext, allowedNames: Set<string>, userEnv?: Record<string, string>): string {
   return args.replace(/\$\{(\w+)\}/g, (_, key) => {
+    if (!allowedNames.has(key)) return `\${${key}}`;
     if (key === "MOFLOW_WORKSPACE_ROOT" && ctx.workspaceRoot) return ctx.workspaceRoot;
     if (key === "MOFLOW_ACTIVE_FILE" && ctx.activeFilePath) return ctx.activeFilePath;
     if (userEnv && userEnv[key]) return userEnv[key];
@@ -1107,11 +1108,35 @@ async function toolRunSkillScript(
   }
 
   try {
-    const envVars = useThemeStore.getState().envVars ?? {};
-    const resolvedArgs = resolveEnvVars(args, ctx, envVars);
-    const mergedEnv: Record<string, string> = { ...envVars };
+    const userEnvVars = useThemeStore.getState().envVars ?? {};
+
+    const allowedNames = new Set<string>();
+    allowedNames.add("MOFLOW_WORKSPACE_ROOT");
+    allowedNames.add("MOFLOW_ACTIVE_FILE");
+    if (skill.env) {
+      for (const e of skill.env) allowedNames.add(e.name);
+    }
+
+    if (skill.env) {
+      const missing = skill.env
+        .filter((e) => e.required !== false && !userEnvVars[e.name])
+        .map((e) => `${e.name} (${e.description})`);
+      if (missing.length > 0) {
+        return `Missing required environment variables for skill "${skillName}": ${missing.join(", ")}. Please configure them in Settings → Environment Variables.`;
+      }
+    }
+
+    const resolvedArgs = resolveEnvVars(args, ctx, allowedNames, userEnvVars);
+
+    const mergedEnv: Record<string, string> = {};
     if (ctx.workspaceRoot) mergedEnv.MOFLOW_WORKSPACE_ROOT = ctx.workspaceRoot;
     if (ctx.activeFilePath) mergedEnv.MOFLOW_ACTIVE_FILE = ctx.activeFilePath;
+    if (skill.env) {
+      for (const e of skill.env) {
+        if (userEnvVars[e.name]) mergedEnv[e.name] = userEnvVars[e.name];
+      }
+    }
+
     const result = await executeSkillScript(skillName, scriptName, resolvedArgs, mergedEnv, cwd);
     return truncateResult(result);
   } catch (e) {

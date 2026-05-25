@@ -50,6 +50,13 @@ export interface SubAgentExecution {
   parentChatKey: string;
 }
 
+export interface SkillEnvEntry {
+  name: string;
+  description: string;
+  required?: boolean;
+  secret?: boolean;
+}
+
 export interface SkillMeta {
   name: string;
   description: string;
@@ -58,6 +65,7 @@ export interface SkillMeta {
   compatibility?: string;
   allowedTools?: string;
   metadata?: Record<string, string>;
+  env?: SkillEnvEntry[];
   path: string;
   enabled: boolean;
   hasScripts: boolean;
@@ -72,6 +80,7 @@ export interface RemoteSkill {
   hasScripts: boolean;
   hasDeps: boolean;
   license?: string;
+  env?: SkillEnvEntry[];
   metadata?: Record<string, string>;
 }
 
@@ -86,6 +95,7 @@ export type SkillInstallStatus =
       hasScripts: boolean;
       hasDeps: boolean;
       license?: string;
+      env?: SkillEnvEntry[];
       metadata?: Record<string, string>;
     }
   | {
@@ -99,6 +109,7 @@ export type SkillInstallStatus =
       hasScripts: boolean;
       hasDeps: boolean;
       license?: string;
+      env?: SkillEnvEntry[];
       metadata?: Record<string, string>;
     }
   | {
@@ -112,6 +123,7 @@ export type SkillInstallStatus =
       hasScripts: boolean;
       hasDeps: boolean;
       license?: string;
+      env?: SkillEnvEntry[];
       metadata?: Record<string, string>;
     }
   | {
@@ -124,5 +136,6 @@ export type SkillInstallStatus =
       hasScripts: boolean;
       hasDeps: boolean;
       license?: string;
+      env?: SkillEnvEntry[];
       metadata?: Record<string, string>;
     };

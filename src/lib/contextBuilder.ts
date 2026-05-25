@@ -1,5 +1,6 @@
 ﻿import DEFAULT_PROMPT from './prompt/default.txt?raw';
 import { useSkillStore } from "../stores/skillStore";
+import { useThemeStore } from "../stores/themeStore";
 
 export function estimateTokens(text: string): number {
   let zhCount = 0;
@@ -58,6 +59,7 @@ function buildSkillInstruction(workspaceRoot?: string | null, activeFilePath?: s
   if (available.length === 0) {
     return "";
   }
+  const userEnvVars = useThemeStore.getState().envVars ?? {};
   const skillXml = [
     "<available_skills>",
     ...available
@@ -69,6 +71,15 @@ function buildSkillInstruction(workspaceRoot?: string | null, activeFilePath?: s
   const envVars: string[] = [];
   if (workspaceRoot) envVars.push(`  <var name="MOFLOW_WORKSPACE_ROOT" desc="Absolute path of the current workspace root" value="${workspaceRoot}" />`);
   if (activeFilePath) envVars.push(`  <var name="MOFLOW_ACTIVE_FILE" desc="Absolute path of the currently active file" value="${activeFilePath}" />`);
+
+  for (const skill of available) {
+    if (!skill.env || skill.env.length === 0) continue;
+    for (const e of skill.env) {
+      const value = userEnvVars[e.name];
+      if (!value) continue;
+      envVars.push(`  <var name="${e.name}" desc="${e.description}" skill="${skill.name}" value="${value}" />`);
+    }
+  }
 
   const envXml = envVars.length > 0
     ? "\n<available_env_vars>\n" + envVars.join("\n") + "\n</available_env_vars>"

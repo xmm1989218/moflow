@@ -23,7 +23,7 @@ import yaml from "js-yaml";
 import { appDataDir, join } from "@tauri-apps/api/path";
 import { readFile, mkdir, exists, readDir } from "@tauri-apps/plugin-fs";
 import { invoke } from "@tauri-apps/api/core";
-import type { SkillMeta } from "./types";
+import type { SkillMeta, SkillEnvEntry } from "./types";
 import { toPosix } from "./pathUtils";
 
 const NAME_RE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
@@ -70,8 +70,30 @@ export function parseSkillMd(content: string): { meta: Omit<SkillMeta, "path" | 
     }
   }
 
+  let env: SkillEnvEntry[] | undefined;
+  if (Array.isArray(raw.env)) {
+    const ENV_NAME_RE = /^[A-Z][A-Z0-9_]*$/;
+    env = [];
+    const seen = new Set<string>();
+    for (const entry of raw.env as Record<string, unknown>[]) {
+      const eName = typeof entry.name === "string" ? entry.name.trim() : "";
+      const eDesc = typeof entry.description === "string" ? entry.description.trim() : "";
+      if (!eName || !eDesc) throw new Error(`Invalid SKILL.md env: name and description are required`);
+      if (!ENV_NAME_RE.test(eName)) throw new Error(`Invalid SKILL.md env: name "${eName}" must match ^[A-Z][A-Z0-9_]*$`);
+      if (eDesc.length > 256) throw new Error(`Invalid SKILL.md env: description for "${eName}" exceeds 256 characters`);
+      if (seen.has(eName)) throw new Error(`Invalid SKILL.md env: duplicate name "${eName}"`);
+      seen.add(eName);
+      env.push({
+        name: eName,
+        description: eDesc,
+        required: typeof entry.required === "boolean" ? entry.required : true,
+        secret: typeof entry.secret === "boolean" ? entry.secret : true,
+      });
+    }
+  }
+
   return {
-    meta: { name, description, version, license, compatibility, metadata, allowedTools },
+    meta: { name, description, version, license, compatibility, metadata, allowedTools, env },
     body: match[2].trim(),
   };
 }

@@ -324,6 +324,9 @@ export default {
   "settings.skills.category.productivity": "生产力",
   "settings.skills.category.media": "媒体",
   "settings.skills.noResults": "没有匹配的技能",
+  "settings.skills.envConfigured": "已配置",
+  "settings.skills.envRequired": "必填",
+  "settings.skills.envOptional": "可选",
 
   "settings.envVars.key": "键名",
   "settings.envVars.value": "值",
@@ -332,6 +335,8 @@ export default {
   "settings.envVars.saveSuccess": "环境变量已保存",
   "settings.envVars.keyPattern": "键名必须为大写字母、数字和下划线，且以字母开头",
   "settings.envVars.keyExists": "键名已存在",
+  "settings.envVars.recommended": "技能推荐的环境变量",
+  "settings.envVars.addVar": "添加",
 
   "fileTree.noFolderOpen": "未打开目录",
   "fileTree.openFolder": "打开目录",

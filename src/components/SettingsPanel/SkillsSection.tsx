@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSkillStore } from "../../stores/skillStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { showConfirmDialog, showAlertDialog } from "../../lib/closeDialog";
 import { checkBunAvailable } from "../../lib/skillRegistry";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
-import type { SkillInstallStatus } from "../../lib/types";
+import type { SkillInstallStatus, SkillEnvEntry } from "../../lib/types";
 
 const SKILL_CATEGORIES = ["writing", "coding", "data", "productivity", "media"] as const;
 type SkillCategory = typeof SKILL_CATEGORIES[number];
@@ -49,6 +50,7 @@ export default function SkillsSection() {
   }, [discoverSkills, fetchRemoteSkills]);
 
   const localMap = new Map(discoveredSkills.map((s) => [s.name, s]));
+  const userEnvVars = useThemeStore((s) => s.envVars);
 
   const matchesSearch = (status: SkillInstallStatus, query: string): boolean => {
     if (!query) return true;
@@ -213,6 +215,33 @@ export default function SkillsSection() {
     );
   };
 
+  const renderEnvList = (env: SkillEnvEntry[]) => {
+    if (env.length === 0) return null;
+    return (
+      <div className="flex flex-col gap-1 mb-2">
+        {env.map((e) => {
+          const configured = !!userEnvVars[e.name];
+          const isRequired = e.required !== false;
+          return (
+            <div key={e.name} className="text-[11px]">
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-ui-text-secondary">{e.name}</span>
+                {configured ? (
+                  <span className="text-[#22c55e] font-medium">{t("settings.skills.envConfigured")}</span>
+                ) : isRequired ? (
+                  <span className="text-[#f59e0b] font-medium">{t("settings.skills.envRequired")}</span>
+                ) : (
+                  <span className="text-ui-text-secondary/50">{t("settings.skills.envOptional")}</span>
+                )}
+              </div>
+              <div className="text-ui-text-secondary/60">{e.description}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderSkillCard = (status: SkillInstallStatus) => (
     <div key={status.name} className="border border-ui-border rounded-lg p-3">
       <div className="flex items-center gap-2 mb-1">
@@ -242,6 +271,7 @@ export default function SkillsSection() {
           ))}
         </div>
       )}
+      {status.env && status.env.length > 0 && renderEnvList(status.env)}
       <div className="flex items-center justify-between">
         {renderActionButton(status)}
         {(status.status === "installed" || status.status === "update" || status.status === "local-only") && renderToggle(status.name)}

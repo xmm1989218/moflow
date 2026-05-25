@@ -42,6 +42,7 @@ export function computeInstallStatus(
         hasScripts: rs.hasScripts,
         hasDeps: rs.hasDeps,
         license: rs.license,
+        env: rs.env,
         metadata: rs.metadata,
       });
     } else if (local.version !== rs.version) {
@@ -56,6 +57,7 @@ export function computeInstallStatus(
         hasScripts: rs.hasScripts,
         hasDeps: rs.hasDeps,
         license: rs.license,
+        env: rs.env,
         metadata: rs.metadata,
       });
     } else {
@@ -70,6 +72,7 @@ export function computeInstallStatus(
         hasScripts: rs.hasScripts,
         hasDeps: rs.hasDeps,
         license: rs.license,
+        env: rs.env,
         metadata: rs.metadata,
       });
     }
@@ -86,6 +89,7 @@ export function computeInstallStatus(
         hasScripts: ls.hasScripts,
         hasDeps: false,
         license: ls.license,
+        env: ls.env,
         metadata: ls.metadata,
       });
     }

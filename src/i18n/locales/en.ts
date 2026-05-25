@@ -323,6 +323,9 @@ export default {
   "settings.skills.category.productivity": "Productivity",
   "settings.skills.category.media": "Media",
   "settings.skills.noResults": "No matching skills",
+  "settings.skills.envConfigured": "configured",
+  "settings.skills.envRequired": "required",
+  "settings.skills.envOptional": "optional",
   "settings.envVars.key": "KEY",
   "settings.envVars.value": "VALUE",
   "settings.envVars.add": "Add",
@@ -330,6 +333,8 @@ export default {
   "settings.envVars.saveSuccess": "Environment variables saved",
   "settings.envVars.keyPattern": "Key must be uppercase letters, digits, and underscores, starting with a letter",
   "settings.envVars.keyExists": "Key already exists",
+  "settings.envVars.recommended": "Recommended by skills",
+  "settings.envVars.addVar": "Add",
 
   "fileTree.noFolderOpen": "No folder open",
   "fileTree.openFolder": "Open Folder",
