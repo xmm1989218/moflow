@@ -1,3 +1,4 @@
+import { Search, Zap, ChevronLeft, Wrench } from "lucide-react";
 import { useChatStore, type Message } from "../../stores/chatStore";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
@@ -12,15 +13,13 @@ export default function SubAgentView({ execution }: { execution: SubAgentExecuti
   };
 
   const typeLabel = execution.subagentType === "explore" ? t("ai.task.explore") : t("ai.task.general");
-  const typeIcon = execution.subagentType === "explore" ? "🔍" : "⚡";
+  const typeIcon = execution.subagentType === "explore" ? <Search size={14} /> : <Zap size={14} />;
 
   return (
     <div className="moflow-ai-subagent-view">
       <div className="moflow-ai-subagent-view-header">
         <button className="moflow-ai-subagent-view-back" onClick={handleBack} type="button">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
+          <ChevronLeft size={14} />
           {t("ai.task.backToMain")}
         </button>
         <span className="moflow-ai-subagent-view-badge">{typeIcon} {typeLabel}</span>
@@ -76,9 +75,5 @@ function SubAgentMessage({ msg }: { msg: Message }) {
 }
 
 function ToolIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-    </svg>
-  );
+  return <Wrench size={16} />;
 }

@@ -17,6 +17,20 @@ describe('modelInfo', () => {
       const result = calculateCost(1_000_000, 1_000_000, 'openai', 'gpt-4o')
       expect(result.cost).toBeGreaterThan(0)
     })
+
+    it('applies OpenAI cached token discount (50%)', () => {
+      const result = calculateCost(1_000_000, 0, 'openai', 'gpt-4o', 500_000)
+      const full = calculateCost(1_000_000, 0, 'openai', 'gpt-4o')
+      expect(result.cost).toBeLessThan(full.cost)
+      expect(result.cacheSavings).toBeGreaterThan(0)
+    })
+
+    it('applies Claude cache read discount (90%) and cache creation surcharge (25%)', () => {
+      const result = calculateCost(1_000_000, 0, 'anthropic', 'claude-sonnet-4', 500_000, 100_000)
+      const full = calculateCost(1_000_000, 0, 'anthropic', 'claude-sonnet-4')
+      expect(result.cost).toBeLessThan(full.cost)
+      expect(result.cacheSavings).toBeGreaterThan(0)
+    })
   })
 
   describe('formatCost', () => {

@@ -8,6 +8,7 @@ import { useT } from "../../i18n/useT";
 import { getShortcutDisplay } from "../../lib/shortcuts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+import { Check } from "lucide-react";
 
 const appWindow = getCurrentWindow();
 
@@ -156,7 +157,7 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
             onClick={() => handleAction(entry.id)}
           >
             <span className="w-4 shrink-0 text-center text-xs text-ui-accent">
-              {entry.checked ? "?" : ""}
+              {entry.checked ? <Check size={14} /> : ""}
             </span>
             <span className="flex-1">{entry.label}</span>
             {entry.shortcut && (
@@ -180,7 +181,7 @@ function SubmenuItem({ item: menuItem, onAction }: { item: MenuItem; onAction: (
     >
       <button className={`flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left gap-2 whitespace-nowrap hover:bg-ui-menu-hover${menuItem.checked ? " font-semibold" : ""}`}>
         <span className="w-4 shrink-0 text-center text-xs text-ui-accent">
-          {menuItem.checked ? "?" : ""}
+          {menuItem.checked ? <Check size={14} /> : ""}
         </span>
         <span className="flex-1">{menuItem.label}</span>
       </button>
@@ -200,7 +201,7 @@ function SubmenuItem({ item: menuItem, onAction }: { item: MenuItem; onAction: (
                 }}
               >
                 <span className="w-4 shrink-0 text-center text-xs text-ui-accent">
-{entry.checked ? "?" : ""}
+{entry.checked ? <Check size={14} /> : ""}
                 </span>
                 <span className="flex-1">{entry.label}</span>
               </button>

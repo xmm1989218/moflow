@@ -36,6 +36,7 @@ interface ChatState {
   totalTokensMap: Record<string, number>;
   costMap: Record<string, number>;
   cachedTokensMap: Record<string, number>;
+  cacheSavingsMap: Record<string, number>;
   isStreaming: boolean;
   abortController: AbortController | null;
   streamingContentMap: Record<string, string>;
@@ -57,8 +58,8 @@ interface ChatState {
   addMessage: (tabId: string, msg: Omit<Message, "id" | "timestamp"> & { id?: string }) => Message;
   appendStreamingContent: (tabId: string, chunk: string) => void;
   clearStreamingContent: (tabId: string) => void;
-  recordUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number, cachedTokens?: number) => void;
-  recordStandaloneUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number, cachedTokens?: number) => void;
+  recordUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number, cachedTokens?: number, cacheSavings?: number) => void;
+  recordStandaloneUsage: (tabId: string, promptTokens: number, completionTokens: number, cost: number, cachedTokens?: number, cacheSavings?: number) => void;
   setStreaming: (v: boolean) => void;
   setAbortController: (ctrl: AbortController | null) => void;
   stopGeneration: () => void;
@@ -93,6 +94,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   totalTokensMap: {},
   costMap: {},
   cachedTokensMap: {},
+  cacheSavingsMap: {},
   isStreaming: false,
   abortController: null,
   streamingContentMap: {},
@@ -209,7 +211,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return { streamingContentMap: newMap };
     }),
 
-  recordUsage: (tabId, promptTokens, completionTokens, cost, cachedTokens) =>
+  recordUsage: (tabId, promptTokens, completionTokens, cost, cachedTokens, cacheSavings) =>
     set((state) => ({
       contextTokensMap: {
         ...state.contextTokensMap,
@@ -227,9 +229,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ...state.cachedTokensMap,
         [tabId]: (state.cachedTokensMap[tabId] ?? 0) + cachedTokens,
       } : state.cachedTokensMap,
+      cacheSavingsMap: cacheSavings != null ? {
+        ...state.cacheSavingsMap,
+        [tabId]: (state.cacheSavingsMap[tabId] ?? 0) + cacheSavings,
+      } : state.cacheSavingsMap,
     })),
 
-  recordStandaloneUsage: (tabId, promptTokens, completionTokens, cost, cachedTokens) =>
+  recordStandaloneUsage: (tabId, promptTokens, completionTokens, cost, cachedTokens, cacheSavings) =>
     set((state) => ({
       totalTokensMap: {
         ...state.totalTokensMap,
@@ -243,6 +249,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ...state.cachedTokensMap,
         [tabId]: (state.cachedTokensMap[tabId] ?? 0) + cachedTokens,
       } : state.cachedTokensMap,
+      cacheSavingsMap: cacheSavings != null ? {
+        ...state.cacheSavingsMap,
+        [tabId]: (state.cacheSavingsMap[tabId] ?? 0) + cacheSavings,
+      } : state.cacheSavingsMap,
     })),
 
   setStreaming: (isStreaming) => set({ isStreaming }),
@@ -288,6 +298,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         },
         cachedTokensMap: {
           ...state.cachedTokensMap,
+          [tabId]: 0,
+        },
+        cacheSavingsMap: {
+          ...state.cacheSavingsMap,
           [tabId]: 0,
         },
         subAgentResultsMap: newSubAgentMap,
@@ -363,6 +377,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
       delete newCost[tabId];
       const newCachedTokens = { ...state.cachedTokensMap };
       delete newCachedTokens[tabId];
+      const newCacheSavings = { ...state.cacheSavingsMap };
+      delete newCacheSavings[tabId];
       const newInputHistory = { ...state.inputHistoryMap };
       delete newInputHistory[tabId];
       const newSubAgentMap = { ...state.subAgentResultsMap };
@@ -377,6 +393,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         totalTokensMap: newTotalTokens,
         costMap: newCost,
         cachedTokensMap: newCachedTokens,
+        cacheSavingsMap: newCacheSavings,
         inputHistoryMap: newInputHistory,
         subAgentResultsMap: newSubAgentMap,
         activeSubAgentView: state.activeSubAgentView && !newSubAgentMap[state.activeSubAgentView] ? null : state.activeSubAgentView,

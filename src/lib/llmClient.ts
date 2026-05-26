@@ -25,6 +25,7 @@ export interface ChatUsage {
   completionTokens: number;
   totalTokens: number;
   cachedTokens?: number;
+  cacheCreationTokens?: number;
 }
 
 export interface ChatResult {
@@ -385,6 +386,8 @@ class ClaudeCompatibleClient implements LLMClient {
 
     let inputTokens = 0;
     let outputTokens = 0;
+    let cacheReadTokens = 0;
+    let cacheCreationTokensVal = 0;
     let fullResponse = "";
 
     const toolUseBlocks: Map<number, { id: string; name: string; arguments: string }> = new Map();
@@ -407,7 +410,9 @@ class ClaudeCompatibleClient implements LLMClient {
         stream: true,
       };
       if (systemMsg) {
-        body.system = systemMsg.content;
+        body.system = [
+          { type: "text", text: systemMsg.content, cache_control: { type: "ephemeral" } },
+        ];
       }
       if (options?.tools?.length) {
         body.tools = options.tools.map((t) => {
@@ -486,6 +491,8 @@ class ClaudeCompatibleClient implements LLMClient {
             }
             if (parsed.type === "message_start" && parsed.message?.usage) {
               inputTokens = parsed.message.usage.input_tokens ?? 0;
+              cacheReadTokens = parsed.message.usage.cache_read_input_tokens ?? 0;
+              cacheCreationTokensVal = parsed.message.usage.cache_creation_input_tokens ?? 0;
             }
             if (parsed.type === "message_delta") {
               if (parsed.usage) {
@@ -530,6 +537,8 @@ class ClaudeCompatibleClient implements LLMClient {
       promptTokens: inputTokens,
       completionTokens: outputTokens,
       totalTokens: inputTokens + outputTokens,
+      cachedTokens: cacheReadTokens || undefined,
+      cacheCreationTokens: cacheCreationTokensVal || undefined,
     };
     const result: ChatResult = { usage };
     if (stopReason) result.finishReason = stopReason === "tool_use" ? "tool_calls" : stopReason;

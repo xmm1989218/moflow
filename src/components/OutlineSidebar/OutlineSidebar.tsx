@@ -6,6 +6,7 @@ import { buildOutlineTree, type OutlineItem } from "../../lib/outlineTree";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 import FileTree from "../FileTree/FileTree";
+import { Folder, AlignLeft } from "lucide-react";
 
 function OutlineNode({
   item,
@@ -215,14 +216,14 @@ export default function OutlineSidebar() {
           className={`flex items-center gap-1 px-3 h-full border-none bg-none text-[13px] cursor-pointer transition-[color] duration-100 ${leftPanelTab === "files" ? "text-moflow-text font-semibold" : "text-moflow-text-secondary hover:text-moflow-text"}`}
           onClick={() => setLeftPanelTab("files")}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h5l2 2h5v8H2V3z" /></svg>
+          <Folder size={14} />
           {t("outline.files")}
         </button>
         <button
           className={`flex items-center gap-1 px-3 h-full border-none bg-none text-[13px] cursor-pointer transition-[color] duration-100 ${leftPanelTab === "outline" ? "text-moflow-text font-semibold" : "text-moflow-text-secondary hover:text-moflow-text"}`}
           onClick={() => setLeftPanelTab("outline")}
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M2 2h12M2 6h8M2 10h10M2 14h6" /></svg>
+          <AlignLeft size={14} />
           {t("outline.outline")}
         </button>
       </div>

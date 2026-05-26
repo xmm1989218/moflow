@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useSearchStore } from "../../stores/searchStore";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
+import { ChevronUp, ChevronDown, X } from "lucide-react";
 
 export default function SearchBar() {
   useT();
@@ -100,9 +101,7 @@ export default function SearchBar() {
           title={t("editor.search.previous")}
           disabled={matchCount <= 0}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="18 15 12 9 6 15" />
-          </svg>
+          <ChevronUp size={12} />
         </button>
         <button
           className="flex items-center justify-center min-w-6 h-6 px-1 border-none rounded bg-transparent text-moflow-text-secondary cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text disabled:opacity-35 disabled:cursor-not-allowed"
@@ -110,9 +109,7 @@ export default function SearchBar() {
           title={t("editor.search.next")}
           disabled={matchCount <= 0}
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
+          <ChevronDown size={12} />
         </button>
         <button
           className={`flex items-center justify-center min-w-6 h-6 px-1 border-none rounded cursor-pointer text-[11px] font-semibold font-inherit shrink-0 transition-[background-color,color] duration-100 ${caseSensitive ? "bg-moflow-accent text-white hover:not-disabled:opacity-85" : "bg-transparent text-moflow-text-secondary hover:not-disabled:bg-moflow-bg-secondary hover:not-disabled:text-moflow-text"}`}
@@ -133,10 +130,7 @@ export default function SearchBar() {
           onClick={closeSearch}
           title={t("editor.search.close")}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          <X size={14} />
         </button>
       </div>
       {showReplace && (

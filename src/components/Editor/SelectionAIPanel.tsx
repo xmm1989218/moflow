@@ -10,6 +10,7 @@ import { getModelInfo, calculateCost } from "../../lib/modelInfo";
 import { appendMessage } from "../../lib/chatPersistence";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
+import { SendHorizonal, ChevronDown, ArrowLeftRight } from "lucide-react";
 import MessageContent from "../AISidebar/MessageContent";
 
 function getLangLabel(code: LanguageCode): string {
@@ -105,7 +106,9 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
           res.usage.promptTokens,
           res.usage.completionTokens,
           aiConfig.providerId,
-          aiConfig.model
+          aiConfig.model,
+          res.usage.cachedTokens,
+          res.usage.cacheCreationTokens
         );
         recordStandaloneUsage(activeFileId, res.usage.promptTokens, res.usage.completionTokens, costVal);
       } catch (e) {
@@ -202,10 +205,7 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
                 onClick={handleRewriteSend}
                 disabled={!rewriteInput.trim()}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
+                <SendHorizonal size={14} />
               </button>
             </div>
           </div>
@@ -226,9 +226,7 @@ function RewritePanel({ selectedText, onDismiss }: { selectedText: string; onDis
                 onClick={() => setShowToneMenu(!showToneMenu)}
               >
                 {t("ai.rewrite.changeTone")}
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M6 9l6 6 6-6" />
-                </svg>
+                <ChevronDown size={10} />
               </button>
               {showToneMenu && (
                 <div className="absolute top-full left-0 mt-1 min-w-[120px] bg-moflow-bg border border-moflow-border rounded-lg p-1 z-60 animate-selection-ai-appear" style={{ boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
@@ -339,7 +337,9 @@ export default function SelectionAIPanel() {
           res.usage.promptTokens,
           res.usage.completionTokens,
           aiConfig.providerId,
-          aiConfig.model
+          aiConfig.model,
+          res.usage.cachedTokens,
+          res.usage.cacheCreationTokens
         );
         recordStandaloneUsage(activeFileId, res.usage.promptTokens, res.usage.completionTokens, costVal);
       } catch (e) {
@@ -448,7 +448,9 @@ export default function SelectionAIPanel() {
         chatResult.usage.promptTokens,
         chatResult.usage.completionTokens,
         aiConfig.providerId,
-        aiConfig.model
+        aiConfig.model,
+        chatResult.usage.cachedTokens,
+        chatResult.usage.cacheCreationTokens
       );
       addUsage(activeFileId, chatResult.usage.promptTokens, chatResult.usage.completionTokens, costVal);
 
@@ -560,11 +562,7 @@ export default function SelectionAIPanel() {
               ))}
             </select>
             <button className="flex items-center justify-center w-6 h-6 rounded border-none bg-transparent text-moflow-text-secondary cursor-pointer shrink-0 hover:bg-moflow-bg hover:text-moflow-text" onClick={swapLanguages}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M7 16l-4-4 4-4" />
-                <path d="M17 8l4 4-4 4" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-              </svg>
+              <ArrowLeftRight size={14} />
             </button>
             <select
               className="flex-1 py-1 px-2 border border-moflow-accent rounded-md text-xs font-[inherit] bg-moflow-bg text-moflow-text outline-none cursor-pointer min-w-0 focus:border-moflow-accent"
@@ -616,10 +614,7 @@ export default function SelectionAIPanel() {
             onClick={handleFollowUp}
             disabled={!followUpValue.trim()}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
+            <SendHorizonal size={14} />
           </button>
         </div>
       )}
@@ -640,10 +635,7 @@ export default function SelectionAIPanel() {
             onClick={handleAsk}
             disabled={!inputValue.trim()}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
+            <SendHorizonal size={14} />
           </button>
         </div>
       )}

@@ -1046,6 +1046,12 @@ pub fn run() {
                 log::info!("[startup] proxy configured (system/webfetch only): {}", proxy_url.as_deref().unwrap());
             }
 
+            #[cfg(debug_assertions)]
+            {
+                window_builder = window_builder.additional_browser_args("--remote-debugging-port=9222");
+                log::info!("[startup] WebView2 remote debugging enabled on port 9222");
+            }
+
             window_builder.build().map_err(|e| format!("Failed to create main window: {}", e))?;
             log::info!("[startup] window-built: {}ms", app_start.elapsed().as_millis());
 

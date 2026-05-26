@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Eye, Pencil, Terminal, Globe, Zap, Wrench, X, Check, RotateCcw, ChevronDown, Square, SendHorizonal, MessageSquare, Copy } from "lucide-react";
 import { useChatStore, type Message, COMPACT_TAIL_TURNS } from "../../stores/chatStore";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
@@ -38,6 +39,8 @@ function UsageBadge({ tabId, providerId, model, onClick, active }: { tabId: stri
   const contextTokens = useChatStore((s) => s.contextTokensMap[tabId] ?? 0);
   const totalTokens = useChatStore((s) => s.totalTokensMap[tabId] ?? 0);
   const cost = useChatStore((s) => s.costMap[tabId] ?? 0);
+  const cachedTokens = useChatStore((s) => s.cachedTokensMap[tabId] ?? 0);
+  const cacheSavings = useChatStore((s) => s.cacheSavingsMap[tabId] ?? 0);
   const [showTooltip, setShowTooltip] = useState(false);
   useT();
 
@@ -78,12 +81,14 @@ function UsageBadge({ tabId, providerId, model, onClick, active }: { tabId: stri
         <div className="moflow-ai-usage-tooltip">
           <div className="moflow-ai-usage-tooltip-row">
             <span>{t("ai.usage.context")}</span>
-            <span>{contextTokens.toLocaleString()} tokens</span>
+            <span>{contextTokens.toLocaleString()} / {maxContext > 0 ? maxContext.toLocaleString() : "∞"} ({(pct * 100).toFixed(1)}%)</span>
           </div>
-          <div className="moflow-ai-usage-tooltip-row">
-            <span>{t("ai.usage.usage")}</span>
-            <span>{(pct * 100).toFixed(1)}%</span>
-          </div>
+          {cachedTokens > 0 && (
+            <div className="moflow-ai-usage-tooltip-row">
+              <span>{t("ai.usage.cached")}</span>
+              <span>{cachedTokens.toLocaleString()} tokens{cacheSavings > 0 ? ` (-${formatCost(cacheSavings, currency)})` : ""}</span>
+            </div>
+          )}
           <div className="moflow-ai-usage-tooltip-row">
             <span>{t("ai.usage.total")}</span>
             <span>{totalTokens.toLocaleString()} tokens</span>
@@ -223,20 +228,19 @@ const READ_TOOLS = new Set(["outline", "read", "readSection", "grep", "find", "g
 const EDIT_TOOLS = new Set(["write", "edit"]);
 
 function ToolIcon({ type }: { type: "read" | "edit" | "script" | "webfetch" | "skill" | "generic" }) {
-  const svgProps = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (type) {
     case "read":
-      return <svg {...svgProps}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+      return <Eye size={14} />;
     case "edit":
-      return <svg {...svgProps}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+      return <Pencil size={14} />;
     case "script":
-      return <svg {...svgProps}><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>;
+      return <Terminal size={14} />;
     case "webfetch":
-      return <svg {...svgProps}><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>;
+      return <Globe size={14} />;
     case "skill":
-      return <svg {...svgProps}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+      return <Zap size={14} />;
     default:
-      return <svg {...svgProps}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>;
+      return <Wrench size={14} />;
   }
 }
 
@@ -278,6 +282,26 @@ interface ToolItem {
   isError: boolean;
 }
 
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      className="moflow-ai-tool-copy-btn"
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+      aria-label={t("ai.copy")}
+      title={t("ai.copy")}
+    >
+      {copied ? <Check size={12} /> : <Copy size={12} />}
+    </button>
+  );
+}
+
 const READ_TYPE_TOOLS = new Set(["outline", "read", "readSection"]);
 const SEARCH_TYPE_TOOLS = new Set(["grep", "find", "glob", "ls"]);
 function buildReadLabel(items: ToolItem[]): string {
@@ -307,17 +331,21 @@ function ReadToolGroup({ items }: { items: ToolItem[] }) {
           <span>{t("ai.toolLabel.explored")} · {label}</span>
         </summary>
         <div className="moflow-ai-tool-group-items">
-          {items.map((item) => (
-            <div key={item.msg.id} className={`moflow-ai-tool-group-item${item.isError ? " moflow-ai-tool-error" : ""}`}>
-              <span className="moflow-ai-tool-group-item-label">{item.info ? formatToolArgs(item.info.name, item.info.args) : (item.msg.toolName ?? "")}</span>
-              {item.isError && (
-                <details>
-                  <summary className="moflow-ai-tool-error-summary">Error</summary>
-                  <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
-                </details>
-              )}
-            </div>
-          ))}
+          {items.map((item) => {
+            const itemLabel = item.info ? formatToolArgs(item.info.name, item.info.args) : (item.msg.toolName ?? "");
+            return (
+              <div key={item.msg.id} className={`moflow-ai-tool-group-item${item.isError ? " moflow-ai-tool-error" : ""}`}>
+                <span className="moflow-ai-tool-group-item-label">{itemLabel}</span>
+                <CopyButton text={`${itemLabel}\n\n${item.msg.content}`} />
+                {item.isError && (
+                  <details>
+                    <summary className="moflow-ai-tool-error-summary">Error</summary>
+                    <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
+                  </details>
+                )}
+              </div>
+            );
+          })}
         </div>
       </details>
     </div>
@@ -355,10 +383,13 @@ function EditToolResult({ item }: { item: ToolItem }) {
           <summary className="moflow-ai-tool-edit-header">
             <span className="moflow-ai-tool-edit-icon"><ToolIcon type="edit" /></span>
             <span>{t("ai.toolLabel.edit")} {path}</span>
-            <span className="moflow-ai-tool-error-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            <span className="moflow-ai-tool-error-badge"><X size={12} strokeWidth={2.5} /></span>
           </summary>
           <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
         </details>
+        <div className="moflow-ai-tool-copy-bar">
+          <CopyButton text={`${t("ai.toolLabel.edit")} ${path}\n\n${item.msg.content}`} />
+        </div>
       </div>
     );
   }
@@ -374,6 +405,9 @@ function EditToolResult({ item }: { item: ToolItem }) {
           <MessageContent content={displayContent} />
         </div>
       </details>
+      <div className="moflow-ai-tool-copy-bar">
+        <CopyButton text={`${t("ai.toolLabel.edit")} ${path}\n\n${displayContent}`} />
+      </div>
     </div>
   );
 }
@@ -389,10 +423,13 @@ function GenericToolResult({ item, iconType }: { item: ToolItem; iconType: "read
           <summary className="moflow-ai-tool-group-summary">
             <span className="moflow-ai-tool-group-icon"><ToolIcon type={iconType} /></span>
             <span>{label}</span>
-            <span className="moflow-ai-tool-error-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>
+            <span className="moflow-ai-tool-error-badge"><X size={12} strokeWidth={2.5} /></span>
           </summary>
           <pre className="moflow-ai-tool-error-content">{item.msg.content}</pre>
         </details>
+        <div className="moflow-ai-tool-copy-bar">
+          <CopyButton text={`${label}\n\n${item.msg.content}`} />
+        </div>
       </div>
     );
   }
@@ -406,6 +443,9 @@ function GenericToolResult({ item, iconType }: { item: ToolItem; iconType: "read
         </summary>
         <pre className="moflow-ai-tool-result-content">{item.msg.content}</pre>
       </details>
+      <div className="moflow-ai-tool-copy-bar">
+        <CopyButton text={`${label}\n\n${item.msg.content}`} />
+      </div>
     </div>
   );
 }
@@ -538,7 +578,15 @@ export default function AISidebar() {
   const currentAiMode = usePermissionStore((s) => s.sessionAiModeMap[chatKey] ?? "build");
   const [modeDropdownOpen, setModeDropdownOpen] = useState(false);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   useT();
+
+  const handleCopy = useCallback((msg: Message) => {
+    navigator.clipboard.writeText(msg.content).then(() => {
+      setCopiedId(msg.id);
+      setTimeout(() => setCopiedId((prev) => prev === msg.id ? null : prev), 1500);
+    });
+  }, []);
 
   useEffect(() => {
     if (!chatKey) return;
@@ -790,8 +838,8 @@ export default function AISidebar() {
       const promptTokens = result.usage.promptTokens;
       const completionTokens = result.usage.completionTokens;
       const cachedTokens = result.usage.cachedTokens;
-      const { cost: costVal } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model);
-      useChatStore.getState().recordUsage(chatKey, promptTokens, completionTokens, costVal, cachedTokens);
+      const { cost: costVal, cacheSavings } = calculateCost(promptTokens, completionTokens, aiConfig.providerId, aiConfig.model, cachedTokens, result.usage.cacheCreationTokens);
+      useChatStore.getState().recordUsage(chatKey, promptTokens, completionTokens, costVal, cachedTokens, cacheSavings);
 
       const content = useChatStore.getState().streamingContentMap[chatKey] ?? "";
       const summaryMsg = addMessage(chatKey, { role: "assistant", content, isCompactSummary: true, promptTokens });
@@ -1167,12 +1215,13 @@ useChatStore.getState().setPendingQuestion(chatKey, null);
               totalTokens: subResult.totalTokens,
               cost: subResult.cost,
               cachedTokens: subResult.cachedTokens,
+              cacheSavings: subResult.cacheSavings,
               status: controller.signal.aborted ? "cancelled" : "completed",
               parentChatKey: chatKey,
             };
 
             useChatStore.getState().addSubAgentResult(taskId, execution);
-            useChatStore.getState().recordStandaloneUsage(chatKey, subResult.promptTokens, subResult.completionTokens, subResult.cost, subResult.cachedTokens);
+            useChatStore.getState().recordStandaloneUsage(chatKey, subResult.promptTokens, subResult.completionTokens, subResult.cost, subResult.cachedTokens, subResult.cacheSavings);
 
             const summaryLines = subResult.content.split("\n").slice(0, 5).join("\n");
             const taskResultXml = `<task_result task_id="${taskId}" description="${description.replace(/"/g, "&quot;")}" type="${subagentType}" rounds="${subResult.totalRounds}">\n<summary>\n${summaryLines}\n</summary>\n<full_result>\n${subResult.content}\n</full_result>\n</task_result>`;
@@ -1407,7 +1456,7 @@ if (id === "compact") {
         </div>
         <div className="moflow-ai-messages flex items-center justify-center">
           <div className="moflow-ai-empty">
-            <div className="moflow-ai-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div className="moflow-ai-empty-icon"><MessageSquare size={32} className="text-ui-text-secondary/30" /></div>
             <p>{t("ai.empty.openDoc")}</p>
           </div>
         </div>
@@ -1440,14 +1489,14 @@ if (id === "compact") {
                 onClick={() => { usePermissionStore.getState().setSessionAiMode(chatKey, "build"); setModeDropdownOpen(false); }}
               >
                 Build
-                {currentAiMode === "build" && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                {currentAiMode === "build" && <Check size={12} strokeWidth={3} />}
               </button>
               <button
                 className={`moflow-ai-mode-option${currentAiMode === "plan" ? " moflow-ai-mode-option-active" : ""}`}
                 onClick={() => { usePermissionStore.getState().setSessionAiMode(chatKey, "plan"); setModeDropdownOpen(false); }}
               >
                 Plan
-                {currentAiMode === "plan" && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                {currentAiMode === "plan" && <Check size={12} strokeWidth={3} />}
               </button>
             </div>
           )}
@@ -1470,7 +1519,7 @@ if (id === "compact") {
           </div>
         ) : messages.length === 0 && !streamingContent ? (
           <div className="moflow-ai-empty">
-            <div className="moflow-ai-empty-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+            <div className="moflow-ai-empty-icon"><MessageSquare size={32} className="text-ui-text-secondary/30" /></div>
             <p>{t("ai.empty.prompt")}</p>
           </div>
         ) : null}
@@ -1509,17 +1558,6 @@ if (id === "compact") {
 
               elements.push(
                 <div key={msg.id} className={`moflow-ai-message moflow-ai-message-${msg.role}`}>
-{msg.role === "user" && msg.content !== "/compact" && (
-                    <button
-                      className="moflow-ai-undo-btn"
-                      onClick={() => handleUndo(msg.id)}
-                      disabled={isStreaming}
-                      aria-label={t("ai.undo")}
-                      title={t("ai.undo")}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
-                    </button>
-                  )}
                   <div className="moflow-ai-message-content">
                     {msg.role === "assistant" ? (
                       <MessageContent content={msg.content} />
@@ -1527,8 +1565,31 @@ if (id === "compact") {
                       msg.content
                     )}
                   </div>
+                  {!msg.isCompactSummary && (
+                    <div className="moflow-ai-msg-actions">
+                      {msg.role === "user" && msg.content !== "/compact" && (
+                        <button
+                          className="moflow-ai-msg-action-btn"
+                          onClick={() => handleUndo(msg.id)}
+                          disabled={isStreaming}
+                          aria-label={t("ai.undo")}
+                          title={t("ai.undo")}
+                        >
+                          <RotateCcw size={13} />
+                        </button>
+                      )}
+                      <button
+                        className="moflow-ai-msg-action-btn"
+                        onClick={() => handleCopy(msg)}
+                        aria-label={t("ai.copy")}
+                        title={t("ai.copy")}
+                      >
+                        {copiedId === msg.id ? <Check size={13} /> : <Copy size={13} />}
+                      </button>
+                    </div>
+                  )}
                  </div>
-               );
+                );
             }
             flushToolBuffer();
             return elements;
@@ -1556,10 +1617,7 @@ if (id === "compact") {
         <div ref={messagesEndRef} />
         {showScrollBottom && (
           <button className="moflow-ai-scroll-bottom-btn" onClick={scrollToBottom} aria-label={t("ai.scrollBottom")}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 13l5 5 5-5" />
-              <path d="M7 6l5 5 5-5" />
-            </svg>
+            <ChevronDown size={16} />
           </button>
         )}
       </div>
@@ -1608,9 +1666,7 @@ if (id === "compact") {
           />
           {isStreaming ? (
             <button className="moflow-ai-action-btn moflow-ai-action-stop" onClick={handleStop}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
+              <Square size={14} />
             </button>
           ) : (
             <button
@@ -1618,10 +1674,7 @@ if (id === "compact") {
               onClick={handleSend}
               disabled={!input.trim()}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
+              <SendHorizonal size={14} />
             </button>
           )}
         </div>

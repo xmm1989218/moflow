@@ -29,6 +29,7 @@ export interface SubAgentResult {
   totalTokens: number;
   cost: number;
   cachedTokens: number;
+  cacheSavings: number;
 }
 
 export type SubAgentType = "explore" | "general";
@@ -46,6 +47,7 @@ export interface SubAgentExecution {
   totalTokens: number;
   cost: number;
   cachedTokens: number;
+  cacheSavings: number;
   status: SubAgentStatus;
   parentChatKey: string;
 }

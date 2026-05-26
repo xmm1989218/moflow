@@ -1,3 +1,4 @@
+import { X, Settings, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
@@ -137,10 +138,7 @@ export default function TabBar() {
                 onClick={(e) => handleClose(tab.id, e)}
                 title="Close"
               >
-                <svg width="10" height="10" viewBox="0 0 10 10">
-                  <line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.2" />
-                  <line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
+                <X size={10} strokeWidth={1.2} />
               </button>
             </div>
           );
@@ -155,10 +153,7 @@ export default function TabBar() {
             onClick={activateSettingsTab}
             title={t("common.settings")}
           >
-            <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
+            <Settings className="shrink-0" size={12} />
             <span className="overflow-hidden text-ellipsis">{t("common.settings")}</span>
             <button
               aria-label={t("common.close")}
@@ -166,19 +161,13 @@ export default function TabBar() {
               onClick={(e) => { e.stopPropagation(); closeSettingsTab(); }}
               title="Close"
             >
-              <svg width="10" height="10" viewBox="0 0 10 10">
-                <line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.2" />
-                <line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.2" />
-              </svg>
+              <X size={10} strokeWidth={1.2} />
             </button>
           </div>
         )}
       </div>
         <button className="flex items-center justify-center w-7 h-full border-none bg-none text-ui-titlebar-inactive cursor-pointer shrink-0 transition-[background-color,color] duration-100 hover:bg-ui-hover hover:text-ui-titlebar-text" onClick={handleNewTab} title="New Tab">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <line x1="7" y1="1" x2="7" y2="13" />
-            <line x1="1" y1="7" x2="13" y2="7" />
-          </svg>
+          <Plus size={14} strokeWidth={1.5} />
         </button>
         <div className="flex-1 h-full min-w-0" data-tauri-drag-region />
     </div>

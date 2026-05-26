@@ -1,21 +1,8 @@
+import { Code, Eye } from "lucide-react";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
-
-const CodeIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="16 18 22 12 16 6" />
-    <polyline points="8 6 2 12 8 18" />
-  </svg>
-);
-
-const EyeIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
-);
 
 export default function StatusBar() {
   const showStatusBar = useThemeStore((s) => s.showStatusBar);
@@ -44,7 +31,7 @@ export default function StatusBar() {
             aria-pressed={mode === "source"}
             title={mode === "wysiwyg" ? t("statusBar.switchToSource") : t("statusBar.switchToWysiwyg")}
           >
-            {mode === "wysiwyg" ? <CodeIcon /> : <EyeIcon />}
+            {mode === "wysiwyg" ? <Code size={14} /> : <Eye size={14} />}
           </button>
         )}
       </div>

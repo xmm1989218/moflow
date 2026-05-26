@@ -6,6 +6,7 @@ import { loadFileByPath } from "../../lib/fileOps";
 import { invoke } from "@tauri-apps/api/core";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
+import { Folder, FileText, File, Image as ImageIcon } from "lucide-react";
 
 interface FileEntry {
   name: string;
@@ -31,35 +32,15 @@ function isImageFile(name: string): boolean {
 
 function getFileIcon(entry: FileEntry) {
   if (entry.isDirectory) {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" className="text-moflow-accent shrink-0">
-        <path d="M1.5 2h5l1.5 1.5H14.5a1 1 0 011 1v9a1 1 0 01-1 1h-13a1 1 0 01-1-1v-11a1 1 0 011-1z" />
-      </svg>
-    );
+    return <Folder size={14} className="text-ui-accent shrink-0" />;
   }
   if (isMdFile(entry.name)) {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-moflow-accent shrink-0">
-        <path d="M2 2h12v12H2V2z" />
-        <path d="M5 6h6M5 8.5h4M5 11h5" />
-      </svg>
-    );
+    return <FileText size={14} className="shrink-0" />;
   }
   if (isImageFile(entry.name)) {
-    return (
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-moflow-text-secondary shrink-0">
-        <rect x="2" y="2" width="12" height="12" rx="1" />
-        <circle cx="5.5" cy="5.5" r="1.5" />
-        <path d="M2 11l3-3 2 2 3-4 4 5" />
-      </svg>
-    );
+    return <ImageIcon size={14} className="text-moflow-text-secondary shrink-0" />;
   }
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="text-moflow-text-secondary shrink-0">
-      <path d="M4 2h5l4 4v8a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" />
-      <path d="M9 2v4h4" />
-    </svg>
-  );
+  return <File size={14} className="text-moflow-text-secondary shrink-0" />;
 }
 
 const dirCache = new Map<string, FileEntry[]>();
@@ -474,9 +455,7 @@ export default function FileTree() {
   if (!workspaceRoot) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-moflow-text-secondary text-[13px] opacity-60 p-5 text-center gap-2">
-        <svg width="32" height="32" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="opacity-40">
-          <path d="M2 3h5l2 2h5v8H2V3z" />
-        </svg>
+        <Folder size={32} className="text-ui-text-secondary/30" />
         <span>{t("fileTree.noFolderOpen")}</span>
         <button
           className="px-3 py-1 text-[12px] bg-moflow-accent/10 text-moflow-accent border border-moflow-accent/30 rounded hover:bg-moflow-accent/20 cursor-pointer transition-[background-color] duration-100"

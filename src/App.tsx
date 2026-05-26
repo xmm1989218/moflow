@@ -7,6 +7,7 @@ import UpdateDialog from "./components/UpdateDialog/UpdateDialog";
 import SettingsPanel from "./components/SettingsPanel/SettingsPanel";
 import OutlineSidebar from "./components/OutlineSidebar/OutlineSidebar";
 import ErrorBoundary from "./components/ErrorBoundary";
+import ToastContainer from "./components/ToastContainer/ToastContainer";
 
 const AISidebar = lazy(() => import("./components/AISidebar/AISidebar"));
 import { initFromStartupData, initSession } from "./stores/appStore";
@@ -276,6 +277,7 @@ function App() {
       <StatusBar />
       <ConfirmCloseDialog />
       <UpdateDialog />
+      <ToastContainer />
     </div>
     </I18nProvider>
   );
