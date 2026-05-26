@@ -1132,19 +1132,40 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
+## v1.3.5 — Toast & Prompt Caching ✅
+
+### 通用 Toast 基础设施
+
+- [x] `src/stores/toastStore.ts`（新文件）— Zustand store，队列 `toasts: Toast[]`（id/type/message/duration/createdAt），`addToast(type, message, duration?)` / `removeToast(id)`，队列上限 3 条
+- [x] `src/lib/toast.ts`（新文件）— 便捷函数 `toast.success(msg)` / `toast.error(msg)` / `toast.info(msg, duration?)`，success 默认 3s，error 默认 5s，info 默认 3s
+- [x] `src/components/ToastContainer/ToastContainer.tsx`（新文件）— 固定右下角堆叠排列，按 type 配色（success 绿 / error 红 / info 蓝灰），进度条动画，× 手动关闭
+- [x] `App.tsx` 挂载 `<ToastContainer />`
+- [x] 迁移 SettingsPanel AISection 局部 toast → `toast.success()`
+- [x] 迁移 SettingsPanel ProxySection 局部 toast → `toast.success()` / `toast.error()`
+- [x] 迁移 SkillsSection `showAlertDialog`（安装/卸载成功场景）→ `toast.success()`
+
+### Prompt Caching 完整支持
+
+- [x] `llmClient.ts` ClaudeCompatibleClient — 解析 `usage.cache_read_input_tokens` + `usage.cache_creation_input_tokens`，映射到 `ChatUsage.cachedTokens`
+- [x] `ChatUsage` 新增 `cacheCreationTokens?: number`
+- [x] `ClaudeCompatibleClient.chat()` — system prompt 最后一个 content block 加 `cache_control: {"type": "ephemeral"}`，仅 Claude（OpenAI 自动缓存无需手动标记）
+- [x] `modelInfo.ts` `calculateCost()` 新增 `cachedTokens` 参数，固定比例折扣（OpenAI cached 50% off，Claude cache read 90% off，Claude cache creation +25%）
+- [x] `chatStore.recordUsage()` / `recordStandaloneUsage()` 传入 `cachedTokens`，`subAgentRunner.ts` 传入 `cachedTokens`
+- [x] UsageBadge 多行展示：Context / Cached（有缓存时显示节省 token 数 + 节省金额）/ Total / Cost，无缓存时隐藏 Cached 行
+- [x] ContextView 缓存 token 行增加费用节省信息
+
+---
+
 ## v1.4.0 — AI 增强 & 聊天框呈现
 
 ### AI 增强
 
-- [ ] 通用 Toast 基础设施（toastStore + ToastContainer，success/error/info，自动消失+手动关闭，SettingsPanel 局部 toast 统一迁移）
-- [ ] AI 回复插入文档（聊天消息「插入」按钮，回复内容插入编辑器光标处）
 - [ ] 对话导出（Markdown / JSON）
 - [ ] 聊天历史搜索
 - [ ] `runSkillScript` 硬停机制（`skillScriptExecuted` flag + 拦截逻辑 + 动态移除 tool schema）
 - [ ] `runSkillScript` tool description 简化（行为约束移至 system prompt）
 - [ ] `SKILL_INSTRUCTION` 拆分为 `SKILL_BASE` + `SKILL_SCRIPT`（按条件拼接）
 - [ ] Tool result 截断重构：截断时完整内容写入临时文件，返回预览 + 提示 LLM 用 read/grep 按需读取（参考 opencode Truncate 机制，MAX_LINES=2000 / MAX_BYTES=50KB，截断不影响 UI 显示）
-- [ ] Prompt caching 完整支持：Anthropic 加 cache_control breakpoint、OpenAI cached_tokens 追踪、UsageBadge 区分显示缓存 token
 
 ### 聊天框呈现
 

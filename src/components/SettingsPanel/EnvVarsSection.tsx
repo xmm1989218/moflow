@@ -3,6 +3,7 @@ import { useThemeStore } from "../../stores/themeStore";
 import { useSkillStore } from "../../stores/skillStore";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
+import { X } from "lucide-react";
 
 const KEY_RE = /^[A-Z][A-Z0-9_]*$/;
 
@@ -84,9 +85,7 @@ export default function EnvVarsSection() {
                 type="button"
                 aria-label={t("common.delete")}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
+                <X size={14} />
               </button>
             </div>
           ))}

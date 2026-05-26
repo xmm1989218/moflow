@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.3.5 (2026-05-26)
+
+### New Features
+
+- **Toast notifications** — Global toast system (`toastStore` + `toast.success/error/info`) replacing local toast implementations across Settings, Proxy, and Skills sections; stacked bottom-right with progress bar and auto-dismiss
+- **Prompt Caching** — Full support for OpenAI and Claude prompt caching with cost savings tracking
+  - Claude: `cache_control: {"type": "ephemeral"}` on system prompt breakpoint; `cache_read_input_tokens` / `cache_creation_input_tokens` parsing
+  - OpenAI: automatic caching (no manual breakpoint needed); `cached_tokens` from `prompt_tokens_details`
+  - `calculateCost()` with fixed discount ratios (OpenAI cached 50% off, Claude cache read 90% off, Claude cache creation +25%)
+  - UsageBadge multi-line display: Context / Cached (when applicable) / Total / Cost
+  - ContextView shows cache savings
+  - Sub-agent cache tracking
+
+### Improvements
+
+- **Icon unification** — Migrated ~50 inline SVGs/emojis/unicode to `lucide-react` icons across 18 components for consistent icon style
+- **Copy button** — Added copy button to all AI chat messages (user + assistant) and tool results (read/edit/script/generic); copies tool call info + result content
+- **Action buttons layout** — Message action buttons (undo + copy) moved below message content instead of inline
+- **CSS class collision fix** — Renamed `.moflow-ai-action-btn` to `.moflow-ai-msg-actions` / `.moflow-ai-msg-action-btn` to prevent collision with input box buttons
+- **Tool result copy button** — Hover to show, preserves layout space (`visibility: hidden` + `opacity: 0`), appears on hover of tool group
+- **Message action hover** — Action buttons use `visibility: hidden` + `opacity: 0` instead of `display: none`, preserving layout space with smooth fade transition
+- **WebView2 remote debugging** — Debug builds only (`#[cfg(debug_assertions)]`), `--remote-debugging-port=9222`
+- i18n: added `ai.copy`/`ai.copied`/`ai.usage.cached`/`settings.skills.uninstalled` keys for en/zh/ja/ko
+
 ## v1.3.2 (2026-05-25)
 
 ### New Features

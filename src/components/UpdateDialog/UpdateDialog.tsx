@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Bell, CheckCircle, Sparkles, AlertCircle } from "lucide-react";
 import { useUpdateStore } from "../../stores/updateStore";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
@@ -31,7 +32,7 @@ export default function UpdateDialog() {
   if (status.state === "checking") {
     return (
       <div role="status" aria-live="polite" className="fixed bottom-5 right-5 z-[1000] flex items-start gap-2.5 p-3.5 min-w-[260px] max-w-[360px] bg-ui-bg border border-ui-border rounded-[10px] shadow-toast animate-toast-in pointer-events-auto">
-        <div className="shrink-0 w-5 h-5 flex items-center justify-center text-sm mt-px">🔔</div>
+        <Bell size={16} className="shrink-0 mt-px" />
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-semibold text-ui-text leading-snug">{t("update.checking")}</div>
         </div>
@@ -42,7 +43,7 @@ export default function UpdateDialog() {
   if (status.state === "up-to-date") {
     return (
       <div role="status" aria-live="polite" className="fixed bottom-5 right-5 z-[1000] flex items-start gap-2.5 p-3.5 min-w-[260px] max-w-[360px] bg-ui-bg border border-ui-border rounded-[10px] shadow-toast animate-toast-in pointer-events-auto">
-          <div className="shrink-0 w-5 h-5 flex items-center justify-center text-sm mt-px text-[#38a169]">✓</div>
+        <CheckCircle size={16} className="shrink-0 mt-px text-[#38a169]" />
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-semibold text-ui-text leading-snug">{t("update.upToDate")}</div>
         </div>
@@ -55,7 +56,7 @@ export default function UpdateDialog() {
     return (
       <div role="alert" aria-live="polite" className="fixed bottom-5 right-5 z-[1000] flex flex-col gap-3 p-3.5 min-w-[260px] max-w-[360px] bg-ui-bg border border-ui-border rounded-[10px] shadow-toast animate-toast-in pointer-events-auto">
         <div className="flex items-start gap-2.5">
-          <div className="shrink-0 w-5 h-5 flex items-center justify-center text-sm mt-px text-ui-accent">✨</div>
+        <Sparkles size={16} className="shrink-0 mt-px text-ui-accent" />
           <div className="flex-1 min-w-0">
             <div className="text-[13px] font-semibold text-ui-text leading-snug">
               {t("update.newVersion")}
@@ -86,7 +87,7 @@ export default function UpdateDialog() {
   if (status.state === "error") {
     return (
       <div role="alert" aria-live="polite" className="fixed bottom-5 right-5 z-[1000] flex items-start gap-2.5 p-3.5 min-w-[260px] max-w-[360px] bg-ui-bg border border-ui-border rounded-[10px] shadow-toast animate-toast-in pointer-events-auto">
-        <div className="shrink-0 w-5 h-5 flex items-center justify-center text-sm mt-px text-[#e53e3e]">⚠</div>
+        <AlertCircle size={16} className="shrink-0 mt-px text-[#e53e3e]" />
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-semibold text-ui-text leading-snug">{t("update.checkFailed")}</div>
         </div>

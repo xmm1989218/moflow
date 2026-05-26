@@ -1,6 +1,7 @@
 import { Component, useState, type ErrorInfo, type ReactNode } from "react";
 import { t } from "../i18n/core";
 import { useT } from "../i18n/useT";
+import { AlertTriangle } from "lucide-react";
 
 interface Props {
   children: ReactNode;
@@ -70,7 +71,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           textAlign: "center",
           color: "var(--ui-text)",
         }}>
-          <div style={{ fontSize: "40px", marginBottom: "16px" }}>⚠️</div>
+          <div style={{ fontSize: "40px", marginBottom: "16px" }}><AlertTriangle size={20} className="text-[#e53e3e]" /></div>
           <h2 style={{ fontSize: "16px", fontWeight: 600, marginBottom: "8px" }}>
             {t("common.error.somethingWentWrong")}
           </h2>

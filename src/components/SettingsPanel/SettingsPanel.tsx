@@ -8,6 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AIConfig } from "../../lib/settings";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
+import { Sun, User, Star, Code, Keyboard, Server, Info, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import SkillsSection from "./SkillsSection";
 import EnvVarsSection from "./EnvVarsSection";
 import ShortcutsSection from "./ShortcutsSection";
@@ -15,41 +16,13 @@ import ShortcutsSection from "./ShortcutsSection";
 type Section = "appearance" | "ai" | "shortcuts" | "skills" | "envVars" | "proxy" | "about";
 
 const sectionIcons: Record<Section, React.JSX.Element> = {
-  appearance: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="5" /><line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" /><line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" /><line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" /><line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-    </svg>
-  ),
-  ai: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z" /><path d="M16 14H8a4 4 0 0 0-4 4v2h16v-2a4 4 0 0 0-4-4z" />
-    </svg>
-  ),
-  skills: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-    </svg>
-  ),
-  envVars: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
-    </svg>
-  ),
-  shortcuts: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2" /><line x1="6" y1="8" x2="6.01" y2="8" /><line x1="10" y1="8" x2="10.01" y2="8" /><line x1="14" y1="8" x2="18" y2="8" /><line x1="6" y1="12" x2="18" y2="12" /><line x1="8" y1="16" x2="8.01" y2="16" /><line x1="12" y1="16" x2="16" y2="16" />
-    </svg>
-  ),
-  proxy: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="2" width="20" height="8" rx="2" ry="2" /><rect x="2" y="14" width="20" height="8" rx="2" ry="2" /><line x1="6" y1="6" x2="6.01" y2="6" /><line x1="6" y1="18" x2="6.01" y2="18" />
-    </svg>
-  ),
-  about: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
-    </svg>
-  ),
+  appearance: <Sun size={16} />,
+  ai: <User size={16} />,
+  skills: <Star size={16} />,
+  envVars: <Code size={16} />,
+  shortcuts: <Keyboard size={16} />,
+  proxy: <Server size={16} />,
+  about: <Info size={16} />,
 };
 
 const LANGUAGES: { id: SupportedLanguage; label: string }[] = [
@@ -170,7 +143,6 @@ function AISection() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const currentProvider = getProviderInfo(draft.providerId);
   const currentModels = getProviderModels(draft.providerId);
   const isKnownModel = currentModels.some((m) => m.id === aiConfig.model);
@@ -243,8 +215,8 @@ function AISection() {
     try {
       setAIConfig(draft);
       setMaxToolRounds(clamped);
-      setToast(t("settings.ai.saved"));
-      setTimeout(() => setToast(null), 3000);
+      const { toast } = await import("../../lib/toast");
+      toast.success(t("settings.ai.saved"));
     } finally {
       setSaving(false);
     }
@@ -320,19 +292,7 @@ function AISection() {
                 onClick={() => setShowToken(!showToken)}
                 type="button"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  {showToken ? (
-                    <>
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                      <line x1="1" y1="1" x2="23" y2="23" />
-                    </>
-                  ) : (
-                    <>
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </>
-                  )}
-                </svg>
+                {showToken ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
@@ -371,10 +331,7 @@ function AISection() {
                     type="button"
                     title={t("settings.ai.backToSelect")}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 12H5" />
-                      <path d="M12 19l-7-7 7-7" />
-                    </svg>
+                    <ArrowLeft size={14} />
                   </button>
                 )}
               </div>
@@ -436,8 +393,6 @@ function AISection() {
           {saving ? t("settings.ai.saving") : t("settings.ai.save")}
         </button>
       </div>
-
-      {toast && <div className="mt-3 py-2 px-3 rounded bg-ui-bg-secondary border border-ui-border text-ui-text text-[13px] animate-menu-fadein">{toast}</div>}
     </div>
   );
 }
@@ -463,7 +418,6 @@ function ProxySection() {
   const [draftHost, setDraftHost] = useState(stripProxyPrefix(currentProxyUrl));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
   const handleSave = async () => {
     setError(null);
@@ -474,8 +428,8 @@ function ProxySection() {
         useThemeStore.getState().setProxyUrl("");
         await invoke("set_proxy", { proxyUrl: null });
         if (currentProxyUrl) {
-          setToast(t("settings.proxy.disabledRestart"));
-          setTimeout(() => setToast(null), 5000);
+          const { toast } = await import("../../lib/toast");
+          toast.info(t("settings.proxy.disabledRestart"), 5000);
         }
       } catch (e) {
         setError(String(e));
@@ -501,9 +455,9 @@ function ProxySection() {
       const wasUrl = currentProxyUrl;
 
       if (!wasUrl || wasUrl !== fullUrl) {
-        setToast(t("settings.proxy.savedRestart"));
+        const { toast } = await import("../../lib/toast");
+        toast.info(t("settings.proxy.savedRestart"), 5000);
       }
-      setTimeout(() => setToast(null), 5000);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -548,7 +502,6 @@ function ProxySection() {
       </div>
 
       {error && <div className="text-[13px] text-[#ef4444] mb-3">{error}</div>}
-      {toast && <div className="mt-3 py-2 px-3 rounded bg-ui-bg-secondary border border-ui-border text-ui-text text-[13px] animate-menu-fadein">{toast}</div>}
     </div>
   );
 }

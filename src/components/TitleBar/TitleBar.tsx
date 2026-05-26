@@ -1,3 +1,4 @@
+import { Menu, AlignLeft, Settings, Minus, Copy, Square, X } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { platform } from "@tauri-apps/plugin-os";
@@ -49,11 +50,7 @@ export default function TitleBar() {
           aria-label={t("titleBar.menu")}
           title={t("titleBar.menu")}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <line x1="3" y1="6" x2="21" y2="6" />
-            <line x1="3" y1="12" x2="21" y2="12" />
-            <line x1="3" y1="18" x2="21" y2="18" />
-          </svg>
+          <Menu size={16} />
         </button>
         {menuOpen && <Suspense fallback={null}><HamburgerMenu onClose={() => setMenuOpen(false)} /></Suspense>}
         <button
@@ -70,14 +67,7 @@ export default function TitleBar() {
           aria-label={`${t("titleBar.outline")} (${getShortcutDisplay("outline")})`}
           title={`${t("titleBar.outline")} (${getShortcutDisplay("outline")})`}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <line x1="8" y1="6" x2="21" y2="6" />
-            <line x1="8" y1="12" x2="21" y2="12" />
-            <line x1="8" y1="18" x2="21" y2="18" />
-            <line x1="3" y1="6" x2="5" y2="6" />
-            <line x1="3" y1="12" x2="5" y2="12" />
-            <line x1="3" y1="18" x2="5" y2="18" />
-          </svg>
+          <AlignLeft size={14} />
         </button>
       </div>
 
@@ -96,10 +86,7 @@ export default function TitleBar() {
           aria-label={`${getShortcutLabel("settings")} (${getShortcutDisplay("settings")})`}
           title={`${getShortcutLabel("settings")} (${getShortcutDisplay("settings")})`}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
+          <Settings size={14} />
         </button>
         <button
           className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-[46px] px-0 transition-[background-color] duration-150 hover:bg-ui-hover"
@@ -107,9 +94,7 @@ export default function TitleBar() {
           aria-label={t("titleBar.minimize")}
           title={t("titleBar.minimize")}
         >
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
+          <Minus size={12} strokeWidth={1.5} />
         </button>
         <button
           className="flex items-center justify-center border-none bg-none text-ui-titlebar-text cursor-pointer h-10 min-w-[46px] px-0 transition-[background-color] duration-150 hover:bg-ui-hover"
@@ -118,14 +103,9 @@ export default function TitleBar() {
           title={isMaximized ? t("titleBar.restore") : t("titleBar.maximize")}
         >
           {isMaximized ? (
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-              <rect x="2.5" y="0.5" width="8" height="8" rx="1" />
-              <rect x="1.5" y="3.5" width="8" height="8" rx="1" />
-            </svg>
+            <Copy size={12} strokeWidth={1.2} />
           ) : (
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2">
-              <rect x="1.5" y="1.5" width="9" height="9" rx="1" />
-            </svg>
+            <Square size={12} strokeWidth={1.2} />
           )}
         </button>
         <button
@@ -134,10 +114,7 @@ export default function TitleBar() {
           aria-label={t("titleBar.close")}
           title={t("titleBar.close")}
         >
-          <svg width="12" height="12" viewBox="0 0 12 12">
-            <line x1="1" y1="1" x2="11" y2="11" stroke="currentColor" strokeWidth="1.5" />
-            <line x1="11" y1="1" x2="1" y2="11" stroke="currentColor" strokeWidth="1.5" />
-          </svg>
+          <X size={12} strokeWidth={1.5} />
         </button>
       </div>
       )}

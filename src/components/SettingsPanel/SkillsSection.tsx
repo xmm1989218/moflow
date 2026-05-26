@@ -5,6 +5,7 @@ import { showConfirmDialog, showAlertDialog } from "../../lib/closeDialog";
 import { checkBunAvailable } from "../../lib/skillRegistry";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
+import { RefreshCw } from "lucide-react";
 import type { SkillInstallStatus, SkillEnvEntry } from "../../lib/types";
 
 const SKILL_CATEGORIES = ["writing", "coding", "data", "productivity", "media"] as const;
@@ -103,8 +104,11 @@ export default function SkillsSection() {
     setInstallingName(status.name);
     try {
       await installSkill(status.name);
+      const { toast } = await import("../../lib/toast");
+      toast.success(t("settings.skills.installed"));
     } catch (e) {
-      await showAlertDialog(String(e));
+      const { toast } = await import("../../lib/toast");
+      toast.error(String(e));
     } finally {
       setInstallingName(null);
     }
@@ -117,8 +121,11 @@ export default function SkillsSection() {
     setInstallingName(status.name);
     try {
       await uninstallSkill(status.name);
+      const { toast } = await import("../../lib/toast");
+      toast.success(t("settings.skills.uninstalled"));
     } catch (e) {
-      await showAlertDialog(String(e));
+      const { toast } = await import("../../lib/toast");
+      toast.error(String(e));
     } finally {
       setInstallingName(null);
     }
@@ -292,19 +299,7 @@ export default function SkillsSection() {
           type="button"
           title={t("settings.skills.refresh")}
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={isLoadingRemote ? "animate-spin" : ""}
-          >
-            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-          </svg>
+          <RefreshCw size={14} className={isLoadingRemote ? "animate-spin" : ""} />
         </button>
       </div>
 

@@ -212,6 +212,7 @@ export async function runSubAgent(options: RunSubAgentOptions): Promise<SubAgent
   let totalCompletionTokens = 0;
   let totalCost = 0;
   let totalCachedTokens = 0;
+  let totalCacheSavings = 0;
   const toolCallSummaries: ToolCallSummary[] = [];
 
   const spanId = tracer.startSpan("subagent", `task.${description.slice(0, 40)}`, {});
@@ -279,8 +280,9 @@ export async function runSubAgent(options: RunSubAgentOptions): Promise<SubAgent
       totalCompletionTokens += completionTokens;
       totalCachedTokens += (cachedTokens ?? 0);
       if (providerId && model) {
-        const { cost: roundCost } = calculateCost(promptTokens, completionTokens, providerId, model);
+        const { cost: roundCost, cacheSavings: roundSavings } = calculateCost(promptTokens, completionTokens, providerId, model, cachedTokens, result.usage.cacheCreationTokens);
         totalCost += roundCost;
+        totalCacheSavings += roundSavings;
       }
 
       if (result.finishReason !== "tool_calls" || !result.toolCalls?.length) {
@@ -309,6 +311,7 @@ export async function runSubAgent(options: RunSubAgentOptions): Promise<SubAgent
           totalTokens: totalPromptTokens + totalCompletionTokens,
           cost: totalCost,
           cachedTokens: totalCachedTokens,
+          cacheSavings: totalCacheSavings,
         };
       }
 
@@ -411,5 +414,6 @@ export async function runSubAgent(options: RunSubAgentOptions): Promise<SubAgent
     totalTokens: totalPromptTokens + totalCompletionTokens,
     cost: totalCost,
     cachedTokens: totalCachedTokens,
+    cacheSavings: totalCacheSavings,
   };
 }

@@ -4,6 +4,7 @@ import { useSkillStore } from "../../stores/skillStore";
 import { getProviderModels } from "../../lib/modelInfo";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
+import { ArrowLeft, Check } from "lucide-react";
 
 const COMMANDS = [
   { id: "new", label: "/new", desc: "ai.slash.new" },
@@ -189,10 +190,7 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
         onClick={() => setPhase("commands")}
         type="button"
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M19 12H5" />
-          <path d="M12 19l-7-7 7-7" />
-        </svg>
+        <ArrowLeft size={12} />
       </button>
     );
 
@@ -238,9 +236,7 @@ const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandMenuProp
                 <span className="text-[13px] font-medium text-moflow-text whitespace-nowrap">{m.id}</span>
                 {m.id === config.model && (
                   <span className="flex items-center text-moflow-accent shrink-0">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
+                    <Check size={12} strokeWidth={3} />
                   </span>
                 )}
               </div>

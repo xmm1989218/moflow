@@ -242,6 +242,7 @@ describe("chatStore", () => {
       totalTokens: 150,
       cost: 0.01,
       cachedTokens: 0,
+      cacheSavings: 0,
       status: "completed",
       parentChatKey: TEST_TAB,
     };

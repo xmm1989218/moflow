@@ -44,8 +44,9 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **Skill Marketplace** — Browse, install, update, and uninstall AI skills from a GitHub-based remote registry
 - **Workspace-aware AI** — Open a folder as workspace, AI gets project-level tools (grep, find, glob, ls, read, write, edit) to explore and modify the entire codebase; workspace chat persists across tab switches
 - **Message Undo** — Undo any AI conversation round with file rollback via git snapshots; undo-restore (反悔) lets you reverse an undo
-- **Context View** — Inspect token usage (including cached tokens), context breakdown, and raw messages in a dedicated panel
+- **Context View** — Inspect token usage (including cached tokens and savings), context breakdown, and raw messages in a dedicated panel
 - **Selection AI** — Explain, translate, or ask questions about selected text; Markdown formatting preserved in translations and rewrites
+- **Message Copy** — Copy any message or tool result content (including tool call info) with one click
 - **Settings Tab** — Unified settings panel with appearance, AI config, shortcut customization, proxy, and about sections
 - **Proxy Support** — HTTP/HTTPS/SOCKS5 proxy for AI requests and web content fetching
 - **Find & Replace** — Regex support, case-sensitive search, replace all

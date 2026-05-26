@@ -62,12 +62,24 @@ export function calculateCost(
   promptTokens: number,
   completionTokens: number,
   providerId: string,
-  model: string
-): { cost: number; currency: string } {
+  model: string,
+  cachedTokens?: number,
+  cacheCreationTokens?: number
+): { cost: number; currency: string; cacheSavings: number } {
   const info = getModelInfo(providerId, model);
-  const inputCost = (promptTokens / 1_000_000) * info.inputPricePer1M;
+  const isClaude = getProviderInfo(providerId)?.compatibility === "claude";
+  const nonCachedInput = Math.max(0, promptTokens - (cachedTokens ?? 0) - (cacheCreationTokens ?? 0));
+  const inputCost = (nonCachedInput / 1_000_000) * info.inputPricePer1M;
+  const cachedInputCost = isClaude
+    ? ((cachedTokens ?? 0) / 1_000_000) * info.inputPricePer1M * 0.1
+    : ((cachedTokens ?? 0) / 1_000_000) * info.inputPricePer1M * 0.5;
+  const cacheCreationCost = isClaude
+    ? ((cacheCreationTokens ?? 0) / 1_000_000) * info.inputPricePer1M * 1.25
+    : 0;
   const outputCost = (completionTokens / 1_000_000) * info.outputPricePer1M;
-  return { cost: inputCost + outputCost, currency: info.currency };
+  const fullInputCost = (promptTokens / 1_000_000) * info.inputPricePer1M;
+  const cacheSavings = fullInputCost - (inputCost + cachedInputCost + cacheCreationCost);
+  return { cost: inputCost + cachedInputCost + cacheCreationCost + outputCost, currency: info.currency, cacheSavings: Math.max(0, cacheSavings) };
 }
 
 export function formatCost(cost: number, currency: string): string {

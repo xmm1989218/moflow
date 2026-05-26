@@ -2,6 +2,7 @@ import ReactMarkdown, { type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { rehypePrismCommon } from "rehype-prism-plus";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { XCircle, AlertTriangle } from "lucide-react";
 import "prismjs/themes/prism-tomorrow.css";
 import "./MessageContent.css";
 
@@ -17,9 +18,9 @@ function Callout({ type, children }: { type: "error" | "warning"; children: Reac
     <div className={`moflow-ai-callout moflow-ai-callout-${type}`}>
       <span className="moflow-ai-callout-icon">
         {type === "error" ? (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <XCircle size={14} />
         ) : (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <AlertTriangle size={14} />
         )}
       </span>
       <div className="moflow-ai-callout-body">{children}</div>
