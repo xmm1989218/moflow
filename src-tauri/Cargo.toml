@@ -1,6 +1,6 @@
 [package]
 name = "moflow"
-version = "1.3.5"
+version = "1.3.6"
 description = "MoFlow - A Markdown Editor"
 authors = ["MoFlow"]
 license = "MIT"
