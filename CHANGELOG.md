@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.3.6 (2026-05-26)
+
+### Improvements
+
+- **Release workflow** — Added `workflow_dispatch` trigger to release workflow for manual release activation
+
 ## v1.3.5 (2026-05-26)
 
 ### New Features
