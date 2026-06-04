@@ -17,6 +17,7 @@ jobs:
       matrix:
         include:
           - platform: windows-latest
+          - platform: macos-13
           - platform: macos-latest
           - platform: ubuntu-latest
     runs-on: ${{ matrix.platform }}

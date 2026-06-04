@@ -38,7 +38,9 @@ export default function TitleBar() {
   };
 
   const handleDoubleClick = () => {
-    appWindow.toggleMaximize();
+    if (!isMacOs) {
+      appWindow.toggleMaximize();
+    }
   };
 
   return (

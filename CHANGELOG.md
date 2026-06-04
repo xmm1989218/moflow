@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.3.7 (2026-06-04)
+
+### New Features
+
+- **macOS Apple Silicon (ARM64) support** — Separate aarch64 and x86_64 DMG builds
+  - `macos-13` (Intel runner) builds x86_64 DMG for Intel Mac
+  - `macos-latest` (ARM runner) builds aarch64 DMG for Apple Silicon (M1/M2/M3/M4)
+  - Auto-update correctly distinguishes architecture via `latest.json` (`darwin-x86_64` / `darwin-aarch64`)
+
+### Improvements
+
+- **macOS minimum system version** raised from 10.15 to 11.0 (Big Sur) — required for Apple Silicon support
+- **macOS auto-update fix** — previous releases had no `darwin-*` entries in `latest.json`, making auto-update non-functional on macOS since v1.1.0
+
 ## v1.3.6 (2026-05-26)
 
 ### Improvements

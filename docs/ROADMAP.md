@@ -1156,6 +1156,29 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
+## v1.3.7 — macOS Apple Silicon 支持 ✅
+
+### Design Decisions
+
+- **分架构构建**：macOS 分别构建 x86_64 和 aarch64 DMG（非 Universal Binary），用户按架构下载
+- **macOS 最低版本**：10.15 → 11.0（Apple Silicon 最低要求 macOS 11 Big Sur）
+- **自动升级**：`latest.json` 通过 `darwin-x86_64` / `darwin-aarch64` 区分架构，客户端自动匹配
+
+### Tauri Config
+
+- [x] `macOS.minimumSystemVersion`: `"10.15"` → `"11.0"`
+
+### Release Workflow
+
+- [x] `release.yml` macOS matrix 从 1 个改为 2 个：`macos-13`（Intel runner → x86_64 dmg）+ `macos-latest`（ARM runner → aarch64 dmg）
+- [x] tauri-action 为两个 macOS 构建分别生成 dmg + sig，合并写入 `latest.json`（`darwin-x86_64` + `darwin-aarch64`）
+
+### 版本号
+
+- [x] `package.json` / `Cargo.toml` / `tauri.conf.json` 版本号 → `1.3.7`
+
+---
+
 ## v1.4.0 — AI 增强 & 聊天框呈现
 
 ### AI 增强
