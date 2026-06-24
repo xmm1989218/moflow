@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.3.8 (2026-06-24)
+
+### New Features
+
+- **Default .md file association** — MoFlow now registers as the default handler for `.md` files on all platforms
+  - Windows: NSIS installer registers `.md` → MoFlow in registry
+  - macOS: Info.plist `CFBundleDocumentTypes` includes public.source-code with MD extension
+  - Linux: .desktop file MIME type updated for text/markdown
+  - Double-clicking any `.md` file in the file explorer opens it directly in MoFlow
+  - Handles both first-instance launch (app not running) and second-instance launch (app already running) via `tauri-plugin-single-instance`
+
+### Improvements
+
+- **Vite dev server** — Excluded `src-tauri/target/` from file watcher to prevent `EBUSY` errors during `bun run tauri dev`
+
 ## v1.3.7 (2026-06-04)
 
 ### New Features

@@ -37,6 +37,7 @@ Download the latest installer from the [Releases page](https://github.com/xmm198
 - **i18n** — Multi-language support (简体中文, English, 日本語, 한국어) with runtime switching, no restart needed
 - **Accessibility** — WAI-ARIA patterns, keyboard navigation, focus management across all interactive components
 - **Export** — HTML and PDF export
+- **Default .md file association** — Double-click any `.md` file to open it directly in MoFlow; registers as the default Markdown handler on all platforms
 - **AI Sidebar** — Integrated AI chat with context management, auto-compact, and usage tracking
 - **AI Tool-Calling** — AI can actively explore documents via tools (outline, grep, read, readSection) and fetch web content instead of relying on truncated context
 - **Interactive Questions** — AI asks clarifying questions via a wizard-style form before executing non-trivial tasks

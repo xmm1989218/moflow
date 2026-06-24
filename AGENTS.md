@@ -137,6 +137,7 @@ src-tauri/              # Backend (Rust + Tauri)
 - Export supports HTML (frontend) and PDF (Rust backend via WebView2 PrintToPdf API)
 - Windows taskbar icon fix: `fix_taskbar_icon()` in `lib.rs` uses Win32 `LoadImageW` + `SendMessageW(WM_SETICON)` to set both ICON_SMALL and ICON_BIG from the EXE embedded resource (ID 32512)
 - Dynamic FS scope: Rust `allow_paths` command + `fs_scope().allow_file()` instead of wildcard scope
+- File association: `tauri.conf.json` bundle `fileAssociations` registers `.md` → MoFlow; first-instance launch handled by `PendingFileState` + `get_pending_file` command; second-instance via `tauri-plugin-single-instance` emit `single-instance-file-open` event
 - Chat history persisted as JSONL per chat: `{appDataDir}/chats/{safeFileName}/messages.jsonl` + `input_history.json` per session directory
 - Chat key dual-mode: workspace → `"dir:" + normalized path` (one chat per workspace, survives tab switch/close); single-file → `tabId` (deleted on tab close)
 - `promptTokens` persisted on assistant messages in JSONL — `contextTokensMap` restored on restart via `getContext()` reading last assistant's `promptTokens`

@@ -1179,6 +1179,17 @@ Enable the AI to actively explore the document instead of relying on truncated c
 
 ---
 
+## v1.3.8 — 默认 .md 文件关联 ✅
+
+### OS 文件关联
+
+- [x] `tauri.conf.json` bundle 添加 `fileAssociations`（`.md` → `text/markdown`）
+- [x] Rust 启动参数解析 + `PendingFileState` + `get_pending_file` 命令
+- [x] 前端启动时 invoke `get_pending_file` 并自动打开文件
+- [x] 已有 `single-instance-file-open` 事件处理第二实例传参
+
+---
+
 ## v1.4.0 — AI 增强 & 聊天框呈现
 
 ### AI 增强
