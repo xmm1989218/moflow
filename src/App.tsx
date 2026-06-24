@@ -56,6 +56,8 @@ function App() {
           await initSession();
         }
         await import("./lib/chatPersistence").then(({ migrateOldChatDir }) => migrateOldChatDir());
+        const pendingFile = await invoke<string | null>("get_pending_file");
+        if (pendingFile) loadFileByPath(pendingFile);
         window.__startupMark?.("session-loaded", "react-mount");
         window.__startupMark?.("window-shown", "session-loaded");
         startupReport();

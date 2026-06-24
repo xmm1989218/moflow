@@ -27,6 +27,8 @@ struct CancelState {
     token: std::sync::Mutex<CancellationToken>,
 }
 
+struct PendingFileState(std::sync::Mutex<Option<String>>);
+
 #[derive(Deserialize)]
 struct SettingsJson {
     #[serde(rename = "proxyUrl")]
@@ -476,6 +478,11 @@ fn cancel_requests(state: tauri::State<CancelState>) -> Result<(), String> {
     token.cancel();
     *token = CancellationToken::new();
     Ok(())
+}
+
+#[tauri::command]
+fn get_pending_file(state: tauri::State<PendingFileState>) -> Option<String> {
+    state.0.lock().ok()?.take()
 }
 
 #[tauri::command]
@@ -1000,7 +1007,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_os::init())
-        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, get_startup_data, fetch_skill_registry, download_and_install_skill, uninstall_skill, clean_skill_temp, check_bun_available, execute_script, snapshot::snapshot_init, snapshot::snapshot_commit, snapshot::snapshot_checkout_files, snapshot::snapshot_restore, snapshot::snapshot_log, snapshot::snapshot_destroy])
+        .invoke_handler(tauri::generate_handler![toggle_devtools, export_pdf, allow_paths, webfetch, set_proxy, cancel_requests, get_pending_file, get_startup_data, fetch_skill_registry, download_and_install_skill, uninstall_skill, clean_skill_temp, check_bun_available, execute_script, snapshot::snapshot_init, snapshot::snapshot_commit, snapshot::snapshot_checkout_files, snapshot::snapshot_restore, snapshot::snapshot_log, snapshot::snapshot_destroy])
         .setup(move |app| {
             log::info!("[startup] setup-enter: {}ms", app_start.elapsed().as_millis());
 
@@ -1066,6 +1073,12 @@ pub fn run() {
 
             #[cfg(desktop)]
             {
+                let pending_file = std::env::args().nth(1).and_then(|p| {
+                    let ext = std::path::Path::new(&p).extension()?.to_str()?;
+                    if ext == "md" { Some(p) } else { None }
+                });
+                app.manage(PendingFileState(std::sync::Mutex::new(pending_file)));
+
                 app.handle().plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
                     let window = app.get_webview_window("main").expect("no main window");
                     let _ = window.set_focus();

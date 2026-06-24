@@ -31,6 +31,14 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "fileAssociations": [
+      {
+        "name": "Markdown",
+        "description": "Markdown File",
+        "ext": ["md"],
+        "mimeType": "text/markdown"
+      }
+    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser"

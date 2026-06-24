@@ -19,6 +19,11 @@ function dropKatexRedundantFonts(): Plugin {
 export default defineConfig({
   plugins: [react(), tailwindcss(), dropKatexRedundantFonts()],
   clearScreen: false,
+  server: {
+    watch: {
+      ignored: ["**/src-tauri/target/**"],
+    },
+  },
   resolve: {
     alias: {
       '@codemirror/language-data': path.resolve(__dirname, 'src/stubs/language-data.ts'),
