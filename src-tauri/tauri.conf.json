@@ -35,7 +35,9 @@
       {
         "name": "Markdown",
         "description": "Markdown File",
-        "ext": ["md"],
+        "ext": [
+          "md"
+        ],
         "mimeType": "text/markdown"
       }
     ],
