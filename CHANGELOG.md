@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.9 (2026-06-25)
+
+### Improvements
+
+- **Updated .md file icon** — Redesigned file icon to match Python-style document page with folded corner and MoFlow logo at bottom-right
+- **Removed unused mobile platform icons** — Deleted `android/` and `ios/` icon directories (35 files) since mobile platforms are not supported
+
 ## v1.3.8 (2026-06-24)
 
 ### New Features
