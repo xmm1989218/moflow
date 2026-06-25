@@ -38,8 +38,7 @@
         "ext": [
           "md"
         ],
-        "mimeType": "text/markdown",
-        "icon": "icons/md-file.png"
+        "mimeType": "text/markdown"
       }
     ],
     "windows": {
