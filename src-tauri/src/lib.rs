@@ -4,7 +4,9 @@ use snapshot::SnapshotState;
 use tauri::{Emitter, Manager};
 use tauri_plugin_fs::FsExt;
 use std::collections::HashMap;
-use std::sync::{LazyLock, mpsc};
+use std::sync::LazyLock;
+#[cfg(target_os = "windows")]
+use std::sync::mpsc;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
