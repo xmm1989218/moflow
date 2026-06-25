@@ -1070,7 +1070,7 @@ pub fn run() {
                     "MoFlow",
                     true,
                     &[
-                        &MenuItem::new(app, "About MoFlow", true, None)?,
+                        &MenuItem::new(app, "About MoFlow", true, None::<&str>)?,
                         &PredefinedMenuItem::separator(app)?,
                         &PredefinedMenuItem::quit(app, Some("Quit MoFlow"))?,
                     ],
