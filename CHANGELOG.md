@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.3.10 (2026-06-25)
+
+### New Features
+
+- **Custom .md file icon** — NSIS installer now registers a custom icon for `.md` files (Python-style document page with MoFlow logo)
+  - `bundle.resources` packages `md-file.ico` into the install directory
+  - `installerHooks` (NSIS_HOOK_POSTINSTALL) overrides `DefaultIcon` registry key to point to the custom icon
+
 ## v1.3.9 (2026-06-25)
 
 ### Improvements
