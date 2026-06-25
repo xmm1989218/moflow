@@ -1065,12 +1065,17 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             {
                 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
-                let app_submenu = Submenu::builder(app, "MoFlow")
-                    .item(&MenuItem::builder(app, "About MoFlow").build()?)
-                    .separator()
-                    .item(&PredefinedMenuItem::quit(app, Some("Quit MoFlow"))?)
-                    .build()?;
-                let menu = Menu::builder(app).item(&app_submenu).build()?;
+                let app_submenu = Submenu::with_items(
+                    app,
+                    "MoFlow",
+                    true,
+                    &[
+                        &MenuItem::new(app, "About MoFlow", true, None)?,
+                        &PredefinedMenuItem::separator(app)?,
+                        &PredefinedMenuItem::quit(app, Some("Quit MoFlow"))?,
+                    ],
+                )?;
+                let menu = Menu::with_items(app, &[&app_submenu])?;
                 app.set_menu(menu)?;
                 log::info!("[startup] macOS minimal menu set");
             }
