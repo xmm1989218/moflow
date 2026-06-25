@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.4.0 (2026-06-25)
+
+### New Features
+
+- **Open Recent** — HamburgerMenu now has an "Open Recent" submenu listing recently opened files (max 5) and workspaces (max 5), with file name + full path subtitle; clicking opens directly; failed opens auto-remove from list
+  - `settings.json` persists `recentFiles` / `recentWorkspaces` arrays
+  - `openFolderByPath(path)` extracted from `openFolder()` for direct workspace opening from recent list
+
+### Bug Fixes
+
+- **macOS shortcuts** — Set minimal app menu (About + Quit only) to prevent macOS default menu bar from intercepting Cmd+S/Cmd+N/Cmd+O/Cmd+W/Cmd+Z/Cmd+F/Cmd+, before they reach the JS keydown handler
+- **Shortcuts test isolation** — Reset `applyShortcutOverrides({})` in `beforeEach` to prevent cross-test pollution that caused `getShortcut("newFile")` to return `"N"` instead of `"n"` on Linux CI
+
 ## v1.3.11 (2026-06-25)
 
 ### Bug Fixes

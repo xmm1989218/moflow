@@ -71,7 +71,7 @@ src/                    # Frontend (React + TypeScript)
     searchStore.ts      # Find & replace state (per-tab editorViewMap)
     sessionStore.ts     # Session persistence (workspaceRoot)
     tabStore.ts         # File tabs, workspaceRoot, getChatKey, closeWorkspace
-    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab, leftPanelTab, language, aiMode, shortcutOverrides, enableTrace
+    themeStore.ts       # App/editor theme, AI config, sidebar, settings tab, leftPanelTab, language, aiMode, shortcutOverrides, enableTrace, recentFiles/recentWorkspaces
     updateStore.ts      # Auto-update state
   i18n/
     core.ts             # Core i18n utilities (t, isZh, getLocale, setLanguage, resolveLanguage)
@@ -86,12 +86,12 @@ src/                    # Frontend (React + TypeScript)
     chatPersistence.ts  # JSONL chat history (chats/{safeFileName}/messages.jsonl, safeFileName exported, clearChat, removeChat, migrateOldChatDir, appendTraceEvent, clearTrace, rewriteChat, backupChatForUndo, restoreFromUndoBackup, deleteUndoBackup)
     inputHistory.ts     # Per-session input history (loadInputHistory/saveInputHistory/appendInputHistory, 200 max, dedup)
     contextBuilder.ts   # System prompt builder (TOOLS_GUIDE replaces WS_FILE_TOOLS/DOC_FILE_TOOLS)
-    fileOps.ts          # File read/write/open folder via Tauri FS plugin
+    fileOps.ts          # File read/write/open folder/open folder by path via Tauri FS plugin; recent files/workspaces recording
     imageManager.ts     # Image save/resolve (saveImageToFile, resolveImagePath)
     modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
     llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling, Claude dynamic max_tokens, ChatUsage.cachedTokens, ChatResult.ttfbMs/chunkCount)
     shortcuts.ts        # Centralized shortcut registry (defaultShortcuts, overrides, getShortcutDisplay, getShortcutLabel, findConflict, parseKeyEvent)
-    settings.ts         # App settings persistence (proxyUrl derived proxy state, permissions, aiMode, shortcutOverrides, enableTrace)
+    settings.ts         # App settings persistence (proxyUrl derived proxy state, permissions, aiMode, shortcutOverrides, enableTrace, recentFiles/recentWorkspaces)
     exportHtml.ts       # HTML/PDF export logic (image base64 embedding)
     themeCSS.ts         # Dynamic theme CSS generation
     permission.ts       # Permission engine (wildcard matching, evaluateWithSession, generateAlwaysPattern)
