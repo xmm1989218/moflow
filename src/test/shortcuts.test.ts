@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   getShortcut,
   getAllShortcuts,
@@ -12,6 +12,10 @@ import {
 } from "../lib/shortcuts";
 
 describe("shortcuts", () => {
+  beforeEach(() => {
+    applyShortcutOverrides({});
+  });
+
   describe("getShortcut", () => {
     it("returns definition for known shortcut", () => {
       const def = getShortcut("newFile");
