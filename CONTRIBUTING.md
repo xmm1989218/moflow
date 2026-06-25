@@ -134,6 +134,8 @@ src-tauri/              # Backend (Rust + Tauri)
 bun run release x.y.z
 ```
 
+> **This is the only supported way to publish a release.** Never manually run `git tag` / `git push origin v*` / `gh release create` — the release script runs lint, build, test, and cargo check before tagging; skipping it risks shipping broken builds.
+
 This script (`scripts/release.mjs`) automates the entire release flow:
 
 1. **Validate** — Checks version format, git branch (must be `master`), and clean working directory
@@ -149,6 +151,23 @@ This script (`scripts/release.mjs`) automates the entire release flow:
 >
 > The public key is already configured in `tauri.conf.json`. See [Tauri Updater Signing](https://v2.tauri.app/plugin/updater/#signing) for details.
 
+### Redo a release
+
+If a release needs to be redone (e.g. the tag points to the wrong commit):
+
+1. Delete the tag and the draft release:
+   ```bash
+   gh release delete vx.y.z --yes
+   git push origin --delete vx.y.z
+   git tag -d vx.y.z
+   ```
+2. Re-run the release script:
+   ```bash
+   bun run release x.y.z
+   ```
+
+Do NOT manually re-tag and push — always go through the script so lint/build/test/cargo check re-run.
+
 ### Manual version sync (without release)
 
 If you only need to sync version numbers across config files without building:
@@ -156,30 +175,3 @@ If you only need to sync version numbers across config files without building:
 ```bash
 bun run sync-version x.y.z
 ```
-
-### Manual release (without script)
-
-If you prefer to do each step manually:
-
-1. **Sync version** — Update `version` in `package.json`, `src-tauri/Cargo.toml`, and `src-tauri/tauri.conf.json`
-2. **Commit** — `git commit -m "chore: bump version to x.y.z"`
-3. **Set signing env vars** — `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
-4. **Build** — `bun run tauri build`
-5. **Collect artifacts** from `src-tauri/target/release/bundle/nsis/`:
-   - `MoFlow_x.y.z_x64-setup.exe` — NSIS installer
-   - `MoFlow_x.y.z_x64-setup.exe.sig` — Update signature
-6. **Create `latest.json`**:
-   ```json
-   {
-     "version": "x.y.z",
-     "notes": "## v0.2.0\n- New features\n- Bug fixes",
-     "pub_date": "2026-05-05T12:00:00Z",
-     "platforms": {
-       "windows-x86_64": {
-         "signature": "<content of .sig file>",
-         "url": "https://github.com/xmm1989218/moflow/releases/download/vx.y.z/MoFlow_x.y.z_x64-setup.exe"
-       }
-     }
-   }
-   ```
-7. **Create GitHub Release** (tag: `vx.y.z`), upload installer + `.sig` + `latest.json`

@@ -116,8 +116,10 @@ src-tauri/              # Backend (Rust + Tauri)
   icons/                # App icons (PNG, ICO, ICNS)
 ```
 
-## Branching Convention
+## Release Process
 
+- **Releases MUST be performed via `bun run release <version>`** — never manually run `git tag` / `git push origin v*` / `gh release create` to publish a release. The release script runs lint, build, test, and cargo check before tagging; skipping it risks shipping broken builds.
+- If a release needs to be redone (e.g. tag points to wrong commit): delete the tag and the draft release, then re-run `bun run release <version>`. Do NOT manually re-tag and push.
 - Development branches for version releases must use `dev/v{version}` format (e.g. `dev/v0.4.0`), **never** `v{version}` — because release tags use `v{version}` format and same-name branches/tags cause `git push origin v0.4.0` ambiguity
 
 ## Code Style
