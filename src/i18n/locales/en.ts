@@ -18,6 +18,8 @@ export default {
 
   "menu.new": "New",
   "menu.open": "Open...",
+  "menu.openRecent": "Open Recent",
+  "menu.noRecentFiles": "No Recent Files",
   "menu.openFolder": "Open Folder...",
   "menu.closeFolder": "Close Folder",
   "menu.save": "Save",

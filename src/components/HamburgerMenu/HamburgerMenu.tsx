@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { useTabStore } from "../../stores/tabStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { useSearchStore } from "../../stores/searchStore";
-import { openFile, saveFile, saveFileAs, exportHtml, exportPdf, openFolder } from "../../lib/fileOps";
+import { openFile, saveFile, saveFileAs, exportHtml, exportPdf, openFolder, openFolderByPath, loadFileByPath } from "../../lib/fileOps";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 import { getShortcutDisplay } from "../../lib/shortcuts";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { Check } from "lucide-react";
+import { Check, FileText, Folder } from "lucide-react";
+import { posixBasename } from "../../lib/pathUtils";
 
 const appWindow = getCurrentWindow();
 
@@ -19,6 +20,10 @@ interface MenuItem {
   shortcut?: string;
   checked?: boolean;
   submenu?: MenuEntry[];
+  subLabel?: string;
+  icon?: "file" | "folder";
+  onSelect?: () => void;
+  disabled?: boolean;
 }
 
 interface MenuSeparator {
@@ -38,9 +43,36 @@ function isSeparator(entry: MenuEntry): entry is MenuSeparator {
 function item(
   id: string,
   label: string,
-  opts?: { shortcut?: string; checked?: boolean; submenu?: MenuEntry[] }
+  opts?: { shortcut?: string; checked?: boolean; submenu?: MenuEntry[]; subLabel?: string; icon?: "file" | "folder"; onSelect?: () => void; disabled?: boolean }
 ): MenuItem {
   return { type: "item", id, label, ...opts };
+}
+
+function buildRecentSubmenu(recentFiles: string[], recentWorkspaces: string[], onClose: () => void): MenuEntry[] {
+  const entries: MenuEntry[] = [];
+  if (recentFiles.length === 0 && recentWorkspaces.length === 0) {
+    return [item("no_recent", t("menu.noRecentFiles"), { disabled: true })];
+  }
+  for (const p of recentFiles) {
+    const name = p.split(/[/\\]/).pop() || p;
+    entries.push(item(`recent_file:${p}`, name, {
+      subLabel: p,
+      icon: "file",
+      onSelect: () => { loadFileByPath(p); onClose(); },
+    }));
+  }
+  if (recentFiles.length > 0 && recentWorkspaces.length > 0) {
+    entries.push(sep());
+  }
+  for (const p of recentWorkspaces) {
+    const name = posixBasename(p) || p;
+    entries.push(item(`recent_ws:${p}`, name, {
+      subLabel: p,
+      icon: "folder",
+      onSelect: () => { openFolderByPath(p); onClose(); },
+    }));
+  }
+  return entries;
 }
 
 export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
@@ -48,6 +80,8 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
   const newFile = useTabStore((s) => s.newFile);
   const workspaceRoot = useTabStore((s) => s.workspaceRoot);
   const openSettingsTab = useThemeStore((s) => s.openSettingsTab);
+  const recentFiles = useThemeStore((s) => s.recentFiles);
+  const recentWorkspaces = useThemeStore((s) => s.recentWorkspaces);
   useT();
 
   useEffect(() => {
@@ -122,6 +156,9 @@ export default function HamburgerMenu({ onClose }: { onClose: () => void }) {
     item("open", t("menu.open"), { shortcut: getShortcutDisplay("openFile") }),
     item("open_folder", t("menu.openFolder"), { shortcut: getShortcutDisplay("openFolder") }),
     ...(workspaceRoot ? [item("close_folder", t("menu.closeFolder"))] : []),
+    item("open_recent", t("menu.openRecent"), {
+      submenu: buildRecentSubmenu(recentFiles, recentWorkspaces, onClose),
+    }),
     item("save", t("menu.save"), { shortcut: getShortcutDisplay("saveFile") }),
     item("save_as", t("menu.saveAs"), { shortcut: getShortcutDisplay("saveFileAs") }),
     sep(),
@@ -186,7 +223,7 @@ function SubmenuItem({ item: menuItem, onAction }: { item: MenuItem; onAction: (
         <span className="flex-1">{menuItem.label}</span>
       </button>
       {open && menuItem.submenu && (
-        <div className="absolute left-full top-0 min-w-[200px] bg-ui-menu-bg border border-ui-border rounded-lg shadow-menu p-1 z-[1001] animate-menu-fadein">
+        <div className="absolute left-full top-0 min-w-[240px] max-w-[360px] bg-ui-menu-bg border border-ui-border rounded-lg shadow-menu p-1 z-[1001] animate-menu-fadein">
           {menuItem.submenu.map((entry, i) =>
             isSeparator(entry) ? (
               <div key={`sep-${i}`} className="h-px bg-ui-border mx-2 my-1" />
@@ -195,15 +232,22 @@ function SubmenuItem({ item: menuItem, onAction }: { item: MenuItem; onAction: (
             ) : (
               <button
                 key={entry.id}
-                className={`flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left gap-2 whitespace-nowrap hover:bg-ui-menu-hover${entry.checked ? " font-semibold" : ""}`}
+                className={`flex items-center w-full py-1.5 px-3 border-none bg-none text-ui-text text-[13px] cursor-pointer rounded text-left gap-2 whitespace-nowrap hover:bg-ui-menu-hover${entry.checked ? " font-semibold" : ""}${entry.disabled ? " opacity-40 cursor-default hover:bg-transparent" : ""}`}
                 onClick={() => {
-                  onAction(entry.id);
+                  if (entry.disabled) return;
+                  if (entry.onSelect) entry.onSelect();
+                  else onAction(entry.id);
                 }}
               >
                 <span className="w-4 shrink-0 text-center text-xs text-ui-accent">
-{entry.checked ? <Check size={14} /> : ""}
+                  {entry.checked ? <Check size={14} /> : entry.icon === "file" ? <FileText size={13} /> : entry.icon === "folder" ? <Folder size={13} /> : ""}
                 </span>
-                <span className="flex-1">{entry.label}</span>
+                <span className="flex flex-col min-w-0 flex-1">
+                  <span className="truncate">{entry.label}</span>
+                  {entry.subLabel && (
+                    <span className="text-[10px] text-ui-text-secondary truncate opacity-60">{entry.subLabel}</span>
+                  )}
+                </span>
               </button>
             ),
           )}

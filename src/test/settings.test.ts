@@ -28,6 +28,14 @@ describe("settings", () => {
     it("shortcutOverrides defaults to empty object", () => {
       expect(defaultSettings.shortcutOverrides).toEqual({});
     });
+
+    it("recentFiles defaults to empty array", () => {
+      expect(defaultSettings.recentFiles).toEqual([]);
+    });
+
+    it("recentWorkspaces defaults to empty array", () => {
+      expect(defaultSettings.recentWorkspaces).toEqual([]);
+    });
   });
 
   describe("defaultAIConfig", () => {

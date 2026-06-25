@@ -18,6 +18,8 @@ export default {
 
   "menu.new": "새로 만들기",
   "menu.open": "열기...",
+  "menu.openRecent": "최근 항목",
+  "menu.noRecentFiles": "최근 항목 없음",
   "menu.openFolder": "폴더 열기...",
   "menu.closeFolder": "폴더 닫기",
   "menu.save": "저장",

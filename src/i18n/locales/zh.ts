@@ -18,6 +18,8 @@ export default {
 
   "menu.new": "新建",
   "menu.open": "打开...",
+  "menu.openRecent": "最近打开",
+  "menu.noRecentFiles": "无最近文件",
   "menu.openFolder": "打开目录...",
   "menu.closeFolder": "关闭目录",
   "menu.save": "保存",

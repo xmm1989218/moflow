@@ -18,6 +18,8 @@ export default {
 
   "menu.new": "新規",
   "menu.open": "開く...",
+  "menu.openRecent": "最近開いた項目",
+  "menu.noRecentFiles": "最近の項目なし",
   "menu.openFolder": "フォルダーを開く...",
   "menu.closeFolder": "フォルダーを閉じる",
   "menu.save": "保存",

@@ -455,6 +455,8 @@ export async function initFromStartupData(): Promise<boolean> {
       envVars: (settings.envVars as Record<string, string>) ?? {},
       aiMode: ((data.settings as Record<string, unknown>).aiMode as "build" | "plan") ?? "build",
       shortcutOverrides: ((data.settings as Record<string, unknown>).shortcutOverrides as Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>) ?? {},
+      recentFiles: Array.isArray((data.settings as Record<string, unknown>).recentFiles) ? ((data.settings as Record<string, unknown>).recentFiles as string[]) : [],
+      recentWorkspaces: Array.isArray((data.settings as Record<string, unknown>).recentWorkspaces) ? ((data.settings as Record<string, unknown>).recentWorkspaces as string[]) : [],
     });
     const { applyShortcutOverrides } = await import("../lib/shortcuts");
     applyShortcutOverrides(useThemeStore.getState().shortcutOverrides);
@@ -548,6 +550,8 @@ export async function initSession() {
     maxToolRounds: settings.maxToolRounds ?? 20,
     aiMode: settings.aiMode ?? "build",
     shortcutOverrides: settings.shortcutOverrides ?? {},
+    recentFiles: settings.recentFiles ?? [],
+    recentWorkspaces: settings.recentWorkspaces ?? [],
   });
 
   const { applyShortcutOverrides } = await import("../lib/shortcuts");

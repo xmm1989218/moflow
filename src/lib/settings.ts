@@ -42,6 +42,8 @@ export interface AppSettings {
   aiMode: AiMode;
   enableTrace: boolean;
   shortcutOverrides: Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>;
+  recentFiles: string[];
+  recentWorkspaces: string[];
 }
 
 export const defaultSettings: AppSettings = {
@@ -60,6 +62,8 @@ export const defaultSettings: AppSettings = {
   aiMode: "build",
   enableTrace: false,
   shortcutOverrides: {},
+  recentFiles: [],
+  recentWorkspaces: [],
 };
 
 export async function readSettings(): Promise<AppSettings> {
@@ -86,6 +90,8 @@ export async function readSettings(): Promise<AppSettings> {
       aiMode: parsed.aiMode ?? "build",
       enableTrace: parsed.enableTrace ?? false,
       shortcutOverrides: parsed.shortcutOverrides ?? {},
+      recentFiles: Array.isArray(parsed.recentFiles) ? parsed.recentFiles : [],
+      recentWorkspaces: Array.isArray(parsed.recentWorkspaces) ? parsed.recentWorkspaces : [],
     };
     return settings;
   } catch {

@@ -11,9 +11,12 @@ import { invalidateDirCache } from "../components/FileTree/FileTree";
 export async function openFolder() {
   const selected = await open({ directory: true, multiple: false });
   if (!selected) return;
+  await openFolderByPath(selected);
+}
 
+export async function openFolderByPath(selected: string) {
   const state = useTabStore.getState();
-  if (state.workspaceRoot) {
+  if (state.workspaceRoot && state.workspaceRoot !== selected) {
     const closed = await state.closeWorkspace();
     if (!closed) return;
   }
@@ -25,6 +28,7 @@ export async function openFolder() {
     useThemeStore.getState().toggleOutline();
   }
   invalidateDirCache();
+  useThemeStore.getState().addRecentWorkspace(selected);
 }
 
 export async function openFile() {
@@ -59,6 +63,7 @@ export async function openFile() {
       lastSavedContent: content,
       contentLoaded: true,
     });
+    useThemeStore.getState().addRecentFile(selected);
   });
 }
 
@@ -179,8 +184,10 @@ export async function loadFileByPath(filePath: string) {
       lastSavedContent: content,
       contentLoaded: true,
     });
+    useThemeStore.getState().addRecentFile(filePath);
   }).catch(() => {
     console.error("Failed to open file:", filePath);
+    useThemeStore.getState().removeRecentFile(filePath);
   });
 }
 

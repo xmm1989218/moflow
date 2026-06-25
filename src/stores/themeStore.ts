@@ -47,6 +47,8 @@ function persistSettings(get: () => ThemeState) {
     aiMode: s.aiMode,
     enableTrace: s.enableTrace,
     shortcutOverrides: s.shortcutOverrides,
+    recentFiles: s.recentFiles,
+    recentWorkspaces: s.recentWorkspaces,
   });
 }
 
@@ -66,6 +68,8 @@ interface ThemeState {
   aiMode: AiMode;
   enableTrace: boolean;
   shortcutOverrides: Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>;
+  recentFiles: string[];
+  recentWorkspaces: string[];
   showSettingsTab: boolean;
   settingsTabActive: boolean;
   settingsActiveSection: string;
@@ -96,6 +100,10 @@ interface ThemeState {
   setAiMode: (mode: AiMode) => void;
   toggleEnableTrace: () => void;
   setShortcutOverrides: (overrides: Record<string, { key: string; modifiers: ("ctrl" | "shift" | "alt")[] }>) => void;
+  addRecentFile: (path: string) => void;
+  addRecentWorkspace: (path: string) => void;
+  removeRecentFile: (path: string) => void;
+  removeRecentWorkspace: (path: string) => void;
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
@@ -114,6 +122,8 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   aiMode: "build",
   enableTrace: false,
   shortcutOverrides: {},
+  recentFiles: [],
+  recentWorkspaces: [],
   showSettingsTab: false,
   settingsTabActive: false,
   settingsActiveSection: "appearance",
@@ -227,6 +237,34 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   setShortcutOverrides: (shortcutOverrides) => {
     import("../lib/shortcuts").then(({ applyShortcutOverrides }) => applyShortcutOverrides(shortcutOverrides));
     set({ shortcutOverrides });
+    persistSettings(get);
+  },
+
+  addRecentFile: (path) => {
+    const trimmed = path.trim();
+    if (!trimmed) return;
+    set((state) => ({
+      recentFiles: [trimmed, ...state.recentFiles.filter((p) => p !== trimmed)].slice(0, 5),
+    }));
+    persistSettings(get);
+  },
+
+  addRecentWorkspace: (path) => {
+    const trimmed = path.trim();
+    if (!trimmed) return;
+    set((state) => ({
+      recentWorkspaces: [trimmed, ...state.recentWorkspaces.filter((p) => p !== trimmed)].slice(0, 5),
+    }));
+    persistSettings(get);
+  },
+
+  removeRecentFile: (path) => {
+    set((state) => ({ recentFiles: state.recentFiles.filter((p) => p !== path) }));
+    persistSettings(get);
+  },
+
+  removeRecentWorkspace: (path) => {
+    set((state) => ({ recentWorkspaces: state.recentWorkspaces.filter((p) => p !== path) }));
     persistSettings(get);
   },
 }));
