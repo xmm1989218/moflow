@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.3.11 (2026-06-25)
+
+### Bug Fixes
+
+- **macOS updater signing** — Changed bundle target from `dmg` to `app` so Tauri generates updater signatures and includes macOS ARM in `latest.json`
+- **Removed macos-13 from CI matrix** — Intel macOS runner never executed and is not needed
+
 ## v1.3.10 (2026-06-25)
 
 ### New Features
