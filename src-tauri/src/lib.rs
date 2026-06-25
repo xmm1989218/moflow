@@ -1062,6 +1062,19 @@ pub fn run() {
             window_builder.build().map_err(|e| format!("Failed to create main window: {}", e))?;
             log::info!("[startup] window-built: {}ms", app_start.elapsed().as_millis());
 
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
+                let app_submenu = Submenu::builder(app, "MoFlow")
+                    .item(&MenuItem::builder(app, "About MoFlow").build()?)
+                    .separator()
+                    .item(&PredefinedMenuItem::quit(app, Some("Quit MoFlow"))?)
+                    .build()?;
+                let menu = Menu::builder(app).item(&app_submenu).build()?;
+                app.set_menu(menu)?;
+                log::info!("[startup] macOS minimal menu set");
+            }
+
             app.manage(StartupState { data: Some(startup_data) });
             app.manage(ProxyState {
                 proxy_url: std::sync::Mutex::new(proxy_url),
