@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
-import { useAppStore, type CloseDialogResult } from "../../stores/appStore";
-import { resolveDialog, resolveAlert, resolveConfirm } from "../../lib/closeDialog";
+import { useAppStore, type CloseDialogResult, type ReloadDialogResult } from "../../stores/appStore";
+import { resolveDialog, resolveAlert, resolveConfirm, resolveReloadDialog } from "../../lib/closeDialog";
 import { t } from "../../i18n/core";
 import { useT } from "../../i18n/useT";
 
@@ -59,6 +59,11 @@ export default function ConfirmCloseDialog() {
     resolveDialog(result);
   };
 
+  const handleReloadResult = (result: ReloadDialogResult) => {
+    hideCloseDialog();
+    resolveReloadDialog(result);
+  };
+
   const handleAlertOk = () => {
     hideCloseDialog();
     resolveAlert();
@@ -80,6 +85,8 @@ export default function ConfirmCloseDialog() {
         handleAlertOk();
       } else if (closeDialog.mode === "confirm") {
         handleConfirmCancel();
+      } else if (closeDialog.mode === "confirm-reload") {
+        handleReloadResult("keep");
       } else {
         handleResult("cancel");
       }
@@ -92,6 +99,8 @@ export default function ConfirmCloseDialog() {
         handleAlertOk();
       } else if (closeDialog.mode === "confirm") {
         handleConfirmCancel();
+      } else if (closeDialog.mode === "confirm-reload") {
+        handleReloadResult("keep");
       } else {
         handleResult("cancel");
       }
@@ -125,6 +134,15 @@ export default function ConfirmCloseDialog() {
               </button>
               <button className={`${btnBase} border-ui-accent bg-ui-accent text-white hover:opacity-90`} onClick={() => handleResult("save")}>
                 {t("common.save")}
+              </button>
+            </>
+          ) : closeDialog.mode === "confirm-reload" ? (
+            <>
+              <button className={`${btnBase} border-ui-border bg-transparent text-ui-text-secondary hover:bg-ui-bg-secondary`} onClick={() => handleReloadResult("keep")}>
+                {t("common.notNow")}
+              </button>
+              <button className={`${btnBase} border-ui-accent bg-ui-accent text-white hover:opacity-90`} onClick={() => handleReloadResult("reload")}>
+                {t("common.reload")}
               </button>
             </>
           ) : closeDialog.mode === "confirm" ? (

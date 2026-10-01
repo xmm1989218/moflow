@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.5.0 (2026-10-02)
+
+### New Features
+
+- **External file change detection** — Files opened in MoFlow are now watched for changes made by other programs
+  - Clean tabs (no unsaved edits) auto-reload from disk with a toast notification
+  - Modified tabs show a reload prompt: "Reload" (accept the disk version) or "Not Now" (keep editing; auto-save stays paused so the external version is never silently overwritten)
+  - Deleted or moved files show an alert and the tab closes
+  - Window focus re-checks open files as a fallback when watching is unavailable (e.g. network drives)
+
+### Bug Fixes
+
+- **Auto-save data loss** — Auto-save could silently overwrite external changes; it is now paused for tabs with unresolved external-change conflicts until a manual save or reload
+
 ## v1.4.0 (2026-06-25)
 
 ### New Features

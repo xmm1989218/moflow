@@ -17,6 +17,7 @@ import { useUpdateStore } from "./stores/updateStore";
 import { useSearchStore } from "./stores/searchStore";
 import { useChatStore } from "./stores/chatStore";
 import { openFile, saveFile, saveFileAs, confirmCloseTab, saveAllFiles, loadFileByPath, closeLastTab, openFolder } from "./lib/fileOps";
+import { initFileWatcher, hasPendingConflict } from "./lib/fileWatcher";
 import { t } from "./i18n/core";
 import { I18nProvider } from "./i18n";
 import { getAllShortcuts } from "./lib/shortcuts";
@@ -50,6 +51,7 @@ function App() {
 
   useEffect(() => {
     getCurrentWindow().show();
+    initFileWatcher();
     initFromStartupData()
       .then(async (ok) => {
         if (!ok) {
@@ -114,7 +116,7 @@ function App() {
       const s = useTabStore.getState();
       if (!useThemeStore.getState().autoSave) return;
       const t = s.files.find((f) => f.id === s.activeFileId);
-      if (t && t.filePath && t.isModified) {
+      if (t && t.filePath && t.isModified && !hasPendingConflict(t.id)) {
         saveFile();
       }
     }, 1500);

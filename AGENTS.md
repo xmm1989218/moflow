@@ -87,6 +87,7 @@ src/                    # Frontend (React + TypeScript)
     inputHistory.ts     # Per-session input history (loadInputHistory/saveInputHistory/appendInputHistory, 200 max, dedup)
     contextBuilder.ts   # System prompt builder (TOOLS_GUIDE replaces WS_FILE_TOOLS/DOC_FILE_TOOLS)
     fileOps.ts          # File read/write/open folder/open folder by path via Tauri FS plugin; recent files/workspaces recording
+    fileWatcher.ts      # External file change detection (fs plugin watch, auto-reload clean tabs, conflict dialog, auto-save pause)
     imageManager.ts     # Image save/resolve (saveImageToFile, resolveImagePath)
     modelInfo.ts        # Model pricing, maxContext, calculateCost, formatCost
     llmClient.ts        # OpenAI/Claude/Mock LLM clients (streaming + tool-calling, Claude dynamic max_tokens, ChatUsage.cachedTokens, ChatResult.ttfbMs/chunkCount)
@@ -192,3 +193,4 @@ src-tauri/              # Backend (Rust + Tauri)
 - `newMessageId()` in chatStore: pre-generate UUID before commit, preserving commit-before-addMessage order (commit captures pre-AI file state)
 - JSONL backup for undo: `messages.jsonl.undo-backup` in chats/{safeFileName}/; `rewriteChat` uses atomic `.repair` → rename pattern
 - Permission check order in `resolvePathAndCheckWritePermission`: workspace inside auto-allow → single-file current auto-allow → workspace outside checkPathAccess → edit permission (ask/deny)
+- External file changes: `fileWatcher.ts` watches open tab files via fs plugin `watch` (notify-rs, delayMs 300); on event, disk content is compared with `lastSavedContent` — equal means our own write (ignored, also self-heals pending conflicts after manual save); clean tabs auto-reload via `updateTabMeta({content: disk})` + toast, modified tabs get reload dialog (`confirm-reload` mode: reload=disk replaces editor / keep=stay pending, auto-save stays paused until manual save or next external change); `promptedDisk` suppresses re-prompts for identical disk content; window focus triggers `recheckAll` as fallback when watchers fail

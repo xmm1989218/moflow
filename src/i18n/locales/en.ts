@@ -13,6 +13,10 @@ export default {
   "common.draftUnsaved": "Draft is unsaved. Save it?",
   "common.fileUnsaved": "\"{fileName}\" has unsaved changes. Save?",
   "common.workspaceUnsaved": "Workspace \"{wsName}\" has unsaved changes. Save them?",
+  "common.fileChangedExternally": "\"{fileName}\" has been changed on disk by another program. Reload it? Reloading discards your unsaved edits; keeping them lets you overwrite the file later with a manual save.",
+  "common.notNow": "Not Now",
+  "common.fileReloaded": "\"{fileName}\" was changed on disk and has been reloaded.",
+  "common.fileDeleted": "\"{fileName}\" no longer exists or has been moved.",
   "common.close": "Close",
   "common.settings": "Settings",
 

@@ -1,8 +1,9 @@
-import { useAppStore, type CloseDialogResult } from "../stores/appStore";
+import { useAppStore, type CloseDialogResult, type ReloadDialogResult } from "../stores/appStore";
 
 let dialogResolver: ((value: CloseDialogResult) => void) | null = null;
 let alertResolver: (() => void) | null = null;
 let confirmResolver: ((value: boolean) => void) | null = null;
+let reloadResolver: ((value: ReloadDialogResult) => void) | null = null;
 
 export function showConfirmCloseDialog(message: string): Promise<CloseDialogResult> {
   return new Promise((resolve) => {
@@ -25,6 +26,13 @@ export function showConfirmDialog(message: string): Promise<boolean> {
   });
 }
 
+export function showReloadDialog(message: string): Promise<ReloadDialogResult> {
+  return new Promise((resolve) => {
+    reloadResolver = resolve;
+    useAppStore.getState().showReloadDialog(message);
+  });
+}
+
 export function resolveDialog(result: CloseDialogResult) {
   dialogResolver?.(result);
   dialogResolver = null;
@@ -38,4 +46,9 @@ export function resolveAlert() {
 export function resolveConfirm(value: boolean) {
   confirmResolver?.(value);
   confirmResolver = null;
+}
+
+export function resolveReloadDialog(result: ReloadDialogResult) {
+  reloadResolver?.(result);
+  reloadResolver = null;
 }
